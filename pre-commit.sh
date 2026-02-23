@@ -1,0 +1,59 @@
+#!/bin/bash
+# Pre-commit hook script
+# Runs linting, formatting, type checking, and dead code detection
+
+set -e
+
+echo "Running pre-commit checks..."
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Check if commands exist
+check_command() {
+    if ! command -v $1 &> /dev/null; then
+        echo -e "${RED}Error: $1 is not installed${NC}"
+        exit 1
+    fi
+}
+
+# Run ruff check (linting)
+run_ruff_check() {
+    echo -e "${YELLOW}Running ruff (linting)...${NC}"
+    ruff check src/ --output-format=concise
+    echo -e "${GREEN}✓ Ruff check passed${NC}"
+}
+
+# Run ruff format (formatting)
+run_ruff_format() {
+    echo -e "${YELLOW}Running ruff (formatting check)...${NC}"
+    ruff format --check src/
+    echo -e "${GREEN}✓ Ruff format check passed${NC}"
+}
+
+# Run mypy (type checking)
+run_mypy() {
+    echo -e "${YELLOW}Running mypy (type checking)...${NC}"
+    python -m mypy --strict src/Syrin
+    echo -e "${GREEN}✓ Mypy check passed${NC}"
+}
+
+# Main execution
+echo ""
+echo "========================================="
+echo "Pre-commit Quality Checks"
+echo "========================================="
+echo ""
+
+# Run checks
+run_ruff_check
+run_ruff_format
+run_mypy
+
+echo ""
+echo "========================================="
+echo -e "${GREEN}All pre-commit checks passed!${NC}"
+echo "========================================="

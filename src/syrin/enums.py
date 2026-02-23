@@ -1,0 +1,373 @@
+from enum import StrEnum
+
+
+class OnExceeded(StrEnum):
+    """What happens when an agent exceeds its budget."""
+
+    ERROR = "error"
+    STOP = "stop"
+    WARN = "warn"
+
+
+class StopReason(StrEnum):
+    """Why an agent run terminated."""
+
+    END_TURN = "end_turn"
+    BUDGET = "budget"
+    MAX_ITERATIONS = "max_iterations"
+    TIMEOUT = "timeout"
+    TOOL_ERROR = "tool_error"
+    HANDOFF = "handoff"
+    GUARDRAIL = "guardrail"
+    CANCELLED = "cancelled"
+
+
+class LoopStrategy(StrEnum):
+    """Agent execution loop strategy."""
+
+    REACT = "react"
+    PLAN_EXECUTE = "plan_execute"
+    CODE_ACTION = "code_action"
+    SINGLE_SHOT = "single_shot"
+
+
+class ContextStrategy(StrEnum):
+    """How to compress conversation context when it exceeds limits."""
+
+    TRUNCATE = "truncate"
+    SLIDING_WINDOW = "sliding_window"
+    SUMMARIZE = "summarize"
+
+
+class ContextAction(StrEnum):
+    """Actions triggered at context thresholds."""
+
+    SUMMARIZE_OLDEST = "summarize_oldest"
+    COMPRESS = "compress"
+    DROP_LOW_PRIORITY = "drop_low_priority"
+    DROP_MEDIUM_PRIORITY = "drop_medium_priority"
+    SWITCH_MODEL = "switch_model"
+    STOP = "stop"
+    ERROR = "error"
+    WARN = "warn"
+    CUSTOM = "custom"
+
+
+class TracingBackend(StrEnum):
+    """Built-in tracing output destinations."""
+
+    CONSOLE = "console"
+    FILE = "file"
+    JSONL = "jsonl"
+    OTLP = "otlp"
+
+
+class TraceLevel(StrEnum):
+    """Tracing verbosity levels."""
+
+    MINIMAL = "minimal"
+    STANDARD = "standard"
+    VERBOSE = "verbose"
+
+
+class MessageRole(StrEnum):
+    """Conversation message roles."""
+
+    SYSTEM = "system"
+    USER = "user"
+    ASSISTANT = "assistant"
+    TOOL = "tool"
+
+
+class StepType(StrEnum):
+    """Types of steps in an execution trace."""
+
+    LLM_CALL = "llm_call"
+    TOOL_CALL = "tool_call"
+    MODEL_SWITCH = "model_switch"
+    BUDGET_CHECK = "budget_check"
+    HANDOFF = "handoff"
+    GUARDRAIL = "guardrail"
+    SPAWN = "spawn"
+
+
+class GuardrailStage(StrEnum):
+    """When a guardrail runs in the agent lifecycle."""
+
+    INPUT = "input"
+    ACTION = "action"
+    OUTPUT = "output"
+
+
+class DecisionAction(StrEnum):
+    """Action to take after guardrail evaluation."""
+
+    PASS = "pass"
+    BLOCK = "block"
+    WARN = "warn"
+    REQUEST_APPROVAL = "request_approval"
+    REDACT = "redact"
+
+
+class SwitchReason(StrEnum):
+    """Why the model was switched during execution."""
+
+    BUDGET_THRESHOLD = "budget_threshold"
+    FALLBACK = "fallback"
+    MANUAL = "manual"
+
+
+class RateWindow(StrEnum):
+    """Time windows for rate limiting."""
+
+    HOUR = "hour"
+    DAY = "day"
+    WEEK = "week"
+    MONTH = "month"
+
+
+class AuditBackend(StrEnum):
+    """Built-in audit log destinations."""
+
+    FILE = "file"
+    JSONL = "jsonl"
+    OTLP = "otlp"
+
+
+class ContentType(StrEnum):
+    """Multi-modal content types."""
+
+    TEXT = "text"
+    IMAGE = "image"
+    AUDIO = "audio"
+    VIDEO = "video"
+    FILE = "file"
+
+
+class SandboxRuntime(StrEnum):
+    """Supported sandbox execution runtimes."""
+
+    DOCKER = "docker"
+    E2B = "e2b"
+    LOCAL = "local"
+    SUBPROCESS = "subprocess"
+
+
+class Hook(StrEnum):
+    """Lifecycle hooks — the primary observability mechanism."""
+
+    AGENT_INIT = "agent.init"
+    AGENT_RUN_START = "agent.run.start"
+    AGENT_RUN_END = "agent.run.end"
+    AGENT_RESET = "agent.reset"
+
+    LLM_REQUEST_START = "llm.request.start"
+    LLM_REQUEST_END = "llm.request.end"
+    LLM_STREAM_CHUNK = "llm.stream.chunk"
+    LLM_RETRY = "llm.retry"
+    LLM_FALLBACK = "llm.fallback"
+
+    TOOL_CALL_START = "tool.call.start"
+    TOOL_CALL_END = "tool.call.end"
+    TOOL_ERROR = "tool.error"
+
+    BUDGET_CHECK = "budget.check"
+    BUDGET_THRESHOLD = "budget.threshold"
+    BUDGET_EXCEEDED = "budget.exceeded"
+
+    MODEL_SWITCH = "model.switch"
+
+    HANDOFF_START = "handoff.start"
+    HANDOFF_END = "handoff.end"
+    SPAWN_START = "spawn.start"
+    SPAWN_END = "spawn.end"
+
+    GUARDRAIL_INPUT = "guardrail.input"
+    GUARDRAIL_OUTPUT = "guardrail.output"
+    GUARDRAIL_BLOCKED = "guardrail.blocked"
+
+    MEMORY_RECALL = "memory.recall"
+    MEMORY_STORE = "memory.store"
+    MEMORY_FORGET = "memory.forget"
+    MEMORY_CONSOLIDATE = "memory.consolidate"
+    MEMORY_EXTRACT = "memory.extract"
+
+    CHECKPOINT_SAVE = "checkpoint.save"
+    CHECKPOINT_LOAD = "checkpoint.load"
+
+    CONTEXT_COMPRESS = "context.compress"
+    CONTEXT_OFFLOAD = "context.offload"
+    CONTEXT_RESTORE = "context.restore"
+
+    RATELIMIT_CHECK = "ratelimit.check"
+    RATELIMIT_THRESHOLD = "ratelimit.threshold"
+    RATELIMIT_EXCEEDED = "ratelimit.exceeded"
+
+    OUTPUT_VALIDATION_START = "output.validation.start"
+    OUTPUT_VALIDATION_ATTEMPT = "output.validation.attempt"
+    OUTPUT_VALIDATION_SUCCESS = "output.validation.success"
+    OUTPUT_VALIDATION_FAILED = "output.validation.failed"
+    OUTPUT_VALIDATION_RETRY = "output.validation.retry"
+
+    HARNESS_SESSION_START = "harness.session.start"
+    HARNESS_SESSION_END = "harness.session.end"
+    HARNESS_PROGRESS = "harness.progress"
+    HARNESS_CIRCUIT_TRIP = "harness.circuit.trip"
+    HARNESS_CIRCUIT_RESET = "harness.circuit.reset"
+
+    DYNAMIC_PIPELINE_START = "dynamic.pipeline.start"
+    DYNAMIC_PIPELINE_PLAN = "dynamic.pipeline.plan"
+    DYNAMIC_PIPELINE_EXECUTE = "dynamic.pipeline.execute"
+    DYNAMIC_PIPELINE_AGENT_SPAWN = "dynamic.pipeline.agent.spawn"
+    DYNAMIC_PIPELINE_AGENT_COMPLETE = "dynamic.pipeline.agent.complete"
+    DYNAMIC_PIPELINE_END = "dynamic.pipeline.end"
+    DYNAMIC_PIPELINE_ERROR = "dynamic.pipeline.error"
+    HARNESS_RETRY = "harness.retry"
+
+
+class DocFormat(StrEnum):
+    """Format for tool documentation sent to LLMs."""
+
+    TOON = "toon"
+    JSON = "json"
+    YAML = "yaml"
+
+
+class MemoryType(StrEnum):
+    """Types of memory an agent can store and retrieve."""
+
+    CORE = "core"
+    EPISODIC = "episodic"
+    SEMANTIC = "semantic"
+    PROCEDURAL = "procedural"
+
+
+class MemoryBackend(StrEnum):
+    """Built-in memory storage backends.
+
+    Available:
+    - MEMORY: In-memory (default, ephemeral, fast)
+    - SQLITE: File-based SQLite (persistent, stored at path or ~/.syrin/memory.db)
+    - QDRANT: Vector database for semantic search
+    - CHROMA: Lightweight vector database
+    - REDIS: Fast in-memory cache with persistence options
+    - POSTGRES: PostgreSQL for production (with pgvector for embeddings)
+    """
+
+    MEMORY = "memory"
+    SQLITE = "sqlite"
+    QDRANT = "qdrant"
+    CHROMA = "chroma"
+    REDIS = "redis"
+    POSTGRES = "postgres"
+
+
+class MemoryScope(StrEnum):
+    """Scope boundary for memory isolation."""
+
+    SESSION = "session"
+    AGENT = "agent"
+    USER = "user"
+    GLOBAL = "global"
+
+
+class DecayStrategy(StrEnum):
+    """How memory importance decays over time."""
+
+    EXPONENTIAL = "exponential"
+    LINEAR = "linear"
+    LOGARITHMIC = "logarithmic"
+    STEP = "step"
+    NONE = "none"
+
+
+class InjectionStrategy(StrEnum):
+    """How retrieved memories are placed in the context window."""
+
+    CHRONOLOGICAL = "chronological"
+    RELEVANCE = "relevance"
+    ATTENTION_OPTIMIZED = "attention_optimized"
+
+
+class CheckpointStrategy(StrEnum):
+    """How agent state is checkpointed for long-running tasks."""
+
+    FULL = "full"
+    INCREMENTAL = "incremental"
+    EVENT_SOURCED = "event_sourced"
+    HYBRID = "hybrid"
+
+
+class CheckpointBackend(StrEnum):
+    """Built-in checkpoint storage backends."""
+
+    MEMORY = "memory"
+    SQLITE = "sqlite"
+    POSTGRES = "postgres"
+    FILESYSTEM = "filesystem"
+
+
+class OffloadBackend(StrEnum):
+    """Where to store offloaded context data."""
+
+    MEMORY = "memory"
+    FILESYSTEM = "filesystem"
+    SQLITE = "sqlite"
+    REDIS = "redis"
+
+
+class RetryBackoff(StrEnum):
+    """Retry backoff strategies for provider failures."""
+
+    EXPONENTIAL = "exponential"
+    LINEAR = "linear"
+    CONSTANT = "constant"
+
+
+class CircuitState(StrEnum):
+    """Circuit breaker states."""
+
+    CLOSED = "closed"
+    OPEN = "open"
+    HALF_OPEN = "half_open"
+
+
+class ProgressStatus(StrEnum):
+    """Status of a tracked progress item."""
+
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class ThresholdMetric(StrEnum):
+    """Metrics that can be tracked with thresholds."""
+
+    COST = "cost"  # Budget cost (USD)
+    TOKENS = "tokens"  # Context tokens
+    RPM = "rpm"  # Requests per minute
+    TPM = "tpm"  # Tokens per minute
+    RPD = "rpd"  # Requests per day
+
+
+class RateLimitMetric(StrEnum):
+    """Metrics that can be tracked for rate limiting.
+
+    Deprecated: Use ThresholdMetric instead.
+    """
+
+    RPM = "rpm"  # Requests per minute
+    TPM = "tpm"  # Tokens per minute
+    RPD = "rpd"  # Requests per day
+
+
+class RateLimitAction(StrEnum):
+    """Actions triggered at rate limit thresholds."""
+
+    WARN = "warn"
+    WAIT = "wait"
+    SWITCH_MODEL = "switch_model"
+    STOP = "stop"
+    ERROR = "error"
+    CUSTOM = "custom"

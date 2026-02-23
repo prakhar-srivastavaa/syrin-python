@@ -1,0 +1,173 @@
+"""Unified threshold system for syrin.
+
+Provides separate threshold classes for different use cases.
+
+Example:
+    >>> from syrin import Budget
+    >>> from syrin.threshold import BudgetThreshold
+    >>>
+    >>> budget = Budget(
+    ...     run=10.0,
+    ...     thresholds=[
+    ...         BudgetThreshold(at=80, action=lambda ctx: print(f"At {ctx.percentage}%"))
+    ...     ]
+    ... )
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any, TypeVar
+
+if TYPE_CHECKING:
+    from syrin.enums import ThresholdMetric
+
+from syrin.enums import ThresholdMetric
+
+
+@dataclass
+class ThresholdContext:
+    """Context passed to threshold actions.
+
+    Attributes:
+        percentage: The percentage (0-100) that triggered this threshold
+        metric: The metric being tracked (ThresholdMetric enum)
+        current_value: Current value of the metric
+        limit_value: The limit/threshold value
+        budget_run: The run budget limit (alias for limit_value for COST metric)
+        parent: Reference to the parent object (Agent, Budget, etc.)
+        metadata: Additional context-specific data
+    """
+
+    percentage: int
+    metric: Any  # ThresholdMetric
+    current_value: float
+    limit_value: float
+    budget_run: float = 0.0  # Alias for limit_value
+    parent: Any = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+# Type alias for threshold action handlers
+def _threshold_action_handler() -> None:
+    pass
+
+
+ThresholdAction = type(_threshold_action_handler)
+
+
+T = TypeVar("T", bound="BaseThreshold")
+
+
+@dataclass
+class BaseThreshold:
+    """Base class for thresholds."""
+
+    at: int
+    action: Any  # Callable[[ThresholdContext], None]
+    metric: Any = None  # ThresholdMetric
+
+    def __post_init__(self) -> None:
+        if not 0 <= self.at <= 100:
+            raise ValueError(f"Threshold 'at' must be between 0 and 100, got {self.at}")
+        if self.action is None:
+            raise ValueError("Threshold 'action' is required")
+
+    def should_trigger(self, percentage: int, metric: Any = None) -> bool:
+        """Check if this threshold should trigger."""
+        if metric is not None and hasattr(metric, "value"):
+            return percentage >= self.at and str(self.metric.value) == str(metric.value)
+        return percentage >= self.at
+
+    def execute(self, ctx: ThresholdContext) -> None:
+        self.action(ctx)
+
+
+@dataclass
+class BudgetThreshold(BaseThreshold):
+    """Threshold for Budget (tracks cost in USD).
+
+    Automatically uses ThresholdMetric.COST.
+
+    Args:
+        at: Percentage (0-100) at which to trigger
+        action: Function to call when threshold is crossed. Receives ThresholdContext.
+
+    Example:
+        >>> from syrin.threshold import BudgetThreshold
+        >>>
+        >>> BudgetThreshold(at=80, action=lambda ctx: print(f"At {ctx.percentage}%"))
+    """
+
+    metric: Any = ThresholdMetric.COST
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+
+
+@dataclass
+class ContextThreshold(BaseThreshold):
+    """Threshold for Context (tracks token usage).
+
+    Automatically uses ThresholdMetric.TOKENS.
+
+    Args:
+        at: Percentage (0-100) at which to trigger
+        action: Function to call when threshold is crossed. Receives ThresholdContext.
+
+    Example:
+        >>> from syrin.threshold import ContextThreshold
+        >>>
+        >>> ContextThreshold(at=80, action=lambda ctx: print(f"At {ctx.percentage}%"))
+    """
+
+    metric: Any = ThresholdMetric.TOKENS
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+
+
+@dataclass
+class RateLimitThreshold(BaseThreshold):
+    """Threshold for APIRateLimit (tracks RPM, TPM, or RPD).
+
+    Requires metric to be specified.
+
+    Args:
+        at: Percentage (0-100) at which to trigger
+        action: Function to call when threshold is crossed. Receives ThresholdContext.
+        metric: The rate limit metric (ThresholdMetric.RPM, TPM, or RPD)
+
+    Example:
+        >>> from syrin.threshold import RateLimitThreshold
+        >>> from syrin.enums import ThresholdMetric
+        >>>
+        >>> RateLimitThreshold(at=80, action=lambda ctx: print(f"RPM at {ctx.percentage}%"), metric=ThresholdMetric.RPM)
+    """
+
+    metric: Any = None
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        if self.metric is None:
+            raise ValueError(
+                "RateLimitThreshold 'metric' is required - use ThresholdMetric.RPM, TPM, or RPD"
+            )
+        valid_metrics = {ThresholdMetric.RPM, ThresholdMetric.TPM, ThresholdMetric.RPD}
+        metric_val = self.metric.value if hasattr(self.metric, "value") else self.metric
+        if metric_val not in valid_metrics:
+            raise ValueError(f"RateLimitThreshold only supports {valid_metrics}, got {metric_val}")
+
+
+# Alias for backwards compatibility
+Threshold = BudgetThreshold
+
+__all__ = [
+    "ThresholdContext",
+    "ThresholdAction",
+    "BaseThreshold",
+    "BudgetThreshold",
+    "ContextThreshold",
+    "RateLimitThreshold",
+    "Threshold",  # backwards compat - same as BudgetThreshold
+]

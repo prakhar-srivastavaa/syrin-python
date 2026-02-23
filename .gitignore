@@ -1,0 +1,36 @@
+# OpenMemory - IDE/Assistant specific rules
+.cursor/rules/openmemory.mdc
+
+plan/
+
+# Python
+__pycache__/
+*.py[oc]
+*.pyc
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.so
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Env and secrets (do not commit)
+.env
+.env.*
+!.env.example
+CLAUDE.md

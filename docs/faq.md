@@ -1,0 +1,540 @@
+# Frequently Asked Questions
+
+Common questions about Syrin, organized by topic.
+
+---
+
+## Getting Started
+
+### How do I install Syrin?
+
+```bash
+pip install syrin
+```
+
+You'll also need an API key:
+```bash
+export OPENAI_API_KEY="sk-..."  # or ANTHROPIC_API_KEY for Claude
+```
+
+### What's the difference between `run()` and `response()`?
+
+Both do the same thing! `run()` is shorter:
+```python
+result = agent.response("Hello")      # Same as
+result = agent.response("Hello")
+```
+
+### How do I know which model to use?
+
+Start with these:
+- **gpt-4o-mini** - Cheap, fast, good for simple tasks
+- **gpt-4o** - More capable, more expensive
+- **claude-sonnet** - Great for complex reasoning
+
+```python
+from Syrin.model import Model
+
+agent = Agent(model=Model.OpenAI("gpt-4o-mini"))  # Cheap
+agent = Agent(model=Model.Anthropic("claude-sonnet-4-20250514"))  # Powerful
+```
+
+### Can I use Ollama or local models?
+
+Yes! Syrin supports Ollama, LiteLLM, and custom models:
+
+```python
+from Syrin.model import Model
+
+agent = Agent(model=Model.Ollama("llama3"))  # Local
+agent = Agent(model=Model.LiteLLM("ollama/llama3"))  # Via LiteLLM
+```
+
+---
+
+## Tools
+
+### How do I create a tool?
+
+Use the `@tool` decorator:
+
+```python
+from Syrin import tool
+
+@tool
+def search(query: str) -> str:
+    """Search the web for information."""
+    # Your code here
+    return f"Results for: {query}"
+
+# Use it
+agent = Agent(tools=[search])
+result = agent.response("Search for Python tutorials")
+```
+
+### Can tools return complex data?
+
+Yes! Tools can return strings, dicts, or objects. The agent receives the result as a string.
+
+### How do tools work with memory?
+
+Tools execute and their results are added to conversation history. The agent can then use those results in subsequent calls.
+
+---
+
+## Memory
+
+### What are the different memory types?
+
+| Type | Purpose | Use Case |
+|------|---------|----------|
+| `CORE` | Essential facts about user | Name, preferences, facts |
+| `EPISODIC` | Past experiences | Conversations, events |
+| `SEMANTIC` | General knowledge | Learned information |
+| `PROCEDURAL` | How-to knowledge | Instructions, patterns |
+
+### How do I use memory?
+
+```python
+from Syrin import Agent, Memory
+from Syrin.enums import MemoryType
+
+agent = Agent(
+    model=Model.OpenAI("gpt-4o-mini"),
+    memory=Memory(types=[MemoryType.CORE, MemoryType.EPISODIC]),
+)
+
+# Store something
+agent.remember("User's name is John", memory_type=MemoryType.CORE)
+
+# Later - agent auto-recalls
+result = agent.response("What's my name?")  # "Your name is John"
+```
+
+### Can I control what gets remembered?
+
+Yes! Use decay strategies:
+
+```python
+from Syrin.memory import Decay
+from Syrin.enums import DecayStrategy
+
+memory = Memory(
+    types=[MemoryType.CORE],
+    decay=Decay(
+        strategy=DecayStrategy.TIME_BASED,
+        half_life_hours=24,  # Forget after 24 hours
+    ),
+)
+```
+
+---
+
+## Budget & Cost
+
+### How do I set a budget?
+
+```python
+from Syrin import Budget
+from Syrin.enums import RateWindow
+
+budget = Budget(
+    total_limit=10.0,      # $10 max
+    rate_limit=RateWindow(
+        minutes=60,        # Per hour
+        max_requests=100,
+    ),
+)
+
+agent = Agent(model=Model.OpenAI("gpt-4o-mini"), budget=budget)
+```
+
+### What happens when budget runs out?
+
+Configure with `on_exceeded`:
+
+```python
+budget = Budget(
+    total_limit=10.0,
+    on_exceeded="error",    # Raise exception
+    # or "warn" - just log warning
+    # or "stop" - stop gracefully
+)
+```
+
+### How do I track costs?
+
+```python
+result = agent.response("Hello")
+print(f"Cost: ${result.cost:.4f}")
+print(f"Tokens: {result.tokens}")
+```
+
+Or use hooks:
+
+```python
+def log_cost(ctx):
+    print(f"Cost: ${ctx.cost:.4f}")
+
+agent.events.on_complete(log_cost)
+```
+
+---
+
+## Multi-Agent
+
+### When should I use multiple agents?
+
+Use agent teams when:
+- Tasks have distinct phases (research → write → edit)
+- Different expertise needed
+- Parallel processing possible
+
+### How do agents communicate?
+
+```python
+from Syrin.agent import AgentTeam, sequential, parallel
+
+# Sequential: output of one feeds into next
+team = AgentTeam(
+    agents=[researcher, writer, editor],
+    strategy=sequential,
+)
+
+# Parallel: all run at once, results merged
+team = AgentTeam(
+    agents=[agent_a, agent_b, agent_c],
+    strategy=parallel,
+)
+
+result = team.run_task("Write about AI")
+```
+
+---
+
+## Async & Streaming
+
+### Does Syrin support async?
+
+Yes! Use `arun()` or `response_async()`:
+
+```python
+import asyncio
+from Syrin import Agent
+
+async def main():
+    agent = Agent(model=Model.OpenAI("gpt-4o-mini"))
+    result = await agent.arun("Hello!")
+    print(result.content)
+
+asyncio.run(main())
+```
+
+### How do I stream responses?
+
+```python
+for chunk in agent.stream("Tell me a story"):
+    print(chunk, end="", flush=True)
+```
+
+### Can I combine async with streaming?
+
+```python
+async for chunk in agent.stream_async("Tell me a story"):
+    print(chunk, end="", flush=True)
+```
+
+---
+
+## Context Management
+
+### What is context management?
+
+It prevents "context rot" - when LLM quality drops because too much history accumulates. Syrin automatically:
+- Counts tokens
+- Compacts context when needed
+- Tracks statistics
+
+### How do I configure context?
+
+```python
+from Syrin.context import Context
+
+agent = Agent(
+    model=Model.OpenAI("gpt-4o"),
+    context=Context(
+        max_tokens=80000,      # Limit context
+        auto_compact_at=0.75, # Compact at 75%
+    ),
+)
+```
+
+---
+
+## Observability & Debugging
+
+### How do I debug my agent?
+
+Enable debug mode:
+
+```python
+agent = Agent(
+    model=Model.OpenAI("gpt-4o-mini"),
+    debug=True,  # Prints detailed logs
+)
+```
+
+### How do I trace execution?
+
+```python
+from Syrin.observability import trace, span
+
+@trace
+def my_function():
+    with span("step1"):
+        # Do something
+        pass
+    
+    result = agent.response("Hello")
+    return result
+```
+
+### How do I see what tools were called?
+
+```python
+result = agent.response("Search for X")
+
+# Access tool calls
+for call in result.tool_calls:
+    print(f"Tool: {call.name}")
+    print(f"Args: {call.arguments}")
+```
+
+---
+
+## Production Deployment
+
+### How do I handle errors gracefully?
+
+```python
+from Syrin import BudgetExceededError, RateLimitError
+
+try:
+    result = agent.response("Hello")
+except BudgetExceededError:
+    print("Budget exceeded!")
+except RateLimitError:
+    print("Rate limited, retry later")
+except Exception as e:
+    print(f"Error: {e}")
+```
+
+### Can I persist agent state?
+
+Yes! Use checkpointing:
+
+```python
+from Syrin.checkpoint import Checkpointer
+
+checkpointer = Checkpointer()
+
+# Save state
+checkpoint_id = checkpointer.save(
+    agent_name="my_agent",
+    state={"messages": agent.messages},
+)
+
+# Restore later
+checkpoint = checkpointer.load(checkpoint_id)
+agent.messages = checkpoint.messages
+```
+
+### How do I monitor costs in production?
+
+1. Use budget hooks:
+```python
+def log_budget(ctx):
+    log.info(f"Budget: ${ctx.remaining:.2f} remaining")
+
+agent.events.on_budget(log_budget)
+```
+
+2. Export traces:
+```python
+from Syrin.observability import get_tracer, JSONLExporter
+tracer = get_tracer()
+tracer.add_exporter(JSONLExporter("traces.jsonl"))
+```
+
+---
+
+## Advanced
+
+### Can I create custom hooks?
+
+Yes! Use `before()` and `after()`:
+
+```python
+def modify_request(ctx):
+    ctx["custom_data"] = "value"
+
+def log_response(ctx):
+    print(f"Response: {ctx.content[:50]}")
+
+agent.events.before(Hook.LLM_REQUEST_START, modify_request)
+agent.events.after(Hook.LLM_REQUEST_END, log_response)
+```
+
+### How do I create a guardrail?
+
+```python
+from Syrin.guardrails import Guardrail, GuardrailResult
+from Syrin.enums import GuardrailStage
+
+class MyGuardrail(Guardrail):
+    def check(self, text: str, stage: GuardrailStage) -> GuardrailResult:
+        if "bad" in text.lower():
+            return GuardrailResult(passed=False, reason="Contains bad word")
+        return GuardrailResult(passed=True)
+
+agent = Agent(
+    model=Model.OpenAI("gpt-4o-mini"),
+    guardrails=GuardrailChain([MyGuardrail()]),
+)
+```
+
+### Can I customize the loop strategy?
+
+Yes! Choose from:
+- `SingleShotLoop` - One call, no iteration
+- `ReactLoop` - Think → Act → Observe (default)
+- `HumanInTheLoop` - Require approval for tools
+- `PlanExecuteLoop` - Plan all steps, then execute each
+- `CodeActionLoop` - Generate and execute Python code
+
+```python
+from Syrin.loop import PlanExecuteLoop, CodeActionLoop
+
+# Plan then execute - good for complex multi-step tasks
+agent = Agent(
+    model=Model.OpenAI("gpt-4o-mini"),
+    loop=PlanExecuteLoop(max_plan_iterations=3, max_execution_iterations=10),
+)
+
+# Code action - generate and run Python code
+agent = Agent(
+    model=Model.OpenAI("gpt-4o-mini"),
+    loop=CodeActionLoop(max_iterations=5),
+)
+```
+
+### How do I integrate with Langfuse/Arize?
+
+Syrin supports observability integrations:
+
+```python
+# Check docs for specific integration
+from Syrin.observability import LangfuseExporter  # If available
+```
+
+---
+
+## Troubleshooting
+
+### Agent isn't using tools
+
+1. Check tools are passed correctly:
+```python
+agent = Agent(tools=[my_tool])  # Must be passed to constructor
+```
+
+2. Tools need descriptions:
+```python
+@tool
+def search(query: str) -> str:
+    """SEARCH THE WEB FOR INFORMATION."""  # Important!
+    ...
+```
+
+### Costs are higher than expected
+
+1. Check model being used:
+```python
+print(agent.model)  # Which model?
+```
+
+2. Enable budget alerts:
+```python
+budget = Budget(total_limit=10.0, on_exceeded="warn")
+```
+
+3. Check token counts:
+```python
+result = agent.response("Hello")
+print(result.token_usage)
+```
+
+### Memory isn't working
+
+1. Ensure memory is enabled:
+```python
+agent = Agent(
+    model=Model.OpenAI("gpt-4o-mini"),
+    memory=Memory(types=[MemoryType.CORE]),  # Must specify types
+)
+```
+
+2. Check memory is being stored:
+```python
+agent.remember("Test", memory_type=MemoryType.CORE)
+print(agent.memory.store)  # Check what's stored
+```
+
+### Context is getting too long
+
+1. Lower compaction threshold:
+```python
+context = Context(auto_compact_at=0.5)  # Compact at 50%
+```
+
+2. Add hard limits:
+```python
+context = Context(
+    max_tokens=80000,
+    thresholds=[
+        ContextThreshold(at=100, action=ContextAction.ERROR),
+    ],
+)
+```
+
+---
+
+## Contributing & Support
+
+### Where can I get help?
+
+- GitHub Issues: Report bugs
+- Documentation: See all guides
+- Examples: Check `/examples` folder
+
+### How do I contribute?
+
+1. Fork the repo
+2. Create a feature branch
+3. Add tests
+4. Submit PR
+
+### What's the license?
+
+MIT License - free for commercial use.
+
+---
+
+## Related Guides
+
+- [Getting Started](getting-started.md) - Basics
+- [Simple QA Agent](simple-qa-agent.md) - Basic agent
+- [Tools](research-agent-with-tools.md) - Tool system
+- [Memory](agent-with-memory.md) - Memory types
+- [Budget Control](budget-control.md) - Cost management
+- [Advanced Topics](advanced-topics.md) - Deep dives

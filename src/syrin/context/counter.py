@@ -1,0 +1,142 @@
+"""Token counting for context management."""
+
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    import tiktoken
+
+try:
+    import tiktoken
+except ImportError:
+    tiktoken = None  # type: ignore[assignment]
+
+import contextlib
+from dataclasses import dataclass
+
+
+@dataclass
+class TokenCount:
+    """Token count breakdown."""
+
+    total: int
+    system: int = 0
+    messages: int = 0
+    tools: int = 0
+    memory: int = 0
+
+
+class TokenCounter:
+    """Token counter with support for multiple providers.
+
+    Uses tiktoken for accurate counting when available, with
+    estimation fallback for other providers.
+    """
+
+    def __init__(self, encoding: str = "cl100k_base"):
+        self._encoding = encoding
+        self._encoder = None
+
+        if tiktoken is not None:
+            with contextlib.suppress(Exception):
+                self._encoder = tiktoken.get_encoding(encoding)
+
+    def count(self, text: str) -> int:
+        """Count tokens in text."""
+        if self._encoder is not None:
+            return len(self._encoder.encode(text, disallowed_special=()))
+        return self._estimate(text)
+
+    def count_messages(
+        self,
+        messages: list[dict[str, Any]],
+        system_prompt: str = "",
+    ) -> TokenCount:
+        """Count tokens in a message list.
+
+        Args:
+            messages: List of message dicts with 'role' and 'content' keys.
+            system_prompt: Optional system prompt to include.
+
+        Returns:
+            TokenCount with breakdown.
+        """
+        total = 0
+        message_tokens = 0
+
+        for msg in messages:
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
+
+            if isinstance(content, list):
+                content_str = ""
+                for part in content:
+                    if isinstance(part, dict):
+                        content_str += str(part.get("text", ""))
+                        content_str += str(part.get("type", ""))
+            else:
+                content_str = str(content)
+
+            tokens = self.count(content_str)
+            tokens += self._role_overhead(role)
+            message_tokens += tokens
+            total += tokens
+
+        system_tokens = 0
+        if system_prompt:
+            system_tokens = self.count(system_prompt)
+            system_tokens += self._role_overhead("system")
+            total += system_tokens
+
+        return TokenCount(
+            total=total,
+            system=system_tokens,
+            messages=message_tokens,
+        )
+
+    def count_tools(self, tools: list[dict[str, Any]]) -> int:
+        """Count tokens in tool definitions.
+
+        Args:
+            tools: List of tool definition dicts.
+
+        Returns:
+            Token count for tools.
+        """
+        if not tools:
+            return 0
+
+        total = 0
+        for tool in tools:
+            tool_str = str(tool)
+            total += self.count(tool_str)
+            total += 12
+
+        return total
+
+    def _role_overhead(self, role: str) -> int:
+        """Get token overhead for a role."""
+        overheads = {
+            "system": 4,
+            "user": 4,
+            "assistant": 4,
+            "tool": 5,
+        }
+        return overheads.get(role, 4)
+
+    def _estimate(self, text: str) -> int:
+        """Estimate token count when tiktoken unavailable."""
+        return len(text) // 4
+
+
+_default_counter: TokenCounter | None = None
+
+
+def get_counter() -> TokenCounter:
+    """Get the default token counter."""
+    global _default_counter
+    if _default_counter is None:
+        _default_counter = TokenCounter()
+    return _default_counter
+
+
+__all__ = ["TokenCounter", "TokenCount", "get_counter"]
