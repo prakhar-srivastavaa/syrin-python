@@ -149,9 +149,7 @@ class Prompt:
             return hashlib.sha256(source.encode()).hexdigest()[:16]
         except OSError:
             fallback = (
-                f"{getattr(self._func, '__module__', '')}:"
-                f"{self._func.__name__}:"
-                f"{self._signature}"
+                f"{getattr(self._func, '__module__', '')}:{self._func.__name__}:{self._signature}"
             )
             return hashlib.sha256(fallback.encode()).hexdigest()[:16]
 

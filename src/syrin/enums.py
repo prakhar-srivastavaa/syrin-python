@@ -71,7 +71,13 @@ class TraceLevel(StrEnum):
 
 
 class MessageRole(StrEnum):
-    """Conversation message roles."""
+    """Conversation message roles. Use when building Message objects for model.complete().
+
+    - SYSTEM: Instructions/context for the model (e.g., "You are helpful").
+    - USER: Human input or prompt.
+    - ASSISTANT: Model reply (or prior turn).
+    - TOOL: Result of a tool/function call (used in function-calling loops).
+    """
 
     SYSTEM = "system"
     USER = "user"

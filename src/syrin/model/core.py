@@ -19,6 +19,8 @@ from syrin.types import (
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Iterator
+else:
+    from collections.abc import Iterator  # Runtime for cast()
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -63,7 +65,11 @@ def _detect_provider(model_id: str) -> str:
 
 
 class ModelVersion:
-    """Version tracking for models."""
+    """Version tracking for models.
+
+    Use when you need to track model versions (e.g., for caching or A/B testing).
+    Not required for typical usage.
+    """
 
     def __init__(self, major: int = 1, minor: int = 0, patch: int = 0) -> None:
         self.major = major
@@ -84,7 +90,11 @@ class ModelVersion:
 
 
 class ModelVariable:
-    """Metadata about a model configuration parameter."""
+    """Metadata about a model configuration parameter.
+
+    Used internally for introspection (e.g., UI or validation).
+    Developers rarely need to construct this directly.
+    """
 
     def __init__(
         self,
@@ -102,13 +112,16 @@ class ModelVariable:
 
 
 class ModelSettings:
-    """Model-level settings for budget, context, and memory."""
+    """Model-level settings: temperature, tokens, context window, etc.
+
+    Accessed via ``model.settings``. Use these to inspect or validate
+    what parameters will be sent to the LLM.
+    """
 
     def __init__(
         self,
         context_window: int | None = None,
         max_output_tokens: int | None = None,
-        max_input_tokens: int | None = None,
         temperature: float | None = None,
         top_p: float | None = None,
         top_k: int | None = None,
@@ -117,7 +130,6 @@ class ModelSettings:
     ) -> None:
         self.context_window = context_window
         self.max_output_tokens = max_output_tokens
-        self.max_input_tokens = max_input_tokens
         self.temperature = temperature
         self.top_p = top_p
         self.top_k = top_k
@@ -152,22 +164,20 @@ class Middleware:
 
 class Model:
     """
-    Extensible LLM model with full customization support.
+    Extensible LLM model — the backend your agents use or call directly.
 
-    Usage:
-        # Using provider namespaces (recommended)
-        model = Model.OpenAI("gpt-4o")
-        model = Model.Anthropic("claude-sonnet")
-        model = Model.Ollama("llama3")
+    You can use a Model in two ways:
+    1. **With an Agent**: Pass to ``Agent(model=...)`` — Agent handles tools, memory, budget.
+    2. **Directly**: Call ``model.complete(messages)`` or ``await model.acomplete(messages)``
+       for simple completions without an Agent.
 
-        # With config
-        model = Model.OpenAI("gpt-4o", temperature=0.7)
+    Create models via provider namespaces:
+        model = Model.OpenAI("gpt-4o-mini", api_key=...)
+        model = Model.Anthropic("claude-sonnet", api_key=...)
+        model = Model.Custom("deepseek-chat", api_base="...", api_key=...)
 
-        # For custom LLM providers, inherit from Model:
-        class MyModel(Model):
-            def complete(self, messages, **kwargs):
-                # Your implementation
-                pass
+    All constructors accept tweakable properties: temperature, max_tokens, context_window,
+    output (structured output type), fallback, etc. See the Models guide in the docs.
     """
 
     # Provider namespace - use Model.OpenAI("gpt-4o"), Model.Anthropic("claude"), etc.
@@ -194,17 +204,19 @@ class Model:
     ) -> Model:
         """Create an OpenAI model.
 
-        Usage:
-            Model.OpenAI("gpt-4o")
-            Model.OpenAI("gpt-4o", temperature=0.7)
-
         Args:
-            model_name: Model name (e.g., "gpt-4o", "gpt-4o-mini")
-            temperature: Sampling temperature (0.0-2.0)
-            max_tokens: Max output tokens
-            api_key: API key (or use OPENAI_API_KEY)
-            api_base: Custom base URL
-            **kwargs: Additional Model parameters
+            model_name: Model name (e.g., "gpt-4o", "gpt-4o-mini", "o1").
+            temperature: Sampling temperature (0.0–2.0). Higher = more creative.
+            max_tokens: Maximum output tokens.
+            api_key: API key. Required; pass explicitly (e.g. os.getenv("OPENAI_API_KEY")).
+            api_base: Custom base URL for proxies or compatible APIs.
+
+        Returns:
+            Model instance configured for OpenAI.
+
+        Example:
+            model = Model.OpenAI("gpt-4o-mini", api_key=os.getenv("OPENAI_API_KEY"))
+            response = model.complete(messages)
         """
         import os
 
@@ -213,7 +225,7 @@ class Model:
             name=model_name,
             provider="openai",
             api_base=api_base or os.getenv("OPENAI_BASE_URL") or "https://api.openai.com/v1",
-            api_key=api_key or os.getenv("OPENAI_API_KEY"),
+            api_key=api_key,
             context_window=context_window or 128000,
             temperature=temperature,
             max_tokens=max_tokens,
@@ -249,17 +261,14 @@ class Model:
     ) -> Model:
         """Create an Anthropic Claude model.
 
-        Usage:
-            Model.Anthropic("claude-sonnet-4-5")
-            Model.Anthropic("claude-opus-4-5")
-
         Args:
-            model_name: Model name (e.g., "claude-sonnet-4-5-20241022")
-            temperature: Sampling temperature (0.0-1.0)
-            max_tokens: Max output tokens
-            api_key: API key (or use ANTHROPIC_API_KEY)
-            api_base: Custom base URL
-            **kwargs: Additional Model parameters
+            model_name: Model name (e.g., "claude-sonnet-4-5", "claude-opus-4-5").
+            temperature: Sampling temperature (0.0–1.0).
+            api_key: API key. Required; pass explicitly.
+            api_base: Custom base URL.
+
+        Returns:
+            Model instance configured for Anthropic.
         """
         import os
 
@@ -268,7 +277,7 @@ class Model:
             name=model_name,
             provider="anthropic",
             api_base=api_base or os.getenv("ANTHROPIC_BASE_URL") or "https://api.anthropic.com",
-            api_key=api_key or os.getenv("ANTHROPIC_API_KEY"),
+            api_key=api_key,
             context_window=context_window or 200000,
             temperature=temperature,
             max_tokens=max_tokens,
@@ -302,16 +311,14 @@ class Model:
         fallback: list[Model] | None = None,
         **kwargs: Any,
     ) -> Model:
-        """Create an Ollama (local) model.
-
-        Usage:
-            Model.Ollama("llama3")
-            Model.Ollama("mistral")
+        """Create an Ollama (local) model. No API key needed.
 
         Args:
-            model_name: Model name (e.g., "llama3", "mistral")
-            api_base: Base URL (default: http://localhost:11434)
-            **kwargs: Additional Model parameters
+            model_name: Model name (e.g., "llama3", "mistral").
+            api_base: Base URL (default: http://localhost:11434).
+
+        Returns:
+            Model instance configured for Ollama.
         """
         import os
 
@@ -356,16 +363,13 @@ class Model:
     ) -> Model:
         """Create a Google Gemini model.
 
-        Usage:
-            Model.Google("gemini-2.0-flash")
-            Model.Google("gemini-1.5-pro")
-
         Args:
-            model_name: Model name (e.g., "gemini-2.0-flash")
-            temperature: Sampling temperature
-            max_tokens: Max output tokens
-            api_key: API key (or use GOOGLE_API_KEY)
-            **kwargs: Additional Model parameters
+            model_name: Model name (e.g., "gemini-2.0-flash", "gemini-1.5-pro").
+            api_key: API key. Required; pass explicitly.
+            api_base: Custom base URL.
+
+        Returns:
+            Model instance configured for Google.
         """
         import os
 
@@ -376,7 +380,7 @@ class Model:
             api_base=api_base
             or os.getenv("GOOGLE_BASE_URL")
             or "https://generativelanguage.googleapis.com/v1beta",
-            api_key=api_key or os.getenv("GOOGLE_API_KEY"),
+            api_key=api_key,
             context_window=context_window or 1048576,
             temperature=temperature,
             max_tokens=max_tokens,
@@ -410,17 +414,15 @@ class Model:
         fallback: list[Model] | None = None,
         **kwargs: Any,
     ) -> Model:
-        """Create a LiteLLM model (100+ providers).
-
-        Usage:
-            Model.LiteLLM("anthropic/claude-3-5-sonnet")
-            Model.LiteLLM("openai/gpt-4o")
+        """Create a LiteLLM model. Supports 100+ providers via unified interface.
 
         Args:
-            model_name: Full model ID (e.g., "anthropic/claude-3-5-sonnet")
-            api_key: API key (or use LITELLM_API_KEY)
-            api_base: Custom base URL
-            **kwargs: Additional Model parameters
+            model_name: Full model ID (e.g., "openai/gpt-4o", "anthropic/claude-3-5-sonnet").
+            api_key: API key. Required for most providers.
+            api_base: Custom base URL.
+
+        Returns:
+            Model instance routed through LiteLLM.
         """
         import os
 
@@ -430,7 +432,79 @@ class Model:
             name=name,
             provider="litellm",
             api_base=api_base or os.getenv("LITELLM_BASE_URL") or "https://api.litellm.ai",
-            api_key=api_key or os.getenv("LITELLM_API_KEY"),
+            api_key=api_key,
+            context_window=context_window,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            max_output_tokens=max_output_tokens,
+            top_p=top_p,
+            top_k=top_k,
+            stop=stop,
+            output=output,
+            input_price=input_price,
+            output_price=output_price,
+            fallback=fallback,
+            **kwargs,
+        )
+
+    @staticmethod
+    def Custom(
+        model_id: str,
+        *,
+        api_base: str,
+        provider: str = "openai",
+        api_key: str | None = None,
+        name: str | None = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+        max_output_tokens: int | None = None,
+        top_p: float | None = None,
+        top_k: int | None = None,
+        stop: list[str] | None = None,
+        context_window: int | None = None,
+        output: type | None = None,
+        input_price: float | None = None,
+        output_price: float | None = None,
+        fallback: list[Model] | None = None,
+        **kwargs: Any,
+    ) -> Model:
+        """Create a model for any OpenAI-compatible or custom API endpoint.
+
+        Use for third-party providers (DeepSeek, KIMI, Grok, etc.) that expose
+        OpenAI-compatible APIs. Default provider is \"openai\"; use \"litellm\"
+        for providers routed through LiteLLM.
+
+        Usage:
+            Model.Custom("deepseek-chat", api_base="https://api.deepseek.com/v1", api_key="...")
+            Model.Custom("grok-3-mini", api_base="https://api.x.ai/v1", api_key="...")
+
+            # Tweak properties (temperature, max_tokens, context_window) - same as Model.OpenAI
+            Model.Custom("grok-3", api_base="https://api.x.ai/v1", api_key="...",
+                        temperature=0.7, max_tokens=2048, context_window=8192)
+
+        Args:
+            model_id: Model identifier (e.g., "deepseek-chat", "grok-3-mini")
+            api_base: API base URL (required)
+            provider: Provider to use; "openai" for OpenAI-compatible APIs (default)
+            api_key: API key (required for most providers)
+            name: Display name; derived from model_id if not provided
+            **kwargs: Additional Model parameters
+
+        Returns:
+            Model instance
+        """
+        if not model_id or not str(model_id).strip():
+            raise ValueError("model_id is required and cannot be empty")
+        if not api_base or not str(api_base).strip():
+            raise ValueError("api_base is required and cannot be empty")
+        provider = (provider or "openai").strip().lower()
+        display_name = name or (model_id.split("/")[-1] if "/" in model_id else model_id)
+        return Model(
+            model_id=model_id,
+            name=display_name,
+            provider=provider,
+            api_base=api_base.strip(),
+            api_key=api_key,
             context_window=context_window,
             temperature=temperature,
             max_tokens=max_tokens,
@@ -483,7 +557,6 @@ class Model:
                 "or inherit from Model for custom LLM providers."
             )
 
-        self._model_id_raw = model_id
         self._model_id = _resolve_env_var(model_id) if model_id else ""
 
         # Use provided provider or detect from model_id
@@ -582,32 +655,44 @@ class Model:
 
     @property
     def model_id(self) -> str:
-        """The model identifier."""
+        """Model identifier (e.g., ``openai/gpt-4o``, ``anthropic/claude-sonnet``).
+
+        Used by providers to select the right model. May include provider prefix.
+        """
         return self._model_id
 
     @property
     def name(self) -> str:
-        """Human-readable model name."""
+        """Human-readable model name for display or logging.
+
+        Usually the short name (e.g., ``gpt-4o``) without provider prefix.
+        """
         return self._name
 
     @property
     def provider(self) -> str:
-        """Provider identifier."""
+        """Provider identifier: ``openai``, ``anthropic``, ``ollama``, ``litellm``, etc.
+
+        Determines which backend handles the completion request.
+        """
         return self._provider
 
     @property
     def description(self) -> str:
-        """Model description."""
+        """Optional description of the model. For documentation or UI."""
         return self._description
 
     @property
     def version(self) -> ModelVersion:
-        """Model version info."""
+        """Version info (major, minor, patch). For versioning or caching."""
         return self._version
 
     @property
     def metadata(self) -> dict[str, Any]:
-        """Custom metadata dictionary."""
+        """Metadata dict: model_id, provider, context_window, has_fallback, etc.
+
+        Use for logging, analytics, or passing context to downstream systems.
+        """
         return {
             "model_id": self._model_id,
             "provider": self._provider,
@@ -622,41 +707,63 @@ class Model:
 
     @property
     def variables(self) -> list[ModelVariable]:
-        """List of model configuration parameters."""
+        """Extracted configuration parameters (temperature, max_tokens, etc.).
+
+        Used for introspection, validation, or UI generation.
+        """
         return self._variables
 
     @property
     def fallback(self) -> list[Model]:
-        """List of fallback models."""
+        """Fallback models used when the primary fails or is rate-limited.
+
+        Set via ``model.with_fallback(other_model, ...)``. Tried in order on error.
+        """
         return list(self._fallback)
 
     @property
     def output_type(self) -> type | None:
-        """Output type for structured responses."""
+        """Pydantic type for structured output, or None for plain text.
+
+        When set, the model requests JSON matching this schema and parses the response.
+        Use with ``model.with_output(MyPydanticModel)`` or the ``output=`` constructor arg.
+        """
         return self._output_type
 
     @property
     def settings(self) -> ModelSettings:
-        """Model-level settings."""
+        """Model-level settings: temperature, max_output_tokens, context_window, etc.
+
+        Inspect or validate parameters sent to the LLM. Modify via ``with_params()``.
+        """
         return self._settings
 
     @property
     def pricing(self) -> ModelPricing | None:
-        """Pricing info per 1M tokens."""
+        """Pricing per 1M tokens (input/output). Used for budget tracking.
+
+        Set via ``input_price``/``output_price`` constructor args or ``ModelPricing``.
+        """
         return self._pricing
 
     @property
     def api_base(self) -> str | None:
-        """Custom base URL for API endpoint."""
+        """API base URL. Overrides the default for the provider.
+
+        Use for custom endpoints (e.g., proxies) or third-party APIs.
+        """
         return self._api_base
 
     @property
     def api_key(self) -> str | None:
-        """API key for authentication."""
+        """API key for authentication. Must be passed explicitly; never auto-read from env.
+
+        Pass when creating the model, e.g. ``api_key=os.getenv("OPENAI_API_KEY")``.
+        """
         return self._api_key
 
     def to_config(self) -> ModelConfig:
-        """Convert to ModelConfig for provider use."""
+        """Convert to ModelConfig for provider use. Called internally; rarely needed by users."""
         return ModelConfig(
             name=self._name,
             provider=self._provider,
@@ -679,7 +786,13 @@ class Model:
         output: type | None = None,
         **kwargs: Any,
     ) -> Model:
-        """Create a copy with overridden parameters."""
+        """Return a copy of this model with overridden parameters.
+
+        Use when you need a variant (e.g., different temperature) without mutating the original.
+
+        Returns:
+            New Model instance with the given params; others unchanged.
+        """
         return Model(
             model_id=self._model_id,
             name=self._name,
@@ -706,7 +819,13 @@ class Model:
         )
 
     def with_fallback(self, *models: Model) -> Model:
-        """Create a copy with fallback models."""
+        """Return a copy with fallback models. Tried in order when the primary fails.
+
+        Use for resilience: e.g. primary Claude, fallback GPT-4o, then local Ollama.
+
+        Returns:
+            New Model instance with fallbacks appended.
+        """
         new_fallback = self._fallback.copy()
         for m in models:
             new_fallback.append(m)
@@ -739,7 +858,13 @@ class Model:
         temperature: float | None = None,
         max_tokens: int | None = None,
     ) -> Model:
-        """Create a copy configured for structured output."""
+        """Return a copy configured for structured output (Pydantic schema).
+
+        The LLM response will be parsed into the given Pydantic model.
+
+        Returns:
+            New Model instance with output type set.
+        """
         return self.with_params(
             output=output,
             temperature=temperature,
@@ -747,7 +872,7 @@ class Model:
         )
 
     def with_middleware(self, middleware: Middleware) -> Model:
-        """Create a copy with a middleware."""
+        """Return a copy with a request/response middleware. For custom transforms."""
         return Model(
             model_id=self._model_id,
             name=self._name,
@@ -795,7 +920,27 @@ class Model:
         stream: bool = False,
         **kwargs: Any,
     ) -> ProviderResponse | Iterator[ProviderResponse]:
-        """Send messages to the LLM and get a response."""
+        """Send messages to the LLM and return a response (sync).
+
+        Use this when you want to call the model directly without an Agent.
+        Pass a list of ``Message`` objects; returns a ``ProviderResponse``.
+
+        Args:
+            messages: Conversation messages (system, user, assistant, tool).
+            tools: Optional tool specs for function calling.
+            temperature: Override sampling temperature.
+            max_tokens: Override max output tokens.
+            stream: If True, returns an iterator of response chunks.
+
+        Returns:
+            ProviderResponse with content, tool_calls, token_usage; or iterator if stream=True.
+
+        Example:
+            response = model.complete([
+                Message(role=MessageRole.USER, content="Hello"),
+            ])
+            print(response.content)
+        """
         provider = self._get_provider_instance()
 
         settings = {
@@ -857,7 +1002,20 @@ class Model:
         stream: bool = False,
         **kwargs: Any,
     ) -> ProviderResponse | AsyncIterator[ProviderResponse]:
-        """Async version of complete()."""
+        """Send messages to the LLM and return a response (async).
+
+        Async variant of ``complete()``. Use ``await model.acomplete(messages)``.
+
+        Args:
+            messages: Conversation messages (system, user, assistant, tool).
+            tools: Optional tool specs for function calling.
+            temperature: Override sampling temperature.
+            max_tokens: Override max output tokens.
+            stream: If True, returns an async iterator of response chunks.
+
+        Returns:
+            ProviderResponse; or async iterator if stream=True.
+        """
         if stream:
             return self._astream_internal(
                 messages, tools=tools, temperature=temperature, max_tokens=max_tokens, **kwargs
@@ -954,7 +1112,7 @@ class Model:
         max_tokens: int | None = None,
         **kwargs: Any,
     ) -> AsyncIterator[ProviderResponse]:
-        """Stream response chunks asynchronously."""
+        """Stream response chunks asynchronously. Yields ProviderResponse per chunk."""
         async for chunk in self._astream_internal(
             messages,
             tools=tools,
@@ -965,13 +1123,13 @@ class Model:
             yield chunk
 
     def count_tokens(self, text: str) -> int:
-        """Count tokens for the given text."""
+        """Count tokens for the given text. Used for budget and context limits."""
         from syrin.cost import count_tokens
 
         return count_tokens(text, self._model_id)
 
     def get_pricing(self) -> ModelPricing | None:
-        """Return pricing info."""
+        """Return pricing info (USD per 1M tokens). Used for budget calculations."""
         if self._pricing is not None:
             return self._pricing
 
@@ -1129,7 +1287,11 @@ class Model:
 
 
 class ModelRegistry:
-    """Singleton registry of named models for lookup."""
+    """Singleton registry for named models. Use for dynamic lookup by name.
+
+    Register models once, then get them by string (e.g., from config). Useful when
+    the model choice is driven by config or feature flags.
+    """
 
     _instance: ModelRegistry | None = None
     _models: dict[str, Model]
@@ -1141,21 +1303,21 @@ class ModelRegistry:
         return cls._instance
 
     def register(self, name: str, model: Model) -> None:
-        """Register a model with a name."""
+        """Register a model under a name for later lookup."""
         self._models[name] = model
 
     def get(self, name: str) -> Model:
-        """Get a registered model by name."""
+        """Return the model registered under name. Raises ModelNotFoundError if missing."""
         if name not in self._models:
             raise ModelNotFoundError(f"Model not found: {name}")
         return self._models[name]
 
     def list_names(self) -> list[str]:
-        """List all registered model names."""
+        """Return all registered model names."""
         return list(self._models)
 
     def clear(self) -> None:
-        """Clear all registered models."""
+        """Remove all registered models. Mainly for tests."""
         self._models.clear()
 
 

@@ -130,9 +130,10 @@ class AnthropicProvider(Provider):
 
         api_key = model.api_key
         if not api_key:
-            import os
-
-            api_key = os.environ.get("ANTHROPIC_API_KEY")
+            raise ProviderError(
+                "API key required for Anthropic. Pass api_key when creating the Model: "
+                "Model.Anthropic('claude-sonnet', api_key='sk-ant-...') or api_key=os.getenv('ANTHROPIC_API_KEY')"
+            )
         client = anthropic.AsyncAnthropic(api_key=api_key)
 
         # Anthropic API expects model name without "anthropic/" prefix

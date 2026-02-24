@@ -9,11 +9,11 @@ Complete reference for all Syrin features. Use this as a lookup when building ag
 The main class for creating AI agents.
 
 ```python
-from Syrin import Agent
-from Syrin.model import Model
+import os
+from syrin import Agent, Model
 
 class MyAgent(Agent):
-    model = Model.OpenAI("gpt-4o-mini")
+    model = Model.OpenAI("gpt-4o-mini", api_key=os.getenv("OPENAI_API_KEY"))
     system_prompt = "You are helpful"
     tools = []  # Optional tools
     
@@ -31,30 +31,22 @@ class MyAgent(Agent):
 
 ## Models
 
-Different AI models to choose from:
+See **[Models Guide](models.md)** for the complete documentation:
+- Built-in models (OpenAI, Anthropic, Google, Ollama, LiteLLM)
+- Model.Custom for third-party OpenAI-compatible APIs
+- Custom models via inheritance and `make_model()`
+- Tweakable properties (temperature, max_tokens, context_window, etc.)
+- Fallbacks, structured output, centralized definitions
+
+Quick reference:
 
 ```python
-from Syrin.model import Model
+import os
+from syrin import Model
 
-# OpenAI
-Model.OpenAI("gpt-4o")        # Most advanced
-Model.OpenAI("gpt-4o-mini")   # Cheap & fast
-Model.OpenAI("gpt-4")         # Previous version
-
-# Anthropic (Claude)
-Model.Anthropic("claude-3-opus")     # Most advanced
-Model.Anthropic("claude-3-sonnet")   # Balanced
-Model.Anthropic("claude-3-haiku")    # Cheap & fast
-
-# Google
-Model.Google("gemini-pro")
-
-# Ollama (Local, free)
-Model.Ollama("llama2")
-Model.Ollama("mistral")
-
-# LiteLLM (50+ providers)
-Model.LiteLLM("provider/model")
+Model.OpenAI("gpt-4o-mini", api_key=os.getenv("OPENAI_API_KEY"))
+Model.Anthropic("claude-sonnet", api_key=os.getenv("ANTHROPIC_API_KEY"))
+Model.Custom("deepseek-chat", api_base="https://api.deepseek.com/v1", api_key="...")
 ```
 
 ---
@@ -64,7 +56,7 @@ Model.LiteLLM("provider/model")
 Give agents the ability to do things.
 
 ```python
-from Syrin.tool import tool
+from syrin import tool
 
 @tool
 def my_tool(param1: str, param2: int = 10) -> dict:
@@ -91,8 +83,9 @@ class MyAgent(Agent):
 Control costs and prevent overspending.
 
 ```python
-from Syrin import Agent, Budget, OnExceeded
-from Syrin.threshold import BudgetThreshold
+import os
+from syrin import Agent, Budget, Model, OnExceeded
+from syrin.threshold import BudgetThreshold
 
 class BudgetAgent(Agent):
     def __init__(self):
@@ -105,7 +98,7 @@ class BudgetAgent(Agent):
             on_exceeded=OnExceeded.ERROR,  # or WARN
             thresholds=[
                 BudgetThreshold(at=80, action=lambda ctx: print(f"Budget at {ctx.percentage}%")),
-                BudgetThreshold(at=95, action=lambda ctx: ctx.parent.switch_model(Model("openai/gpt-4o-mini"))),
+                BudgetThreshold(at=95, action=lambda ctx: ctx.parent.switch_model(Model.OpenAI("gpt-4o-mini", api_key=os.getenv("OPENAI_API_KEY")))),
             ]
         )
 ```
@@ -121,7 +114,7 @@ class BudgetAgent(Agent):
 Make agents remember things.
 
 ```python
-from Syrin import Agent, Memory
+from syrin import Agent, Memory
 
 class MemoryAgent(Agent):
     def __init__(self):
@@ -170,7 +163,7 @@ response.raw             # Raw API response
 Use these constants instead of strings:
 
 ```python
-from Syrin import OnExceeded, LoopStrategy
+from syrin import OnExceeded, LoopStrategy
 
 # For budgets
 OnExceeded.WARN
@@ -212,11 +205,11 @@ See [Use Case 6: Streaming](streaming.md)
 ### Pattern 1: Basic Agent
 
 ```python
-from Syrin import Agent
-from Syrin.model import Model
+import os
+from syrin import Agent, Model
 
 class SimpleAgent(Agent):
-    model = Model.OpenAI("gpt-4o-mini")
+    model = Model.OpenAI("gpt-4o-mini", api_key=os.getenv("OPENAI_API_KEY"))
     system_prompt = "Help users"
 
 agent = SimpleAgent()
@@ -227,9 +220,8 @@ print(response.content)
 ### Pattern 2: Agent with Tools
 
 ```python
-from Syrin import Agent
-from Syrin.model import Model
-from Syrin.tool import tool
+import os
+from syrin import Agent, Model, tool
 
 @tool
 def do_something(param: str) -> dict:
@@ -237,7 +229,7 @@ def do_something(param: str) -> dict:
     return {"result": param.upper()}
 
 class ToolAgent(Agent):
-    model = Model.OpenAI("gpt-4o-mini")
+    model = Model.OpenAI("gpt-4o-mini", api_key=os.getenv("OPENAI_API_KEY"))
     tools = [do_something]
 
 agent = ToolAgent()
@@ -247,11 +239,11 @@ response = agent.response("Use your tool")
 ### Pattern 3: Agent with Memory
 
 ```python
-from Syrin import Agent, Memory
-from Syrin.model import Model
+import os
+from syrin import Agent, Memory, Model
 
 class MemoryAgent(Agent):
-    model = Model.OpenAI("gpt-4o-mini")
+    model = Model.OpenAI("gpt-4o-mini", api_key=os.getenv("OPENAI_API_KEY"))
     
     def __init__(self):
         super().__init__()
@@ -265,11 +257,11 @@ agent.response("What's my name?")  # It remembers!
 ### Pattern 4: Agent with Budget
 
 ```python
-from Syrin import Agent, Budget, OnExceeded
-from Syrin.model import Model
+import os
+from syrin import Agent, Budget, OnExceeded, Model
 
 class BudgetAgent(Agent):
-    model = Model.OpenAI("gpt-4o-mini")
+    model = Model.OpenAI("gpt-4o-mini", api_key=os.getenv("OPENAI_API_KEY"))
     
     def __init__(self):
         super().__init__()
@@ -286,15 +278,15 @@ print(f"Cost: ${response.cost_usd:.4f}")
 ### Pattern 5: Multiple Agents
 
 ```python
-from Syrin import Agent
-from Syrin.model import Model
+import os
+from syrin import Agent, Model
 
 class Agent1(Agent):
-    model = Model.OpenAI("gpt-4o-mini")
+    model = Model.OpenAI("gpt-4o-mini", api_key=os.getenv("OPENAI_API_KEY"))
     system_prompt = "You are Agent 1"
 
 class Agent2(Agent):
-    model = Model.OpenAI("gpt-4o-mini")
+    model = Model.OpenAI("gpt-4o-mini", api_key=os.getenv("OPENAI_API_KEY"))
     system_prompt = "You are Agent 2"
 
 a1 = Agent1()
@@ -307,11 +299,11 @@ r2 = a2.response("Question 2")
 ### Pattern 6: Streaming
 
 ```python
-from Syrin import Agent
-from Syrin.model import Model
+import os
+from syrin import Agent, Model
 
 class StreamAgent(Agent):
-    model = Model.OpenAI("gpt-4o-mini")
+    model = Model.OpenAI("gpt-4o-mini", api_key=os.getenv("OPENAI_API_KEY"))
 
 agent = StreamAgent()
 
@@ -324,7 +316,8 @@ for chunk in agent.astream("Your prompt"):
 ## Troubleshooting
 
 **"API key not found"**
-- Set `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` environment variable
+- Pass `api_key` explicitly: `Model.OpenAI("gpt-4o-mini", api_key=os.getenv("OPENAI_API_KEY"))`
+- The library does not auto-read API keys from environment variables
 
 **"Model not found"**
 - Check model name spelling

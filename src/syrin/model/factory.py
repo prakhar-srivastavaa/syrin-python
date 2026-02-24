@@ -3,8 +3,8 @@
 Usage:
     from syrin.model import create_model, make_model
 
-    # Quick creation
-    model = create_model("openai", "gpt-4o")
+    # Quick creation (pass api_key explicitly)
+    model = create_model("openai", "gpt-4o", api_key=os.getenv("OPENAI_API_KEY"))
 
     # Create new LLM class
     KimiModel = make_model(
@@ -12,14 +12,12 @@ Usage:
         provider="kimi",
         default_model="kimi2.5",
         base_url="https://api.moonshot.cn/v1",
-        api_key_env="KIMI_API_KEY",
     )
-    model = KimiModel()
+    model = KimiModel(api_key=os.getenv("KIMI_API_KEY"))
 """
 
 from __future__ import annotations
 
-import os
 from typing import Any
 
 from syrin.model.core import Model
@@ -33,22 +31,23 @@ def create_model(
     base_url: str | None = None,
     **kwargs: Any,
 ) -> Model:
-    """Factory function to create a model from provider and model name.
+    """Create a model from provider and model name. Alternative to Model.OpenAI, etc.
 
-    Usage:
-        model = create_model("openai", "gpt-4o")
-        model = create_model("anthropic", "claude-sonnet-4-5")
-        model = create_model("ollama", "llama3")
+    Use when the provider is dynamic (e.g., from config). For static usage, prefer
+    Model.OpenAI("gpt-4o", ...) for better IDE support.
 
     Args:
-        provider: Provider name (openai, anthropic, ollama, google, etc.)
-        model_name: Model name (e.g., "gpt-4o", "claude-sonnet")
-        api_key: Optional API key
-        base_url: Optional base URL
-        **kwargs: Additional model parameters
+        provider: openai, anthropic, ollama, google, or litellm.
+        model_name: Model name (e.g., "gpt-4o", "claude-sonnet-4-5").
+        api_key: API key. Required for most providers; pass explicitly.
+        base_url: Optional base URL override.
+        **kwargs: Additional Model parameters (temperature, max_tokens, etc.).
 
     Returns:
-        Configured Model instance
+        Model instance.
+
+    Example:
+        model = create_model("openai", "gpt-4o-mini", api_key=os.getenv("OPENAI_API_KEY"))
     """
     if not provider or not provider.strip():
         raise ValueError("Provider name cannot be empty")
@@ -95,40 +94,31 @@ def make_model(
     provider: str,
     default_model: str,
     base_url: str,
-    api_key_env: str | None = None,
     context_window: int | None = None,
     **defaults: Any,
 ) -> type[Model]:
-    """Factory to create a pre-configured Model class for any LLM.
+    """Create a reusable Model subclass for an OpenAI-compatible API.
 
-    This is the easiest way to add support for a new LLM - just provide config!
-
-    Usage:
-        # Create a Kimi model class
-        KimiModel = make_model(
-            name="Kimi",
-            provider="kimi",
-            default_model="kimi2.5",
-            base_url="https://api.moonshot.cn/v1",
-            api_key_env="KIMI_API_KEY",
-            context_window=128000,
-        )
-
-        # Use it!
-        model = KimiModel()
-        model = KimiModel("kimi2.5-flash")
+    Returns a class (e.g., KimiModel) that you instantiate with api_key. Use for
+    third-party APIs when you want a named class instead of Model.Custom().
 
     Args:
-        name: Human-readable name (e.g., "Kimi")
-        provider: Provider ID (e.g., "kimi")
-        default_model: Default model name
-        base_url: API base URL
-        api_key_env: Environment variable for API key
-        context_window: Default context window size
-        **defaults: Additional default parameters
+        name: Human-readable name (e.g., "Kimi"). Becomes ``{name}Model``.
+        provider: "openai" for OpenAI-compatible APIs, or "litellm".
+        default_model: Default model name when called with no args.
+        base_url: API base URL (e.g., https://api.moonshot.ai/v1).
+        context_window: Default context window size.
+        **defaults: Additional default Model parameters.
 
     Returns:
-        Model subclass with pre-configured defaults
+        A Model subclass. Instantiate with ``YourModel(api_key=...)``.
+
+    Example:
+        KimiModel = make_model(
+            name="Kimi", provider="openai", default_model="moonshot-v1-8k",
+            base_url="https://api.moonshot.ai/v1", context_window=8192,
+        )
+        model = KimiModel(api_key=os.getenv("MOONSHOT_API_KEY"))
     """
     if not name or not provider or not default_model or not base_url:
         raise ValueError("name, provider, default_model, and base_url are required")
@@ -149,8 +139,8 @@ def make_model(
             super().__init__(
                 model_id=f"{provider}/{model_name}",
                 name=model_name,
-                api_base=base_url or os.getenv("OPENAI_BASE_URL") or self.DEFAULT_BASE_URL,
-                api_key=api_key or (os.getenv(api_key_env) if api_key_env else None),
+                api_base=base_url or self.DEFAULT_BASE_URL,
+                api_key=api_key,
                 context_window=model_kwargs.pop("context_window", context_window),
                 _internal=True,
                 **defaults,

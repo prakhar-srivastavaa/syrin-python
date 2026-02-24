@@ -24,7 +24,7 @@
 
 - **types.py** — Pydantic models: `ModelConfig`, `ToolSpec`, `TaskSpec`, `Message`, `ToolCall`, `TokenUsage`, `CostInfo`, `ProviderResponse`, `AgentConfig`
 - **exceptions.py** — `SyrinError`, `BudgetExceededError`, `BudgetThresholdError`, `ModelNotFoundError`, `ToolExecutionError`, `TaskError`, `ProviderError`, `CodegenError`
-- **model.py** — `Model` (provider auto-detect, env var resolution), `ModelRegistry` (singleton)
+- **model.py** — `Model` (provider auto-detect); API keys must be passed explicitly, no env fallback
 - **providers/base.py** — Abstract `Provider` with `complete()` and `complete_sync()`; `ProviderResponse` from types
 - **providers/anthropic.py** — `AnthropicProvider` (optional dep: anthropic)
 - **providers/openai.py** — `OpenAIProvider` (optional dep: openai)
@@ -50,6 +50,6 @@
 
 - Virtual env: always use `.venv` and `uv`; install with `uv pip install -e ".[dev]"` from project root
 - Tests: `tests/` with pytest; conftest clears `ModelRegistry` between tests that mutate it
-- Examples: `examples/` for minimal usage (e.g. `hello_model.py`)
-- Lint/format: `ruff check . && ruff format .`; typecheck: `mypy src/Syrin`
+- Examples: `examples/` for minimal usage; `examples/models/models.py` centralizes model definitions for import
+- Lint/format: `ruff check . && ruff format .`; typecheck: `mypy src/syrin`
 - No version pinning when adding deps — use latest; pyproject lists minimums (e.g. pydantic>=2.0)

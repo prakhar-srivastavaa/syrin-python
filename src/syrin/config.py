@@ -26,7 +26,7 @@ class GlobalConfig:
             self._trace = True
         if os.environ.get(f"{self._env_prefix}TRACE", ""):
             pass
-        self._default_api_key = os.environ.get(f"{self._env_prefix}API_KEY", None)
+        # API key is never auto-loaded from env; user must pass via configure() or Model(api_key=...)
 
     @property
     def trace(self) -> bool:

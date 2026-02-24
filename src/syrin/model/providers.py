@@ -50,7 +50,7 @@ def _make_openai(
         top_p: Nucleus sampling
         top_k: Top-k sampling
         stop: Stop sequences
-        api_key: API key (or use OPENAI_API_KEY env var)
+        api_key: API key (required; pass explicitly)
         api_base: Custom base URL
         context_window: Context window size
         output: Structured output type
@@ -69,7 +69,7 @@ def _make_openai(
         name=model_name,
         provider="openai",
         api_base=api_base or os.getenv("OPENAI_BASE_URL") or "https://api.openai.com/v1",
-        api_key=api_key or os.getenv("OPENAI_API_KEY"),
+        api_key=api_key,
         context_window=context_window or 128000,
         temperature=temperature,
         max_tokens=max_tokens,
@@ -113,7 +113,7 @@ def _make_anthropic(
         model_name: Model name (e.g., "claude-sonnet-4-5-20241022")
         temperature: Sampling temperature (0.0-1.0)
         max_tokens: Max output tokens
-        api_key: API key (or use ANTHROPIC_API_KEY env var)
+        api_key: API key (required; pass explicitly)
         api_base: Custom base URL
         context_window: Context window size
         output: Structured output type
@@ -129,7 +129,7 @@ def _make_anthropic(
         name=model_name,
         provider="anthropic",
         api_base=api_base or os.getenv("ANTHROPIC_BASE_URL") or "https://api.anthropic.com",
-        api_key=api_key or os.getenv("ANTHROPIC_API_KEY"),
+        api_key=api_key,
         context_window=context_window or 200000,
         temperature=temperature,
         max_tokens=max_tokens,
@@ -228,7 +228,7 @@ def _make_google(
         model_name: Model name (e.g., "gemini-2.0-flash")
         temperature: Sampling temperature
         max_tokens: Max output tokens
-        api_key: API key (or use GOOGLE_API_KEY env var)
+        api_key: API key (required; pass explicitly)
         **kwargs: Additional Model parameters
 
     Returns:
@@ -243,7 +243,7 @@ def _make_google(
         api_base=api_base
         or os.getenv("GOOGLE_BASE_URL")
         or "https://generativelanguage.googleapis.com/v1beta",
-        api_key=api_key or os.getenv("GOOGLE_API_KEY"),
+        api_key=api_key,
         context_window=context_window or 1048576,
         temperature=temperature,
         max_tokens=max_tokens,
@@ -285,7 +285,7 @@ def _make_litellm(
 
     Args:
         model_name: Full model ID (e.g., "anthropic/claude-3-5-sonnet")
-        api_key: API key (or use LITELLM_API_KEY env var)
+        api_key: API key (required; pass explicitly)
         api_base: Custom base URL
         **kwargs: Additional Model parameters
 
@@ -301,7 +301,7 @@ def _make_litellm(
         name=name,
         provider="litellm",
         api_base=api_base or os.getenv("LITELLM_BASE_URL") or "https://api.litellm.ai",
-        api_key=api_key or os.getenv("LITELLM_API_KEY"),
+        api_key=api_key,
         context_window=context_window,
         temperature=temperature,
         max_tokens=max_tokens,

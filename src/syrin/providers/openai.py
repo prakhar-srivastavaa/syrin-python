@@ -93,10 +93,10 @@ class OpenAIProvider(Provider):
 
         api_key = model.api_key
         if not api_key:
-            import os
-
-            api_key = os.environ.get("OPENAI_API_KEY")
-
+            raise ProviderError(
+                "API key required for OpenAI. Pass api_key when creating the Model: "
+                "Model.OpenAI('gpt-4o', api_key='sk-...') or api_key=os.getenv('OPENAI_API_KEY')"
+            )
         api_messages = [_message_to_openai(m) for m in messages]
         client = AsyncOpenAI(
             api_key=api_key,

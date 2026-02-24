@@ -1,23 +1,14 @@
-"""Custom model examples - Use pre-built models from Syrin!
+"""Model examples - Use pre-built models or create custom ones.
 
 Usage:
-    from syrin import Model, Provider
+    # Import centralized models (used across examples)
+    from examples.models.models import gpt4, claude, deepseek_chat, kimi, grok
 
-    # Basic - auto-detect provider
-    model = Model("gpt-4o")
+    agent = Agent(model=gpt4, system_prompt="You are helpful.")
 
-    # Explicit provider
-    model = Model("claude-sonnet", provider="anthropic")
-
-    # Provider namespace
-    model = Model.Provider("gpt-4o", provider="openai")
-
-    # Custom model via inheritance
-    class MyModel(Model):
-        def complete(self, messages, **kwargs):
-            # your implementation
-            pass
+    # Or create inline - always pass api_key explicitly
+    from syrin import Model
+    model = Model.OpenAI("gpt-4o", api_key=os.getenv("OPENAI_API_KEY"))
 """
 
-# Import pre-built models directly from Syrin
-# See above for usage examples
+# Pre-built models in models.py - import and use anywhere

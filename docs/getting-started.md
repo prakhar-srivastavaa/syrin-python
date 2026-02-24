@@ -23,16 +23,37 @@ Set your API key:
 export OPENAI_API_KEY="sk-..."  # or ANTHROPIC_API_KEY for Claude
 ```
 
-## Your First Agent (30 seconds)
+## Your First Completion (Easiest)
 
-Here's the simplest possible agent:
+The simplest way to get started: call a model directly. No Agent, no classes — just a few lines. Use this when you only need simple Q&A; use an Agent when you need tools, memory, or budget control.
 
 ```python
-from Syrin import Agent
-from Syrin.model import Model
+import os
+from syrin import Model
+from syrin.types import Message
+from syrin.enums import MessageRole
+
+model = Model.OpenAI("gpt-4o-mini", api_key=os.getenv("OPENAI_API_KEY"))
+messages = [
+    Message(role=MessageRole.SYSTEM, content="You are helpful."),
+    Message(role=MessageRole.USER, content="What is 2 + 2?"),
+]
+response = model.complete(messages)
+print(response.content)  # "4" or "The answer is 4"
+```
+
+Use `await model.acomplete(messages)` for async. See the [Models Guide](models.md) for more.
+
+## Your First Agent (30 seconds)
+
+For prompts with tools, memory, or budget, use an Agent:
+
+```python
+import os
+from syrin import Agent, Model
 
 class SimpleAgent(Agent):
-    model = Model.OpenAI("gpt-4o-mini")
+    model = Model.OpenAI("gpt-4o-mini", api_key=os.getenv("OPENAI_API_KEY"))
     system_prompt = "You are a helpful assistant."
 
 agent = SimpleAgent()
@@ -41,6 +62,8 @@ print(response.content)  # Output: "4" or "The answer is 4"
 ```
 
 That's it! You just created an AI agent that can answer questions.
+
+**Tip:** You can tweak model properties: `temperature`, `max_tokens`, `context_window`, etc. See the [Models Guide](models.md) for the full list.
 
 ### What just happened?
 
@@ -82,7 +105,7 @@ response.duration        # How long it took
 In Syrin, instead of writing text like `"error"`, we use **special names** called **Enums**. This prevents typos and makes things more reliable:
 
 ```python
-from Syrin import OnExceeded
+from syrin import OnExceeded
 
 # This is correct:
 budget = Budget(run=1.00, on_exceeded=OnExceeded.WARN)

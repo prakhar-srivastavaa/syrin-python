@@ -41,13 +41,20 @@ agent = Agent(model=Model.Anthropic("claude-sonnet-4-20250514"))  # Powerful
 
 ### Can I use Ollama or local models?
 
-Yes! Syrin supports Ollama, LiteLLM, and custom models:
+Yes! Syrin supports Ollama, LiteLLM, and third-party APIs:
 
 ```python
-from Syrin.model import Model
+from syrin import Agent, Model
 
 agent = Agent(model=Model.Ollama("llama3"))  # Local
 agent = Agent(model=Model.LiteLLM("ollama/llama3"))  # Via LiteLLM
+
+# Third-party OpenAI-compatible APIs (DeepSeek, KIMI, Grok, etc.)
+agent = Agent(model=Model.Custom(
+    "deepseek-chat",
+    api_base="https://api.deepseek.com/v1",
+    api_key=os.getenv("DEEPSEEK_API_KEY"),
+))
 ```
 
 ---

@@ -44,13 +44,13 @@ async def example_provider_namespaces():
     print("Example 1: Provider Namespaces")
     print("=" * 60)
 
-    # OpenAI
-    model = Model.OpenAI("gpt-4o-mini")
+    # OpenAI - pass api_key explicitly
+    model = Model.OpenAI("gpt-4o-mini", api_key=os.getenv("OPENAI_API_KEY"))
     print(f"OpenAI: {model}")
     print(f"Provider: {model.provider}")
 
     # Anthropic
-    model = Model.Anthropic("claude-sonnet-4-5")
+    model = Model.Anthropic("claude-sonnet-4-5", api_key=os.getenv("ANTHROPIC_API_KEY"))
     print(f"\nAnthropic: {model}")
 
     # Ollama
@@ -73,9 +73,11 @@ async def example_custom_api():
     print("Example 2: Custom API Key and Base URL")
     print("=" * 60)
 
-    # Custom API key and base URL
+    # Custom API key and base URL - always pass api_key explicitly
     model = Model.OpenAI(
-        "gpt-4o", api_key="sk-custom-key", api_base="https://custom.endpoint.com/v1"
+        "gpt-4o",
+        api_key=os.getenv("OPENAI_API_KEY", "sk-custom-key"),
+        api_base="https://custom.endpoint.com/v1",
     )
     print(f"Model: {model}")
     print(f"API Key: {model.api_key[:10]}...")
@@ -90,9 +92,9 @@ async def example_custom_api():
 class MyCustomModel(Model):
     """Custom model adapter for any LLM API."""
 
-    def __init__(self, model_name: str = "my-model", **kwargs):
-        super().__init__(model_id=f"custom/{model_name}", provider="custom", **kwargs)
-        self._api_key = kwargs.get("api_key") or os.getenv("CUSTOM_API_KEY")
+    def __init__(self, model_name: str = "my-model", *, api_key: str | None = None, **kwargs):
+        super().__init__(model_id=f"custom/{model_name}", provider="custom", api_key=api_key, **kwargs)
+        self._api_key = api_key
 
     def complete(
         self,
@@ -106,7 +108,7 @@ class MyCustomModel(Model):
     ) -> ProviderResponse:
         # Your custom implementation here!
         print(f"Custom model called with {len(messages)} messages")
-        print(f"API Key: {self._api_key[:10] if self._api_key else 'None'}...")
+        print(f"API Key: {(self.api_key or '')[:10] or 'None'}...")
 
         # Return a mock response for demo
         return ProviderResponse(
@@ -124,7 +126,7 @@ async def example_custom_model():
     print("Example 3: Custom Model via Inheritance")
     print("=" * 60)
 
-    model = MyCustomModel("my-custom-model")
+    model = MyCustomModel("my-custom-model", api_key=os.getenv("CUSTOM_API_KEY"))
     print(f"Custom model: {model}")
     print(f"Provider: {model.provider}")
 
@@ -153,7 +155,7 @@ async def example_structured_output():
     print("Example 4: Structured Output")
     print("=" * 60)
 
-    model = Model.OpenAI("gpt-4o-mini", output=SentimentOutput)
+    model = Model.OpenAI("gpt-4o-mini", output=SentimentOutput, api_key=os.getenv("OPENAI_API_KEY"))
     print(f"Model with output: {model}")
     print(f"Output type: {model.output_type}")
 
@@ -174,6 +176,7 @@ async def example_pricing():
     # Method 1: Using input_price/output_price
     model = Model.OpenAI(
         "gpt-4o-mini",
+        api_key=os.getenv("OPENAI_API_KEY"),
         input_price=0.20,
         output_price=0.80,
     )
@@ -183,6 +186,7 @@ async def example_pricing():
     # Method 2: Using ModelPricing object
     model = Model.OpenAI(
         "gpt-4o-mini",
+        api_key=os.getenv("OPENAI_API_KEY"),
         pricing=ModelPricing(input_per_1m=0.20, output_per_1m=0.80),
     )
     pricing = model.get_pricing()

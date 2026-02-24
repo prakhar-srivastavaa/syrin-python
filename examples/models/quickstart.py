@@ -9,9 +9,16 @@ This examples file demonstrates:
 5. Creating custom model classes for new LLMs
 
 Run: python -m examples.models.quickstart
+
+Note: API keys must be passed explicitly. Examples use os.getenv for convenience.
 """
 
 import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 # =============================================================================
 # Organized Imports - By Category
@@ -37,15 +44,15 @@ def example_basic_models():
     print("Example 1: Basic Model Creation")
     print("=" * 60)
 
-    # OpenAI models
-    model = Model.OpenAI("gpt-4o")
+    # OpenAI models - pass api_key explicitly
+    model = Model.OpenAI("gpt-4o", api_key=os.getenv("OPENAI_API_KEY"))
     print(f"OpenAI gpt-4o: {model}")
     print(f"  - Provider: {model.provider}")
     print(f"  - Model ID: {model.model_id}")
     print(f"  - Context Window: {model.settings.context_window}")
 
     # Anthropic models
-    model = Model.Anthropic("claude-sonnet-4-5-20241022")
+    model = Model.Anthropic("claude-sonnet-4-5-20241022", api_key=os.getenv("ANTHROPIC_API_KEY"))
     print(f"\nAnthropic claude-sonnet: {model}")
     print(f"  - Provider: {model.provider}")
     print(f"  - Model ID: {model.model_id}")
@@ -56,7 +63,7 @@ def example_basic_models():
     print(f"  - Provider: {model.provider}")
 
     # Google
-    model = Model.Google("gemini-2.0-flash")
+    model = Model.Google("gemini-2.0-flash", api_key=os.getenv("GOOGLE_API_KEY"))
     print(f"\nGoogle gemini-2.0-flash: {model}")
     print(f"  - Provider: {model.provider}")
 
@@ -73,15 +80,19 @@ def example_model_config():
     print("Example 2: Model with Configuration")
     print("=" * 60)
 
-    # With temperature
-    model = Model.OpenAI("gpt-4o", temperature=0.7)
-    print(f"With temperature: {model}")
+    # Tweak properties - Model.OpenAI (and Model.Anthropic, Model.Custom, etc.) support:
+    # temperature, max_tokens, top_p, top_k, stop, context_window, output, input_price, output_price
+    model = Model.OpenAI(
+        "gpt-4o",
+        api_key=os.getenv("OPENAI_API_KEY"),
+        temperature=0.7,
+        max_tokens=2048,
+        context_window=128000,
+    )
+    print(f"Model.OpenAI with tweaked properties: {model}")
     print(f"  - Temperature: {model.settings.temperature}")
-
-    # With max_tokens
-    model = Model.OpenAI("gpt-4o", max_tokens=1000)
-    print(f"\nWith max_tokens: {model}")
-    print(f"  - Max Output Tokens: {model.settings.max_output_tokens}")
+    print(f"  - Max tokens: {model.settings.max_output_tokens}")
+    print(f"  - Context window: {model.settings.context_window}")
 
     # With custom API key and base URL
     model = Model.OpenAI(
@@ -90,6 +101,27 @@ def example_model_config():
     print(f"\nWith custom API: {model}")
     print(f"  - API Key: {model.api_key[:10]}...")
     print(f"  - API Base: {model.api_base}")
+
+    # Third-party OpenAI-compatible APIs (DeepSeek, KIMI, Grok, etc.) - use Model.Custom
+    model = Model.Custom(
+        "deepseek-chat",
+        api_base="https://api.deepseek.com/v1",
+        api_key=os.getenv("DEEPSEEK_API_KEY"),
+    )
+    print(f"\nModel.Custom (third-party): {model}")
+
+    # Model.Custom with tweaked properties (same as Model.OpenAI)
+    model = Model.Custom(
+        "grok-3-mini",
+        api_base="https://api.x.ai/v1",
+        api_key=os.getenv("XAI_API_KEY"),
+        temperature=0.7,
+        max_tokens=2048,
+        context_window=8192,
+    )
+    print(f"\nModel.Custom with params: {model}")
+    print(f"  - Temperature: {model.settings.temperature}")
+    print(f"  - Max tokens: {model.settings.max_output_tokens}")
 
 
 # =============================================================================
@@ -111,7 +143,7 @@ def example_structured_output():
         confidence: float
 
     # With structured output
-    model = Model.OpenAI("gpt-4o", output=SentimentAnalysis)
+    model = Model.OpenAI("gpt-4o", output=SentimentAnalysis, api_key=os.getenv("OPENAI_API_KEY"))
     print(f"Structured output: {model}")
     print(f"  - Output type: {model.output_type}")
 
@@ -129,10 +161,11 @@ def example_fallback():
     print("=" * 60)
 
     # Using with_fallback
-    model = Model.Anthropic("claude-sonnet").with_fallback(
-        Model.OpenAI("gpt-4o"),
-        Model.OpenAI("gpt-4o-mini"),  # Cheaper fallback
-        Model.Ollama("llama3"),  # Local fallback
+    openai_key = os.getenv("OPENAI_API_KEY")
+    model = Model.Anthropic("claude-sonnet", api_key=os.getenv("ANTHROPIC_API_KEY")).with_fallback(
+        Model.OpenAI("gpt-4o", api_key=openai_key),
+        Model.OpenAI("gpt-4o-mini", api_key=openai_key),  # Cheaper fallback
+        Model.Ollama("llama3"),  # Local fallback - no api_key
     )
     print(f"With fallback: {model}")
     print(f"  - Fallbacks: {len(model.fallback)}")
@@ -141,8 +174,10 @@ def example_fallback():
     class SentimentAnalysis(BaseModel):
         sentiment: str
 
-    model = Model.Anthropic("claude-sonnet", output=SentimentAnalysis).with_fallback(
-        Model.OpenAI("gpt-4o", output=SentimentAnalysis)
+    model = Model.Anthropic(
+        "claude-sonnet", output=SentimentAnalysis, api_key=os.getenv("ANTHROPIC_API_KEY")
+    ).with_fallback(
+        Model.OpenAI("gpt-4o", output=SentimentAnalysis, api_key=os.getenv("OPENAI_API_KEY"))
     )
     print(f"\nWith fallback + structured output: {model}")
 

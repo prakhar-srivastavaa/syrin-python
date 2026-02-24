@@ -48,9 +48,14 @@ Learn by doing! Pick a use case that matches what you want to build:
 
 ## 📖 Reference
 
+**[Models Guide](models.md)** - Complete guide to models
+- Built-in models (OpenAI, Anthropic, Google, Ollama, LiteLLM)
+- Model.Custom for third-party APIs
+- Custom models via inheritance
+- Tweakable properties, fallbacks, structured output
+
 **[Feature Reference Guide](reference.md)** - Complete API reference
 - All components
-- All models
 - Common patterns
 - Troubleshooting
 - Performance tips
@@ -135,7 +140,7 @@ Trace and debug agent execution with spans and sessions.
 - 🌐 **Web Apps** → [Use Case 6: Streaming](streaming.md)
 
 ### By Feature
-- **Models** → See [Feature Reference](reference.md#models)
+- **Models** → [Models Guide](models.md) — built-in, custom, inheritance
 - **Tools** → [Use Case 2](research-agent-with-tools.md)
 - **Memory** → [Use Case 3](agent-with-memory.md)
 - **Budget** → [Use Case 4](budget-control.md)

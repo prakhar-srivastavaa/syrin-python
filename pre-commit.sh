@@ -37,7 +37,8 @@ run_ruff_format() {
 # Run mypy (type checking)
 run_mypy() {
     echo -e "${YELLOW}Running mypy (type checking)...${NC}"
-    python -m mypy --strict src/Syrin
+    rm -rf .mypy_cache
+    python -m mypy --strict src/syrin
     echo -e "${GREEN}✓ Mypy check passed${NC}"
 }
 

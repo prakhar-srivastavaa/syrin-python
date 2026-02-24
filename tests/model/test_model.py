@@ -164,3 +164,177 @@ def test_model_with_temperature_extreme_values() -> None:
 
     m3 = Model(provider="openai", model_id="gpt-4", temperature=1.0)
     assert m3.settings.temperature == 1.0
+
+
+# =============================================================================
+# Model.Custom() tests
+# =============================================================================
+
+
+def test_model_custom_valid_openai_compatible() -> None:
+    """Model.Custom creates a valid model for OpenAI-compatible APIs."""
+    m = Model.Custom(
+        "deepseek-chat",
+        api_base="https://api.deepseek.com/v1",
+        api_key="sk-fake",
+    )
+    assert m.model_id == "deepseek-chat"
+    assert m.provider == "openai"
+    assert m.api_base == "https://api.deepseek.com/v1"
+    assert m.api_key == "sk-fake"
+    assert m.name == "deepseek-chat"
+
+
+def test_model_custom_valid_with_model_id_slash() -> None:
+    """Model.Custom derives name from model_id with slash."""
+    m = Model.Custom(
+        "deepseek/deepseek-chat",
+        api_base="https://api.deepseek.com/v1",
+        api_key="sk-fake",
+    )
+    assert m.model_id == "deepseek/deepseek-chat"
+    assert m.name == "deepseek-chat"
+
+
+def test_model_custom_valid_explicit_name() -> None:
+    """Model.Custom accepts explicit name override."""
+    m = Model.Custom(
+        "grok-3-mini",
+        api_base="https://api.x.ai/v1",
+        api_key="xai-fake",
+        name="Grok Mini",
+    )
+    assert m.name == "Grok Mini"
+    assert m.model_id == "grok-3-mini"
+
+
+def test_model_custom_valid_provider_litellm() -> None:
+    """Model.Custom with provider=litellm uses LiteLLM."""
+    m = Model.Custom(
+        "custom/foobar",
+        api_base="https://custom.api/v1",
+        provider="litellm",
+        api_key="sk-fake",
+    )
+    assert m.provider == "litellm"
+    assert m.api_base == "https://custom.api/v1"
+
+
+def test_model_custom_valid_with_optional_params() -> None:
+    """Model.Custom accepts temperature, context_window, etc."""
+    m = Model.Custom(
+        "kimi-v1",
+        api_base="https://api.moonshot.ai/v1",
+        api_key="ms-fake",
+        temperature=0.7,
+        context_window=8192,
+        max_tokens=2048,
+    )
+    assert m.settings.temperature == 0.7
+    assert m.settings.context_window == 8192
+    assert m.settings.max_output_tokens == 2048
+
+
+def test_model_custom_to_config() -> None:
+    """Model.Custom to_config returns correct ModelConfig."""
+    m = Model.Custom(
+        "deepseek-reasoner",
+        api_base="https://api.deepseek.com/v1",
+        api_key="sk-secret",
+    )
+    cfg = m.to_config()
+    assert cfg.model_id == "deepseek-reasoner"
+    assert cfg.provider == "openai"
+    assert cfg.base_url == "https://api.deepseek.com/v1"
+    assert cfg.api_key == "sk-secret"
+
+
+def test_model_custom_empty_model_id_raises() -> None:
+    """Model.Custom raises ValueError for empty model_id."""
+    with pytest.raises(ValueError, match="model_id is required"):
+        Model.Custom(
+            "",
+            api_base="https://api.example.com/v1",
+            api_key="sk-fake",
+        )
+
+
+def test_model_custom_whitespace_model_id_raises() -> None:
+    """Model.Custom raises ValueError for whitespace-only model_id."""
+    with pytest.raises(ValueError, match="model_id is required"):
+        Model.Custom(
+            "   ",
+            api_base="https://api.example.com/v1",
+            api_key="sk-fake",
+        )
+
+
+def test_model_custom_missing_api_base_raises() -> None:
+    """Model.Custom raises ValueError for empty api_base."""
+    with pytest.raises(ValueError, match="api_base is required"):
+        Model.Custom(
+            "deepseek-chat",
+            api_base="",
+            api_key="sk-fake",
+        )
+
+
+def test_model_custom_none_api_base_raises() -> None:
+    """Model.Custom raises ValueError for None api_base."""
+    with pytest.raises(ValueError, match="api_base is required"):
+        Model.Custom(
+            "deepseek-chat",
+            api_base=None,  # type: ignore[arg-type]
+            api_key="sk-fake",
+        )
+
+
+def test_model_custom_whitespace_api_base_raises() -> None:
+    """Model.Custom raises ValueError for whitespace-only api_base."""
+    with pytest.raises(ValueError, match="api_base is required"):
+        Model.Custom(
+            "deepseek-chat",
+            api_base="   ",
+            api_key="sk-fake",
+        )
+
+
+def test_model_custom_api_base_normalized() -> None:
+    """Model.Custom strips whitespace from api_base."""
+    m = Model.Custom(
+        "grok",
+        api_base="  https://api.x.ai/v1  ",
+        api_key="xai-fake",
+    )
+    assert m.api_base == "https://api.x.ai/v1"
+
+
+def test_model_custom_provider_normalized_to_lowercase() -> None:
+    """Model.Custom normalizes provider to lowercase."""
+    m = Model.Custom(
+        "grok",
+        api_base="https://api.x.ai/v1",
+        provider="OPENAI",
+        api_key="xai-fake",
+    )
+    assert m.provider == "openai"
+
+
+def test_model_custom_provider_default_is_openai() -> None:
+    """Model.Custom defaults provider to 'openai'."""
+    m = Model.Custom(
+        "deepseek-chat",
+        api_base="https://api.deepseek.com/v1",
+        api_key="sk-fake",
+    )
+    assert m.provider == "openai"
+
+
+def test_model_custom_api_key_optional() -> None:
+    """Model.Custom allows api_key=None (for local/no-auth endpoints)."""
+    m = Model.Custom(
+        "local-model",
+        api_base="http://localhost:8080/v1",
+        api_key=None,
+    )
+    assert m.api_key is None

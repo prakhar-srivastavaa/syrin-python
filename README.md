@@ -45,10 +45,11 @@ pip install syrin
 ```
 
 ```python
+import os
 from syrin import Agent, Model, Budget, OnExceeded
 
 class Researcher(Agent):
-    model = Model.OpenAI("gpt-4o-mini")
+    model = Model.OpenAI("gpt-4o-mini", api_key=os.getenv("OPENAI_API_KEY"))
     budget = Budget(run=0.50, on_exceeded=OnExceeded.STOP)
 
 result = Researcher().response("Summarize quantum computing in 3 sentences")
@@ -56,7 +57,7 @@ print(result.content)
 print(f"Cost: ${result.cost:.4f}  |  Budget used: ${result.budget_used:.4f}")
 ```
 
-Requires `OPENAI_API_KEY`. Run it.
+Pass your API key explicitly. Run it.
 
 ---
 
@@ -77,10 +78,11 @@ Budget overruns on AI agent deployments are common. I was one of them.
 **Syrin** gives you **budget control**, **lifecycle visibility**, **declarative thresholds**, and **type-safe APIs** — designed to stay simple as you move from prototype to production.
 
 ```python
+import os
 from syrin import Agent, Model, Budget, BudgetThreshold
 
 class Researcher(Agent):
-    model = Model.OpenAI("gpt-4o-mini")
+    model = Model.OpenAI("gpt-4o-mini", api_key=os.getenv("OPENAI_API_KEY"))
     budget = Budget(
         run=0.50,
         thresholds=[

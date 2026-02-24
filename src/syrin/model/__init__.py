@@ -7,10 +7,16 @@ Usage:
     model = Model.Ollama("llama3")
     model = Model.Google("gemini-2.0-flash")
 
+    # Tweak properties: temperature, max_tokens, context_window, etc.
+    model = Model.OpenAI("gpt-4o-mini", temperature=0.7, max_tokens=2048, api_key="...")
+
     # Direct Model with explicit provider
     model = Model(provider="openai", model_id="gpt-4o")
 
-    # For custom LLM providers, inherit from Model:
+    # Third-party OpenAI-compatible APIs (DeepSeek, KIMI, Grok, etc.)
+    model = Model.Custom("deepseek-chat", api_base="https://api.deepseek.com/v1", api_key="...")
+
+    # For fully custom LLM providers, inherit from Model:
     class MyModel(Model):
         def complete(self, messages, **kwargs):
             # Your implementation
@@ -42,13 +48,9 @@ from syrin.model.providers import (
 )
 
 setup_provider_namespaces(Model)
-Model.OpenAI = OpenAI  # type: ignore[method-assign]
-Model.Anthropic = Anthropic  # type: ignore[method-assign]
-Model.Ollama = Ollama  # type: ignore[method-assign]
-Model.Google = Google  # type: ignore[method-assign]
-Model.LiteLLM = LiteLLM  # type: ignore[method-assign]
 
 # Structured output
+from syrin.model.factory import create_model, make_model
 from syrin.model.structured import (  # noqa: E402
     OutputType,
     StructuredOutput,
@@ -75,4 +77,6 @@ __all__ = [
     "output",
     "structured",
     "StructuredOutput",
+    "create_model",
+    "make_model",
 ]

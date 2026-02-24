@@ -25,7 +25,8 @@ logging.getLogger("httpcore").setLevel(logging.CRITICAL)
 logging.getLogger("asyncio").setLevel(logging.CRITICAL)
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
-MODEL_ID = os.getenv("OPENAI_MODEL_NAME", "openai/gpt-4o-mini")
+# Use centralized models - import from examples.models.models
+from examples.models.models import gpt4_mini
 
 
 def example_basic_agent() -> None:
@@ -35,7 +36,7 @@ def example_basic_agent() -> None:
     print("=" * 50)
 
     class Assistant(Agent):
-        model = Model(MODEL_ID)
+        model = gpt4_mini
         system_prompt = "You are a helpful assistant."
 
     assistant = Assistant()
