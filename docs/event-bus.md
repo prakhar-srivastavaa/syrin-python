@@ -12,7 +12,7 @@ The **event bus** (`EventBus`) lets you subscribe to **typed domain events** suc
 | **Observability pipelines** | ✅ Use bus | Possible but manual |
 | **IDE autocomplete** | ✅ Typed events | Dict access only |
 | **Multiple subscribers** | ✅ Subscribe per type | One handler per hook |
-| **Backward compatibility** | Add-on | Default API |
+| **With default hooks** | Add-on | Default API |
 
 **Use the event bus when:**
 - You need typed event payloads (e.g. `e.percentage`, `e.tokens_before`) instead of dict keys
@@ -178,7 +178,7 @@ bus.subscribe(DomainEvent, lambda e: print(type(e).__name__, e))
 - **Hooks** (`agent.events`) are the default API. They use string event names and `EventContext` dicts.
 - **Event bus** is optional. It uses typed dataclasses and `bus.subscribe(event_type, handler)`.
 
-Both can be used together. When you pass `bus=bus`, the agent emits to the bus **in addition to** running hook handlers. Hooks remain for backward compatibility and simple use cases.
+Both can be used together. When you pass `bus=bus`, the agent emits to the bus **in addition to** running hook handlers. Hooks remain for simple use cases and per-agent handlers.
 
 ## See Also
 

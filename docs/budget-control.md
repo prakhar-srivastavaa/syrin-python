@@ -674,7 +674,7 @@ Example: `Agent(..., budget_store=FileBudgetStore("/data/budget.json"), budget_s
 | **get_budget_tracker()** | `agent.get_budget_tracker()` | Returns the tracker when the agent has a budget or context.budget; otherwise `None`. Use for reservation or inspection. |
 | **Reservation** | `tracker.reserve(amount)` | Returns a token; call `token.commit(actual_cost, token_usage)` or `token.rollback()`. |
 | **Pre-call estimate** | `agent.estimate_call_cost(messages, max_output_tokens=...)` | Best-effort cost estimate; used by built-in loops to skip calls that would exceed run limit. |
-| **State** | `tracker.get_state()` / `tracker.load_state(state)` | State includes `version`, `cost_history`, `run_start`, `month_days`, `use_calendar_month`. Backward compatible with state without `version`. |
+| **State** | `tracker.get_state()` / `tracker.load_state(state)` | State includes `version`, `cost_history`, `run_start`, `month_days`, `use_calendar_month`. State without `version` is accepted for loading. |
 | **BudgetStore** | `Agent(..., budget_store=..., budget_store_key=...)` | Persist tracker across restarts (e.g. `FileBudgetStore`). |
 | **Thread safety** | BudgetTracker | All public tracker methods are thread-safe (internal lock). |
 | **Streaming** | `agent.stream()` / `agent.astream()` | Cost recorded per chunk; run limit (and token limits if context.budget set) checked after each chunk; can raise `BudgetExceededError` mid-stream. |

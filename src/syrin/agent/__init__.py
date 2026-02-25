@@ -17,7 +17,7 @@ from syrin.budget import (
     CheckBudgetResult,
 )
 from syrin.budget_store import BudgetStore
-from syrin.checkpoint import CheckpointConfig, Checkpointer
+from syrin.checkpoint import CheckpointConfig, Checkpointer, CheckpointTrigger
 from syrin.context import Context, DefaultContextManager
 from syrin.context.config import ContextStats
 
@@ -507,12 +507,12 @@ class Agent:
         if self._checkpointer is None or self._checkpoint_config is None:
             return
 
-        trigger = self._checkpoint_config.trigger.value if self._checkpoint_config else None
-        if trigger == "manual":
+        trigger = self._checkpoint_config.trigger if self._checkpoint_config else None
+        if trigger == CheckpointTrigger.MANUAL:
             return
 
-        should_checkpoint = (trigger == "step" and reason in ("step", "tool")) or (
-            trigger == reason
+        should_checkpoint = (trigger == CheckpointTrigger.STEP and reason in ("step", "tool")) or (
+            trigger is not None and trigger.value == reason
         )
         if should_checkpoint:
             self.save_checkpoint(reason=reason)
@@ -2221,4 +2221,4 @@ from syrin.agent import presets as _presets
 from syrin.agent.builder import AgentBuilder as _AgentBuilder
 
 Agent.presets = _presets  # type: ignore[attr-defined]
-Agent.builder = staticmethod(lambda model: _AgentBuilder(model))  # type: ignore[assignment]
+Agent.builder = staticmethod(lambda model: _AgentBuilder(model))  # type: ignore[attr-defined]

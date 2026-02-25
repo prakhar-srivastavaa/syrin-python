@@ -11,6 +11,7 @@ from syrin.exceptions import (
     SyrinError,
     TaskError,
     ToolExecutionError,
+    ValidationError,
 )
 
 
@@ -41,6 +42,7 @@ def test_exception_hierarchy() -> None:
     assert issubclass(TaskError, SyrinError)
     assert issubclass(ProviderError, SyrinError)
     assert issubclass(CodegenError, SyrinError)
+    assert issubclass(ValidationError, SyrinError)
 
 
 # =============================================================================

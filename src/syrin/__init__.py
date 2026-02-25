@@ -447,7 +447,6 @@ __all__ = [
     "ThresholdWindow",
     "Events",
     "EventContext",
-    "E",
     # Loop
     "Loop",
     "LoopResult",

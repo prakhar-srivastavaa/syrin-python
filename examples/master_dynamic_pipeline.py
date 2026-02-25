@@ -300,10 +300,10 @@ def create_debug_pipeline():
     """Create pipeline with full debugging hooks."""
 
     orchestrator_model = Model(
-            provider="openai",
-            model_id="gpt-4o-mini",
-            api_key=os.getenv("OPENAI_API_KEY"),
-        )
+        provider="openai",
+        model_id="gpt-4o-mini",
+        api_key=os.getenv("OPENAI_API_KEY"),
+    )
 
     all_agents = [
         TechResearchAgent,

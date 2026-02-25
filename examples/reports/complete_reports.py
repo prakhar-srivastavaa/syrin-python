@@ -152,7 +152,9 @@ def example_structured_output_validation():
     print("=" * 70)
 
     class Assistant(Agent):
-        model = Model("openai/gpt-4o-mini", output=AnalysisOutput, api_key=os.getenv("OPENAI_API_KEY"))
+        model = Model(
+            "openai/gpt-4o-mini", output=AnalysisOutput, api_key=os.getenv("OPENAI_API_KEY")
+        )
         system_prompt = "You analyze text and return structured output."
 
     agent = Assistant()
@@ -183,7 +185,9 @@ def example_complete_report_summary():
     guardrail = ContentFilter(blocked_words=["blocked"])
 
     class Assistant(Agent):
-        model = Model("openai/gpt-4o-mini", output=AnalysisOutput, api_key=os.getenv("OPENAI_API_KEY"))
+        model = Model(
+            "openai/gpt-4o-mini", output=AnalysisOutput, api_key=os.getenv("OPENAI_API_KEY")
+        )
         system_prompt = "You are a helpful assistant with memory."
         guardrails = [guardrail]
         budget = Budget(run=5.0)  # $5 budget
