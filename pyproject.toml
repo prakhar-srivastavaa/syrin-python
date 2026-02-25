@@ -69,6 +69,9 @@ select = [
     "ARG", # flake8-unused-arguments
     "SIM", # flake8-simplify
 ]
+# E501: line length (handled by formatter); E402: module level import after code;
+# ARG002: self/cls in methods; ARG001: unused function args (e.g. pytest fixtures);
+# F821: undefined name (dynamic); F811: reimport (conditional provider imports).
 ignore = [
     "E501",
     "E402",
@@ -76,7 +79,7 @@ ignore = [
     "ARG001",
     "F821",
     "F811",
-] # line length, conditional imports, pytest fixtures, pre-existing test bugs
+]
 
 [tool.ruff.format]
 quote-style = "double"

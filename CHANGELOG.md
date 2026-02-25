@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Code quality (Step 6):** `docs/ARCHITECTURE.md` with package layout, dependency direction, extension points, and §6 consistent patterns (naming: *Protocol/*Backend/*Config/*Store/*Manager; errors: SyrinError; Protocol vs ABC). `docs/code-quality.md` for mypy, ruff, public API typing, coverage, and dead-code rules. `tests/code_quality/`: `test_public_api_exports.py` (all `__all__` importable, no duplicates, run return type), `test_run_and_config_api.py` (run/config valid and edge cases with mocks), `test_critical_path_edge_cases.py` (threshold, config, run empty input).
+
 - **Core stability (Step 4):** New test suite `tests/core_stability/` with TDD tests for agent lifecycle (sync/async parity), loop strategies (LoopResult shape, exception handling), model resolution (valid provider, strict mode), budget enforcement (per-run, threshold actions), memory (remember/recall/forget, conversation path), Response contract (cost/tokens/tool_calls/stop_reason), and structured output validation.
 - **Model resolution:** `ProviderNotFoundError` exception and `get_provider(name, strict=True)`; when `strict=True`, unknown provider names raise with a clear message listing known providers. Agent uses strict resolution when resolving from `ModelConfig` so invalid `provider=` fails fast.
 - **Observability:** Span coverage for agent runs: root agent span plus automatic child spans for each LLM call and tool execution when the loop uses a tracer. `AgentRunContext` now exposes an optional `tracer` property so loops can create LLM/tool spans.
@@ -17,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Tests:** `tests/observability/test_observability_integration.py` — TDD tests for span coverage (agent/LLM/tool), session propagation, metrics schema, sampling parent-child consistency, debug mode, OTLP exporter, hook coverage, and export format.
 
 ### Changed
+
+- **Code quality (Step 6):** `syrin.run()` signature: `tools` typed as `list[ToolSpec] | None`, return as `Response[str]`. Removed duplicate entries from `syrin.__all__` (BudgetThreshold, CheckpointTrigger). `syrin.config.__all__`: removed duplicate GlobalConfig. Ruff ignore list in pyproject.toml documented (E501, E402, ARG002, ARG001, F821, F811).
 
 - **Model resolution:** `get_provider(provider_name, *, strict=False)` — new `strict` parameter; Agent construction with `ModelConfig(provider="typo")` now raises `ProviderNotFoundError` (breaking for callers relying on fallback to LiteLLM).
 - **Observability:** Session ID from `trace.session()` now propagates to all spans created during agent runs (spans already had `session_id`; context was already used by tracer).

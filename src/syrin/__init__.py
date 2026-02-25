@@ -261,6 +261,7 @@ from syrin.threshold import (
     compact_if_available,
 )
 from syrin.tool import tool
+from syrin.types import ToolSpec
 from syrin.validation import ValidationPipeline, validate_output
 
 __version__ = "0.1.0"
@@ -271,10 +272,10 @@ def run(
     model: str | Model | None = None,
     *,
     system_prompt: str | None = None,
-    tools: list[Any] | None = None,
+    tools: list[ToolSpec] | None = None,
     budget: Budget | None = None,
     **kwargs: Any,
-) -> Response[Any]:
+) -> Response[str]:
     """Run a one-shot completion with an agent.
 
     This is a convenience function for simple one-off LLM calls without
@@ -390,7 +391,6 @@ __all__ = [
     # Threshold
     # =============================================================================
     "ThresholdContext",
-    "BudgetThreshold",
     "ContextThreshold",
     "compact_if_available",
     "RateLimitThreshold",
@@ -526,7 +526,6 @@ __all__ = [
     "Checkpointer",
     "CheckpointConfig",
     "CheckpointState",
-    "CheckpointTrigger",
     "BudgetThresholdReached",
     "ContextCompacted",
     "DomainEvent",

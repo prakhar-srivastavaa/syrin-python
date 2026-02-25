@@ -48,7 +48,9 @@ Learn by doing! Pick a use case that matches what you want to build:
 
 ## 📖 Reference
 
-**[Architecture](ARCHITECTURE.md)** - Agent-only vs standalone components (what works with/without Agent)
+**[Architecture](ARCHITECTURE.md)** - Package layout, dependency direction, extension points, and §6 consistent patterns (naming, typing, config vs runtime).
+
+**[Code quality](code-quality.md)** - mypy strict, ruff, public API typing, test coverage, and consistent patterns.
 
 **[Models Guide](models.md)** - Complete guide to models
 - Built-in models (OpenAI, Anthropic, Google, Ollama, LiteLLM)

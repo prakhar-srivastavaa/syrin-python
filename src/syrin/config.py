@@ -94,4 +94,4 @@ def configure(**kwargs: Any) -> None:
     _config.set(**kwargs)
 
 
-__all__ = ["GlobalConfig", "get_config", "configure", "GlobalConfig"]
+__all__ = ["GlobalConfig", "get_config", "configure"]
