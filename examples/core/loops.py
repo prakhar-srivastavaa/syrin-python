@@ -132,12 +132,12 @@ def example_custom_loop():
 
         name = "my_custom"
 
-        async def run(self, agent, user_input: str) -> LoopResult:
-            """Simple single-shot implementation."""
+        async def run(self, ctx, user_input: str) -> LoopResult:
+            """Simple single-shot implementation. ctx is AgentRunContext (build_messages, complete, etc.)."""
             from syrin.types import Message, MessageRole
 
             messages = [Message(role=MessageRole.USER, content=user_input)]
-            response = await agent.complete(messages)
+            response = await ctx.complete(messages)
 
             return LoopResult(
                 content=f"[Custom] {response.content}",

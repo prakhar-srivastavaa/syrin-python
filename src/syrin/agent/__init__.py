@@ -125,7 +125,7 @@ def _resolve_provider(model: Model | None, model_config: ModelConfig) -> Provide
         return model.get_provider()
     from syrin.providers.registry import get_provider
 
-    return get_provider(model_config.provider)
+    return get_provider(model_config.provider, strict=True)
 
 
 def _emit_domain_event_for_hook(hook: Hook, ctx: EventContext, bus: Any) -> None:

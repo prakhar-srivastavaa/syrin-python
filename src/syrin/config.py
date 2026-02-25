@@ -53,6 +53,11 @@ class GlobalConfig:
         """Default API key to use when none is specified."""
         return self._default_api_key
 
+    @default_api_key.setter
+    def default_api_key(self, value: str | None) -> None:
+        with self._lock:
+            self._default_api_key = value
+
     def get(self, key: str, default: Any = None) -> Any:
         """Get a configuration value."""
         return getattr(self, key, default)

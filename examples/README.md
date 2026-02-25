@@ -20,6 +20,23 @@ The `guardrails/` directory contains comprehensive examples for the Syrin Guardr
 
 See `guardrails/README.md` for details.
 
+## Running examples
+
+From the project root (with `OPENAI_API_KEY` or other provider keys in `examples/.env`):
+
+```bash
+# Run all examples (core, memory, multi_agent, advanced)
+PYTHONPATH=. python examples/main.py
+
+# Run a subset
+PYTHONPATH=. python examples/main.py core
+PYTHONPATH=. python examples/main.py memory
+
+# Run a single example module
+PYTHONPATH=. python -m examples.core.basic_agent
+PYTHONPATH=. python -m examples.memory.basic_memory
+```
+
 ## Setup
 
 1. From project root with virtualenv activated:

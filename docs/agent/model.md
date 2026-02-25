@@ -111,6 +111,30 @@ See [Creating Agents](creating-agents.md) for full inheritance rules.
 
 ---
 
+## Provider resolution and errors
+
+When you pass a `ModelConfig` (e.g. from a config file) with a `provider=` that the registry doesn’t know, the agent raises **`ProviderNotFoundError`** with a message listing known providers (`openai`, `anthropic`, `ollama`, `litellm`). This avoids silent fallback to a different provider.
+
+When you use a `Model` instance (e.g. `Model.OpenAI(...)`), the provider is resolved from the model, so invalid provider names only occur when constructing an agent from a raw `ModelConfig` with a typo or unsupported provider.
+
+For programmatic lookup with strict checking:
+
+```python
+from syrin.providers.registry import get_provider
+from syrin.exceptions import ProviderNotFoundError
+
+# strict=False (default): unknown name falls back to LiteLLM
+provider = get_provider("openai")
+
+# strict=True: unknown name raises ProviderNotFoundError
+try:
+    provider = get_provider("typo", strict=True)
+except ProviderNotFoundError as e:
+    print(e)  # Lists known providers
+```
+
+---
+
 ## See Also
 
 - [Models Guide](../models.md) — Built-ins, custom models, standalone `complete()`

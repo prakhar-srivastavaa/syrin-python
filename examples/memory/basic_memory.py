@@ -28,7 +28,7 @@ MODEL_ID = os.getenv("OPENAI_MODEL_NAME", "openai/gpt-4o-mini")
 
 
 def example_basic_memory() -> None:
-    """Basic memory operations."""
+    """Basic memory operations: remember() stores facts; recall() retrieves them."""
     print("\n" + "=" * 50)
     print("Basic Memory Example")
     print("=" * 50)
@@ -39,11 +39,13 @@ def example_basic_memory() -> None:
 
     assistant = Assistant(memory=Memory())
 
-    print("1. Initial conversation:")
+    print("1. User says their name; we store it in persistent memory:")
     result1 = assistant.response("My name is Alice.")
+    assistant.remember("The user's name is Alice.", memory_type=MemoryType.CORE, importance=1.0)
     print(f"   Response: {result1.content}")
+    print("   (Stored the user's name in persistent memory.)")
 
-    print("\n2. Second turn (should remember name):")
+    print("\n2. Second turn (recall finds the stored name):")
     result2 = assistant.response("What's my name?")
     print(f"   Response: {result2.content}")
 

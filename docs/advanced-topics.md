@@ -4,6 +4,22 @@ This guide covers advanced Syrin features for building production-ready, observa
 
 ---
 
+## Core stability
+
+Syrin guarantees that **Agent**, **Model**, **Loop**, **Budget**, **Memory**, and **Response** behave in a predictable way under all documented configurations:
+
+- **Agent lifecycle:** `response()` and `arun()` follow the same sequence: build messages → budget/rate checks → LLM → tools → record cost → build response. No silent path differences between sync and async.
+- **Loop strategies:** REACT, SINGLE_SHOT, PLAN_EXECUTE, and CODE_ACTION all return the same `LoopResult` shape (content, stop_reason, iterations, cost_usd, token_usage, tool_calls). Exceptions from the provider or tools are typed (e.g. `ProviderError`, `ToolExecutionError`).
+- **Model resolution:** `Model.OpenAI`, `Model.Anthropic`, etc., and the provider registry always resolve to a valid Provider when the name is known. Invalid `provider=` when using `ModelConfig` raises `ProviderNotFoundError` with a clear message. See [Model — Provider resolution and errors](agent/model.md#provider-resolution-and-errors).
+- **Budget:** Per-run and per-period limits are enforced; threshold actions (warn, switch model, stop) are triggered when configured. See [Budget control](budget-control.md).
+- **Memory:** Default persistent memory (Memory with InMemoryBackend) and conversation memory (e.g. BufferMemory) are stable; `remember`/`recall`/`forget` do not corrupt state. See [Memory](memory.md).
+- **Response:** Every `Response` has `cost`, `tokens`, `tool_calls`, and `stop_reason` set correctly; guardrail or budget-exit paths still return a valid Response with the appropriate `stop_reason`.
+- **Structured output:** When `output=Output(MyModel)` is set, validation runs and retries are applied; see [Structured output](agent/structured-output.md).
+
+The test suite in `tests/core_stability/` encodes these guarantees with TDD tests (lifecycle, loop strategies, model resolution, budget, memory, response contract, structured output).
+
+---
+
 ## Lifecycle Hooks
 
 Hooks let you execute code at specific moments during an agent's execution. This is essential for logging, metrics, authentication, and custom behaviors.

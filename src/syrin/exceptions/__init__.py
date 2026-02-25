@@ -73,6 +73,12 @@ class ProviderError(SyrinError):
     pass
 
 
+class ProviderNotFoundError(SyrinError):
+    """Raised when a requested provider name is not registered (e.g. typo in provider=)."""
+
+    pass
+
+
 class CodegenError(SyrinError):
     """Raised when DSL code generation fails."""
 

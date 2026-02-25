@@ -63,10 +63,11 @@ def example_configure_model() -> None:
 
     from syrin.types import ModelConfig
 
-    # Set default model
+    # Set default model (name is required by ModelConfig)
     model_config = ModelConfig(
+        name="gpt-4o-mini",
         provider="openai",
-        model_id="gpt-4o-mini",
+        model_id="openai/gpt-4o-mini",
     )
     configure(default_model=model_config)
 

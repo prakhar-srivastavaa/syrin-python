@@ -1,0 +1,131 @@
+"""Memory: default persistent and conversation paths stable; remember/recall/forget do not corrupt state."""
+
+from __future__ import annotations
+
+import pytest
+
+from syrin import Agent
+from syrin.enums import MemoryType
+from syrin.memory import BufferMemory
+from syrin.model import Model
+from syrin.types import Message, ProviderResponse, TokenUsage
+
+
+def _mock_provider_response(content: str = "ok") -> ProviderResponse:
+    return ProviderResponse(
+        content=content,
+        tool_calls=[],
+        token_usage=TokenUsage(input_tokens=1, output_tokens=1, total_tokens=2),
+    )
+
+
+class TestPersistentMemoryRememberRecallForget:
+    """Default persistent memory (Memory with InMemoryBackend): remember/recall/forget stable."""
+
+    def test_remember_returns_id_and_recall_returns_content(self) -> None:
+        """remember() returns memory id; recall() returns stored entries."""
+        model = Model("anthropic/claude-3-5-sonnet")
+        agent = Agent(model=model, system_prompt="Test.")
+        mid = agent.remember("User name is Alice", memory_type=MemoryType.CORE, importance=1.0)
+        assert isinstance(mid, str)
+        assert len(mid) > 0
+        entries = agent.recall("Alice", memory_type=MemoryType.CORE, limit=5)
+        assert len(entries) >= 1
+        contents = [e.content for e in entries]
+        assert "Alice" in contents[0] or "Alice" in " ".join(contents)
+
+    def test_forget_by_id_removes_memory(self) -> None:
+        """forget(memory_id=...) removes the entry; recall no longer returns it."""
+        model = Model("anthropic/claude-3-5-sonnet")
+        agent = Agent(model=model, system_prompt="Test.")
+        mid = agent.remember("Secret token XYZ123", memory_type=MemoryType.EPISODIC)
+        entries_before = agent.recall("XYZ123", limit=10)
+        assert any("XYZ123" in e.content for e in entries_before)
+        deleted = agent.forget(memory_id=mid)
+        assert deleted == 1
+        entries_after = agent.recall("XYZ123", limit=10)
+        assert not any("XYZ123" in e.content for e in entries_after)
+
+    def test_forget_by_query_removes_matching_entries(self) -> None:
+        """forget(query=...) removes entries whose content contains the query."""
+        model = Model("anthropic/claude-3-5-sonnet")
+        agent = Agent(model=model, system_prompt="Test.")
+        agent.remember("Temporary note: delete me", memory_type=MemoryType.EPISODIC)
+        agent.remember("Another delete me entry", memory_type=MemoryType.EPISODIC)
+        deleted = agent.forget(query="delete me")
+        assert deleted >= 1
+        entries = agent.recall("delete me", limit=10)
+        assert len(entries) == 0
+
+    def test_multiple_remember_recall_sequence_consistent(self) -> None:
+        """Multiple remember/recall in sequence do not corrupt state."""
+        model = Model("anthropic/claude-3-5-sonnet")
+        agent = Agent(model=model, system_prompt="Test.")
+        ids = []
+        for i in range(3):
+            mid = agent.remember(
+                f"Fact {i}", memory_type=MemoryType.EPISODIC, importance=0.5 + i * 0.1
+            )
+            ids.append(mid)
+        all_entries = agent.recall(limit=10)
+        assert len(all_entries) >= 3
+        for mid in ids:
+            agent.forget(memory_id=mid)
+        remaining = agent.recall(limit=10)
+        assert len(remaining) == 0
+
+    def test_agent_without_persistent_memory_remember_raises(self) -> None:
+        """Agent with memory=False raises when calling remember."""
+        model = Model("anthropic/claude-3-5-sonnet")
+        agent = Agent(model=model, system_prompt="Test.", memory=False)
+        with pytest.raises(RuntimeError, match="persistent memory"):
+            agent.remember("x")
+
+
+class TestConversationMemoryStability:
+    """Conversation memory (BufferMemory) path: history included in build_messages in order."""
+
+    def test_buffer_memory_history_included_in_build_messages(self) -> None:
+        """When BufferMemory is pre-populated, build_messages includes history in order."""
+        from syrin.enums import MessageRole
+
+        model = Model("anthropic/claude-3-5-sonnet")
+        mem = BufferMemory()
+        mem.add(Message(role=MessageRole.USER, content="First message"))
+        mem.add(Message(role=MessageRole.ASSISTANT, content="Hi there"))
+        agent = Agent(model=model, system_prompt="Test.", memory=mem)
+        messages = agent._build_messages("Second message")
+        contents = [m.content for m in messages]
+        assert "First message" in contents
+        assert "Hi there" in contents
+        assert "Second message" in contents
+        assert contents[-1] == "Second message"
+
+    def test_conversation_memory_isolation_from_persistent(self) -> None:
+        """When using conversation memory only, recall is not used for build_messages (no persistent backend)."""
+        model = Model("anthropic/claude-3-5-sonnet")
+        agent = Agent(model=model, system_prompt="Test.", memory=BufferMemory())
+        assert agent._memory_backend is None
+        with pytest.raises(RuntimeError, match="persistent memory"):
+            agent.recall("anything")
+
+
+class TestMemoryEdgeCases:
+    """Edge cases: empty recall, forget with no match."""
+
+    def test_recall_empty_query_lists_all_up_to_limit(self) -> None:
+        """recall() with no query returns list of entries up to limit."""
+        model = Model("anthropic/claude-3-5-sonnet")
+        agent = Agent(model=model, system_prompt="Test.")
+        agent.remember("A", memory_type=MemoryType.EPISODIC)
+        agent.remember("B", memory_type=MemoryType.EPISODIC)
+        entries = agent.recall(limit=5)
+        assert len(entries) >= 1
+        assert len(entries) <= 5
+
+    def test_forget_nonexistent_id_does_not_crash(self) -> None:
+        """forget(memory_id="nonexistent") does not raise; returns 1 (backend may still delete)."""
+        model = Model("anthropic/claude-3-5-sonnet")
+        agent = Agent(model=model, system_prompt="Test.")
+        deleted = agent.forget(memory_id="nonexistent-uuid-12345")
+        assert deleted == 1

@@ -18,6 +18,7 @@ from syrin.exceptions import (
     CodegenError,
     ModelNotFoundError,
     ProviderError,
+    ProviderNotFoundError,
     SyrinError,
     TaskError,
     ToolExecutionError,
@@ -101,6 +102,7 @@ PUBLIC_EXCEPTIONS = [
     ToolExecutionError,
     TaskError,
     ProviderError,
+    ProviderNotFoundError,
     CodegenError,
     ValidationError,
 ]
