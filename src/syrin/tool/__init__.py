@@ -42,6 +42,10 @@ class ToolSpec(BaseModel):
         default=False,
         description="If True, block execution until human approval via ApprovalGate.",
     )
+    inject_run_context: bool = Field(
+        default=False,
+        description="If True, first param is ctx: RunContext[Deps]; agent injects it at runtime.",
+    )
 
     model_config = {"arbitrary_types_allowed": True}
 
@@ -86,14 +90,21 @@ def _annotation_to_json_schema(annotation: Any) -> dict[str, Any]:
     return {"type": "string"}
 
 
-def _parameters_schema_from_function(func: Callable[..., Any]) -> dict[str, Any]:
-    """Build a JSON schema for the function's parameters from type hints."""
+def _parameters_schema_from_function(func: Callable[..., Any]) -> tuple[dict[str, Any], bool]:
+    """Build a JSON schema for the function's parameters from type hints.
+
+    Excludes param named 'ctx' (RunContext for DI). Returns (schema, inject_run_context).
+    """
     hints = get_type_hints(func) if hasattr(func, "__annotations__") else {}
     sig = inspect.signature(func)
     properties: dict[str, Any] = {}
     required: list[str] = []
+    inject_run_context = False
     for name, param in sig.parameters.items():
         if name == "self" or name == "cls":
+            continue
+        if name == "ctx":
+            inject_run_context = True
             continue
         ann = hints.get(name, param.annotation)
         if ann is inspect.Parameter.empty:
@@ -101,7 +112,8 @@ def _parameters_schema_from_function(func: Callable[..., Any]) -> dict[str, Any]
         properties[name] = _annotation_to_json_schema(ann)
         if param.default is inspect.Parameter.empty:
             required.append(name)
-    return {"type": "object", "properties": properties, "required": required}
+    schema = {"type": "object", "properties": properties, "required": required}
+    return schema, inject_run_context
 
 
 def tool(
@@ -119,13 +131,14 @@ def tool(
     def decorator(f: Callable[..., Any]) -> ToolSpec:
         tool_name = name or f.__name__
         desc = description or (inspect.getdoc(f) or "").strip().split("\n")[0] or ""
-        params_schema = _parameters_schema_from_function(f)
+        params_schema, inject_run_context = _parameters_schema_from_function(f)
         return ToolSpec(
             name=tool_name,
             description=desc,
             parameters_schema=params_schema,
             func=f,
             requires_approval=requires_approval,
+            inject_run_context=inject_run_context,
         )
 
     if func is not None:

@@ -1,44 +1,97 @@
 """Dependency Injection Example (v0.3.0+).
 
 Demonstrates:
-- Passing dependencies to tools via closure (pattern until Agent[Deps] exists)
-- Injected services (e.g. search client) used by tools
-- Testing with mock dependencies
+- Agent(deps=...) for runtime dependencies
+- Tools receive ctx: RunContext[MyDeps] with ctx.deps
+- Testing with mock dependencies (inject MockDeps)
 
-Run: python -m examples.08_advanced.dependency_injection
+Run: python -m examples.15_advanced.dependency_injection
 """
 
+from dataclasses import dataclass
 from pathlib import Path
 
 from dotenv import load_dotenv
 
 from examples.models.models import almock
-from syrin import Agent, tool
+from syrin import Agent, RunContext, tool
 
-load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+load_dotenv(Path(__file__).resolve().parent.parent.parent / ".env")
 
 
-def create_search_tool(search_client):
-    """Factory: create tool with injected search_client."""
+# -----------------------------------------------------------------------------
+# Define dependencies
+# -----------------------------------------------------------------------------
 
-    @tool
-    def search(query: str) -> str:
-        return search_client.search(query)
 
-    return search
+@dataclass
+class SearchDeps:
+    """Dependencies for search tools."""
+
+    search_client: object
+    user_id: str
+
+
+class RealSearchClient:
+    """Production search client."""
+
+    def search(self, query: str) -> str:
+        return f"Real results for: {query}"
 
 
 class MockSearchClient:
+    """Mock for tests."""
+
     def search(self, query: str) -> str:
         return f"[MOCK] Results for: {query}"
 
 
-search_client = MockSearchClient()
-search_tool = create_search_tool(search_client)
-agent = Agent(
-    model=almock,
-    system_prompt="Use search to find information.",
-    tools=[search_tool],
-)
-result = agent.response("Search for AI trends")
-print(f"Result: {result.content[:100]}...")
+# -----------------------------------------------------------------------------
+# Agent with DI
+# -----------------------------------------------------------------------------
+
+
+@tool
+def search(ctx: RunContext[SearchDeps], query: str) -> str:
+    """Search for information. Uses injected search client."""
+    return ctx.deps.search_client.search(query)
+
+
+@tool
+def get_user_preference(ctx: RunContext[SearchDeps], key: str) -> str:
+    """Get user preference. Uses injected user_id."""
+    return f"user={ctx.deps.user_id}, {key}=default"
+
+
+class SearchAgent(Agent):
+    """Agent with dependency injection."""
+
+    model = almock
+    system_prompt = "Use search and get_user_preference. Be concise."
+    tools = [search, get_user_preference]
+
+
+# -----------------------------------------------------------------------------
+# Production: real deps
+# -----------------------------------------------------------------------------
+
+if __name__ == "__main__":
+    real_deps = SearchDeps(
+        search_client=RealSearchClient(),
+        user_id="alice",
+    )
+    agent = SearchAgent(deps=real_deps)
+    result = agent.response("Search for AI trends")
+    print(f"Result: {result.content[:150]}...")
+    print(f"Cost: ${result.cost:.6f}")
+
+    # -----------------------------------------------------------------------------
+    # Testing: mock deps
+    # -----------------------------------------------------------------------------
+    mock_deps = SearchDeps(
+        search_client=MockSearchClient(),
+        user_id="test-user",
+    )
+    test_agent = SearchAgent(deps=mock_deps)
+    test_result = test_agent.response("Search for testing")
+    print(f"\nWith mock: {test_result.content[:100]}...")

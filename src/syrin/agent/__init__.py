@@ -265,6 +265,7 @@ class Agent:
         tracer: Any = None,
         bus: Any = None,
         audit: Any = None,
+        deps: Any = None,
     ) -> None:
         """Create an agent with model, prompt, tools, and optional config.
 
@@ -311,6 +312,8 @@ class Agent:
             approval_gate: Optional ApprovalGate for HITL. When tools have
                 requires_approval=True, blocks until approval. Default: None (reject).
             hitl_timeout: Seconds to wait for approval. On timeout, reject. Default 300.
+            deps: Dependencies for tools. Tools with ctx: RunContext[Deps] receive this
+                via ctx.deps. Enables testing (mock deps) and multi-tenant (user deps).
 
         Example:
             >>> agent = Agent(
@@ -445,6 +448,7 @@ class Agent:
             self._budget_tracker = BudgetTracker()
         self._provider = _resolve_provider(self._model, self._model_config)
         self._agent_name = self.__class__.__name__
+        self._deps: Any = deps
         if self._budget is not None:
             self._budget._consume_callback = self._make_budget_consume_callback()
         if self._budget is not None and self._budget.per is not None and self._budget_store is None:
@@ -1726,11 +1730,30 @@ class Agent:
         )
 
     def _execute_tool(self, name: str, arguments: dict[str, Any]) -> str:
+        from syrin.run_context import RunContext
+
         for spec in self._tools:
             if spec.name == name:
                 try:
-                    result = spec.func(**arguments)
+                    if spec.inject_run_context:
+                        if self._deps is None:
+                            raise ToolExecutionError(
+                                f"Tool {name!r} expects ctx: RunContext but Agent has no deps. "
+                                "Pass deps=MyDeps(...) to Agent."
+                            )
+                        ctx = RunContext(
+                            deps=self._deps,
+                            agent_name=self._agent_name,
+                            thread_id=getattr(self, "_thread_id", None),
+                            budget_state=self.budget_state,
+                            retry_count=0,
+                        )
+                        result = spec.func(ctx=ctx, **arguments)
+                    else:
+                        result = spec.func(**arguments)
                     return str(result) if result is not None else ""
+                except ToolExecutionError:
+                    raise
                 except Exception as e:
                     raise ToolExecutionError(f"Tool {name!r} failed: {e}") from e
         raise ToolExecutionError(f"Unknown tool: {name!r}")

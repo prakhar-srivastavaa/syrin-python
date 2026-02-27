@@ -11,6 +11,48 @@ Unlike static pipelines where you define the execution order upfront, DynamicPip
 
 This approach is more deterministic than tool-based agent spawning because it doesn't rely on the LLM to use a tool - it simply returns a structured plan.
 
+## Flow Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ pipeline.run(task)                                                   │
+└─────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+                    DYNAMIC_PIPELINE_START
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│ Step 1: Planning — Orchestrator LLM generates plan                   │
+│   → [{"type": "researcher", "task": "..."}, ...]                     │
+└─────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+                    DYNAMIC_PIPELINE_PLAN
+                                    │
+                                    ▼
+                    DYNAMIC_PIPELINE_EXECUTE
+                                    │
+            ┌───────────────────────┴───────────────────────┐
+            │ parallel: asyncio.gather                       │ sequential: for each
+            ▼                                               ▼
+   DYNAMIC_PIPELINE_AGENT_SPAWN                   DYNAMIC_PIPELINE_AGENT_SPAWN
+            │                                               │
+            ▼                                               ▼
+   agent.response(task)                             agent.response(task + prev_output)
+            │                                               │
+            ▼                                               ▼
+   DYNAMIC_PIPELINE_AGENT_COMPLETE                 DYNAMIC_PIPELINE_AGENT_COMPLETE
+            │                                               │
+            └───────────────────────┬───────────────────────┘
+                                    │
+                                    ▼
+                    DYNAMIC_PIPELINE_END
+                                    │
+                                    ▼
+                         Response(content=...)
+```
+
 ## Key Features
 
 - **LLM-driven orchestration**: The LLM decides which agents are needed and what they should do
@@ -23,9 +65,9 @@ This approach is more deterministic than tool-based agent spawning because it do
 ## Basic Usage
 
 ```python
-from Syrin import Agent, Model
-from Syrin.agent.multi_agent import DynamicPipeline
-from Syrin.enums import Hook
+from syrin import Agent, Model
+from syrin.agent.multi_agent import DynamicPipeline
+from syrin.enums import Hook
 
 # Define specialized agents
 class ResearcherAgent(Agent):
@@ -84,7 +126,7 @@ DynamicPipeline emits hooks at every lifecycle stage:
 ### Registering Hooks
 
 ```python
-from Syrin.enums import Hook
+from syrin.enums import Hook
 
 # Simple handler
 pipeline.events.on(Hook.DYNAMIC_PIPELINE_AGENT_SPAWN, 
@@ -160,8 +202,8 @@ result = pipeline.run("Complex task", mode="sequential")
 - **`max_parallel`**: Maximum agents to spawn in parallel (default: 10)
 
 ```python
-from Syrin import Budget
-from Syrin.enums import DocFormat
+from syrin import Budget
+from syrin.enums import DocFormat
 
 pipeline = DynamicPipeline(
     agents=[ResearcherAgent, WriterAgent],
@@ -176,9 +218,9 @@ pipeline = DynamicPipeline(
 
 ```python
 """Market research with full observability."""
-from Syrin import Agent, Model
-from Syrin.agent.multi_agent import DynamicPipeline
-from Syrin.enums import Hook
+from syrin import Agent, Model
+from syrin.agent.multi_agent import DynamicPipeline
+from syrin.enums import Hook
 
 # Define agents
 class TechResearchAgent(Agent):
@@ -308,4 +350,4 @@ pipeline.events.after(Hook.DYNAMIC_PIPELINE_AGENT_COMPLETE, track_cost)
 - `examples/07_multi_agent/dynamic_pipeline_basic.py` - Minimal dynamic pipeline
 - `examples/07_multi_agent/dynamic_pipeline_full.py` - Full demo with multiple agents
 - `tests/unit/agent/test_multi_agent.py` - Comprehensive test suite
-- `Syrin.enums.Hook` - All available hooks
+- `syrin.enums.Hook` - All available hooks

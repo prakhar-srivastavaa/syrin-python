@@ -270,6 +270,7 @@ from syrin.response import (
     Response,
     TokenReport,
 )
+from syrin.run_context import RunContext
 from syrin.task import task
 from syrin.threshold import (
     ContextThreshold,
@@ -471,6 +472,7 @@ __all__ = [
     "tool",
     "ToolSpec",
     "task",
+    "RunContext",
     # =============================================================================
     # Enums
     # =============================================================================

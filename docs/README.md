@@ -69,6 +69,7 @@ Learn by doing! Pick a use case that matches what you want to build:
 - Performance tips
 
 **[Advanced Topics](advanced-topics.md)** - Deep dives into production features
+- [Dependency Injection](dependency-injection.md) — Tools receive ctx: RunContext[Deps] for testable, multi-tenant agents
 - Lifecycle hooks
 - [Event Bus](event-bus.md) — Typed domain events for metrics and observability
 - Observability & tracing
