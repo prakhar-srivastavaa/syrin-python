@@ -59,11 +59,12 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/syrin"]
-force-include = { "src/syrin/serve/playground_static" = "syrin/serve/playground_static" }
 
 [tool.hatch.build.targets.sdist]
-packages = ["src/syrin"]
-force-include = { "src/syrin/serve/playground_static" = "syrin/serve/playground_static" }
+# Preserve src/ so wheel-from-sdist finds src/syrin (wheel expects packages path).
+only-include = ["src"]
+# Ensure playground_static (built by CI before build) is in sdist.
+force-include = { "src/syrin/serve/playground_static" = "src/syrin/serve/playground_static" }
 
 [tool.ruff]
 target-version = "py310"
