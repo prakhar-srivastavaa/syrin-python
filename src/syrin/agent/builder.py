@@ -33,7 +33,8 @@ class AgentBuilder:
             model: LLM to use (required).
         """
         self._model = model
-        self._system_prompt: str = ""
+        self._system_prompt: str | Any = ""
+        self._prompt_vars: dict[str, Any] = {}
         self._tools: list[Any] = []
         self._budget: Budget | None = None
         self._output: Any = None
@@ -51,9 +52,14 @@ class AgentBuilder:
         self._tracer: Any = None
         self._bus: Any = None
 
-    def with_system_prompt(self, prompt: str) -> AgentBuilder:
-        """Set system prompt."""
-        self._system_prompt = prompt or ""
+    def with_system_prompt(self, prompt: str | Any) -> AgentBuilder:
+        """Set system prompt (str, Prompt from @prompt, or callable)."""
+        self._system_prompt = prompt if prompt is not None else ""
+        return self
+
+    def with_prompt_vars(self, vars: dict[str, Any]) -> AgentBuilder:
+        """Set prompt vars for dynamic system prompts."""
+        self._prompt_vars = dict(vars) if vars else {}
         return self
 
     def with_tools(self, tools: list[Any]) -> AgentBuilder:
@@ -139,6 +145,7 @@ class AgentBuilder:
         return Agent(
             model=self._model,
             system_prompt=self._system_prompt,
+            prompt_vars=self._prompt_vars,
             tools=self._tools,
             budget=self._budget,
             output=self._output,

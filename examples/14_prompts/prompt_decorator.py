@@ -67,11 +67,12 @@ class Writer(Agent):
     system_prompt = role_prompt(role="technical writer")
 
 
-# 4. Dynamic prompt at runtime
+# 4. Dynamic prompt at runtime (pass prompt_vars; Prompt resolves per call)
 for domain in ["Python", "JavaScript", "Rust"]:
     agent = Agent(
         model=almock,
-        system_prompt=expert_prompt(domain=domain, tone="concise"),
+        system_prompt=expert_prompt,
+        prompt_vars={"domain": domain, "tone": "concise"},
     )
     result = agent.response(f"What is {domain} best for?")
     print(f"{domain}: {result.content[:50]}...")

@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import AsyncIterator, Callable, Iterator
+from contextlib import suppress
 from typing import TYPE_CHECKING, Any, TextIO, cast
 
 if TYPE_CHECKING:
@@ -76,6 +77,7 @@ from syrin.observability import (
     get_tracer,
 )
 from syrin.output import Output
+from syrin.prompt import make_prompt_context
 from syrin.providers.base import Provider
 from syrin.ratelimit import (
     APIRateLimit,
@@ -139,6 +141,26 @@ def _merge_class_attrs(mro: tuple[type, ...], name: str, merge: bool) -> Any:
     return _UNSET
 
 
+def _collect_system_prompt_method(cls: type) -> Any:
+    """Find @system_prompt-decorated method in MRO. First (subclass) wins. Returns None if none."""
+    for c in cls.__mro__:
+        if c is object:
+            continue
+        for _attr_name, val in c.__dict__.items():
+            if callable(val) and getattr(val, "_syrin_system_prompt", False):
+                return val
+    return None
+
+
+def _get_system_prompt_method_names(cls: type) -> list[str]:
+    """Return names of @system_prompt-decorated methods on cls itself (not inherited)."""
+    names: list[str] = []
+    for attr_name, val in cls.__dict__.items():
+        if callable(val) and getattr(val, "_syrin_system_prompt", False):
+            names.append(attr_name)
+    return names
+
+
 def _collect_class_tools(cls: type) -> list[ToolSpec]:
     """Collect ToolSpec from @tool-decorated class methods (MRO order, subclass overrides)."""
     from syrin.tool import ToolSpec as TS
@@ -153,6 +175,20 @@ def _collect_class_tools(cls: type) -> list[ToolSpec]:
                 seen.add(val.name)
                 result.append(val)
     return result
+
+
+def _is_prompt(x: Any) -> bool:
+    """Return True if x is a Prompt (from @prompt)."""
+    return hasattr(x, "variables") and callable(x)
+
+
+def _is_valid_system_prompt(x: Any) -> bool:
+    """Return True if x is valid system_prompt: str, Prompt, or callable."""
+    if isinstance(x, str):
+        return True
+    if _is_prompt(x):
+        return True
+    return callable(x) and not isinstance(x, type)
 
 
 def _is_mcp(x: Any) -> bool:
@@ -307,7 +343,9 @@ class Agent(metaclass=_AgentMeta):
     """
 
     _Syrin_default_model: Model | ModelConfig | None = None
-    _Syrin_default_system_prompt: str = ""
+    _Syrin_default_system_prompt: str | Any = ""
+    _Syrin_system_prompt_method: Any = None  # @system_prompt method if present
+    _Syrin_default_prompt_vars: dict[str, Any] = ()  # type: ignore[assignment]
     _Syrin_default_tools: list[ToolSpec] = []
     _Syrin_default_budget: Budget | None = None
     _Syrin_default_guardrails: list[Guardrail] = []
@@ -325,7 +363,24 @@ class Agent(metaclass=_AgentMeta):
         default_name = _merge_class_attrs(mro, "name", merge=False)
         default_description = _merge_class_attrs(mro, "description", merge=False)
         cls._Syrin_default_model = default_model if default_model is not _UNSET else None
+        method_names = _get_system_prompt_method_names(cls)
+        if len(method_names) > 1:
+            names_str = ", ".join(f"'{n}'" for n in method_names)
+            raise ValueError(
+                f"Agent class {cls.__name__!r} has multiple @system_prompt methods "
+                f"(only one allowed): {names_str}. Remove the extras or merge them "
+                "into a single @system_prompt method."
+            )
+        cls._Syrin_system_prompt_method = _collect_system_prompt_method(cls)
         cls._Syrin_default_system_prompt = default_prompt if default_prompt is not _UNSET else ""
+        merged_prompt_vars: dict[str, Any] = {}
+        for c in mro:
+            if c is object:
+                continue
+            pv = c.__dict__.get("prompt_vars", _UNSET)
+            if pv is not _UNSET and isinstance(pv, dict):
+                merged_prompt_vars = {**merged_prompt_vars, **pv}
+        cls._Syrin_default_prompt_vars = merged_prompt_vars
         # Merge: class @tool methods first, then explicit tools. Explicit overrides by name.
         # MCP and MCPClient kept for init-time expansion; MCP also for co-location.
         class_tools = _collect_class_tools(cls)
@@ -383,6 +438,8 @@ class Agent(metaclass=_AgentMeta):
         deps: Any = None,
         name: str | None = _UNSET,
         description: str | None = _UNSET,
+        prompt_vars: dict[str, Any] | None = None,
+        inject_builtins: bool = True,
     ) -> None:
         """Create an agent with model, prompt, tools, and optional config.
 
@@ -503,10 +560,15 @@ class Agent(metaclass=_AgentMeta):
                 f"max_tool_iterations must be >= 1, got {max_tool_iterations}. "
                 "Use at least 1 to allow at least one LLM call."
             )
-        if system_prompt is not None and not isinstance(system_prompt, str):
+        has_system_prompt_method = getattr(cls, "_Syrin_system_prompt_method", None)
+        if (
+            has_system_prompt_method is None
+            and system_prompt is not None
+            and not _is_valid_system_prompt(system_prompt)
+        ):
             raise TypeError(
-                f"system_prompt must be str, got {type(system_prompt).__name__}. "
-                "Example: system_prompt='You are a helpful assistant.'"
+                f"system_prompt must be str, Prompt, or Callable[[PromptContext], str], "
+                f"got {type(system_prompt).__name__}. Example: system_prompt='You are helpful.'"
             )
         if tools is not None and not isinstance(tools, list):
             raise TypeError(
@@ -553,7 +615,16 @@ class Agent(metaclass=_AgentMeta):
         if output is not None and self._model_config is not None and output.type is not None:
             self._model_config.output = output.type
 
-        self._system_prompt = system_prompt or ""
+        self._system_prompt_source = (
+            system_prompt if system_prompt is not _UNSET and system_prompt is not None else ""
+        )
+        if self._system_prompt_source is _UNSET:
+            self._system_prompt_source = ""
+        class_pv = getattr(cls, "_Syrin_default_prompt_vars", None) or {}
+        instance_pv = dict(prompt_vars or {})
+        self._prompt_vars = {**class_pv, **instance_pv}
+        self._inject_builtins = inject_builtins
+        self._call_prompt_vars: dict[str, Any] | None = None
         self._tools = tools_final if tools_final else []
         self._mcp_instances: list[Any] = mcp_instances
         self._max_tool_iterations = max_tool_iterations
@@ -1800,6 +1871,96 @@ class Agent(metaclass=_AgentMeta):
             [self.spawn(ac, task=t) for ac, t in agents],  # task given → Response
         )
 
+    @property
+    def _system_prompt(self) -> str | Any:
+        """Raw system prompt source (str, Prompt, or callable). For introspection.
+
+        Resolved prompt at runtime is built by _resolve_system_prompt.
+        """
+        method = getattr(self.__class__, "_Syrin_system_prompt_method", None)
+        return method if method is not None else self._system_prompt_source
+
+    def effective_prompt_vars(self, call_vars: dict[str, Any] | None = None) -> dict[str, Any]:
+        """Return merged prompt_vars: class + instance + call. For introspection."""
+        class_pv = getattr(self.__class__, "_Syrin_default_prompt_vars", None) or {}
+        merged = {**class_pv, **self._prompt_vars}
+        if call_vars:
+            merged = {**merged, **call_vars}
+        if self._inject_builtins:
+            builtins = self.get_prompt_builtins()
+            for k, v in builtins.items():
+                if k not in merged:
+                    merged[k] = v
+        return merged
+
+    def get_prompt_builtins(self) -> dict[str, Any]:
+        """Return built-in vars (date, agent_id, thread_id) that would be injected."""
+        from datetime import datetime, timezone
+
+        agent_id = getattr(self, "_agent_name", None) or self.__class__.__name__
+        thread_id = getattr(self, "_thread_id", None)
+        return {
+            "date": datetime.now(timezone.utc),
+            "agent_id": agent_id,
+            "thread_id": thread_id,
+        }
+
+    def _resolve_system_prompt(
+        self,
+        prompt_vars: dict[str, Any],
+        ctx: Any,
+    ) -> str:
+        """Resolve system prompt from source (str, Prompt, callable, or @system_prompt method).
+
+        Override this in subclasses for custom resolution.
+        """
+        import inspect
+
+        source = getattr(self.__class__, "_Syrin_system_prompt_method", None)
+        if source is None:
+            source = self._system_prompt_source
+        if source is None or source == "":
+            return ""
+        if isinstance(source, str):
+            return source
+        if _is_prompt(source):
+            var_names = [v.name for v in source.variables]
+            filtered = {k: v for k, v in prompt_vars.items() if k in var_names}
+            try:
+                return str(source(**filtered))
+            except (ValueError, TypeError) as e:
+                raise ValueError(
+                    f"Prompt {getattr(source, 'name', 'unknown')} missing required params. "
+                    f"Pass via Agent(prompt_vars={{...}}) or response(..., prompt_vars={{...}}). {e}"
+                ) from e
+        if callable(source):
+            sig = inspect.signature(source)
+            params = list(sig.parameters.keys())
+            bound = source
+            first_param = params[0] if params else None
+            if first_param == "self" and hasattr(source, "__get__"):
+                with suppress(AttributeError, TypeError):
+                    bound = source.__get__(self, type(self))
+            if len(params) >= 2 and params[1] == "ctx":
+                result = bound(ctx)
+            elif len(params) == 1:
+                if params[0] == "ctx":
+                    result = bound(ctx)
+                elif params[0] == "self":
+                    result = bound()
+                else:
+                    filtered = {k: v for k, v in prompt_vars.items() if k in params}
+                    result = bound(**filtered)
+            else:
+                filtered = {k: v for k, v in prompt_vars.items() if k in params}
+                result = bound(**filtered)
+            if not isinstance(result, str):
+                raise TypeError(
+                    f"System prompt callable must return str, got {type(result).__name__}"
+                )
+            return result
+        return ""
+
     def _build_messages(self, user_input: str) -> list[Message]:
         def get_budget() -> Any:
             model_for_context = self._model if self._model is not None else None
@@ -1810,9 +1971,30 @@ class Agent(metaclass=_AgentMeta):
                 return self._context.context.get_budget(model_for_context)
             return Context().get_budget(model_for_context)
 
+        call_pv = getattr(self, "_call_prompt_vars", None) or {}
+        effective_vars = self.effective_prompt_vars(call_vars=call_pv)
+        thread_id = getattr(self, "_thread_id", None)
+        ctx = make_prompt_context(self, thread_id=thread_id, inject_builtins=self._inject_builtins)
+        emit = getattr(self, "_emit_event", None)
+        if emit:
+            emit(
+                Hook.SYSTEM_PROMPT_BEFORE_RESOLVE,
+                EventContext(
+                    prompt_vars=effective_vars,
+                    source=getattr(self.__class__, "_Syrin_system_prompt_method", None)
+                    or self._system_prompt_source,
+                ),
+            )
+        resolved = self._resolve_system_prompt(effective_vars, ctx)
+        if emit:
+            emit(
+                Hook.SYSTEM_PROMPT_AFTER_RESOLVE,
+                EventContext(resolved=resolved),
+            )
+
         return build_messages_for_llm(
             user_input,
-            system_prompt=self._system_prompt or "",
+            system_prompt=resolved,
             tools=self._tools,
             conversation_memory=self._conversation_memory,
             memory_backend=self._memory_backend,
@@ -2373,7 +2555,12 @@ class Agent(metaclass=_AgentMeta):
         except Exception as e:
             raise ToolExecutionError(f"Streaming failed: {e}") from e
 
-    def response(self, user_input: str, context: Context | None = None) -> Response[str]:
+    def response(
+        self,
+        user_input: str,
+        context: Context | None = None,
+        prompt_vars: dict[str, Any] | None = None,
+    ) -> Response[str]:
         """Run the agent: LLM completion + tool loop. Synchronous.
 
         Why: Main entry point for getting a reply. Runs the configured loop
@@ -2385,6 +2572,8 @@ class Agent(metaclass=_AgentMeta):
             context: Optional Context for this call only. When set, overrides the agent's
                 default context (max_tokens, reserve, thresholds, budget). The Context
                 used for this call is on ``result.context``; per-call stats on ``result.context_stats``.
+            prompt_vars: Optional per-call prompt vars for dynamic system prompts.
+                Overrides instance prompt_vars for this call only.
 
         Returns:
             Response with content, cost, tokens, model, stop_reason, structured
@@ -2396,6 +2585,7 @@ class Agent(metaclass=_AgentMeta):
         """
         _validate_user_input(user_input, "response")
         self._call_context = context
+        self._call_prompt_vars = dict(prompt_vars) if prompt_vars else None
         try:
             self._run_report = AgentReport()
             if self._budget is not None or self._token_limits is not None:
@@ -2412,8 +2602,14 @@ class Agent(metaclass=_AgentMeta):
                 raise
         finally:
             self._call_context = None
+            self._call_prompt_vars = None
 
-    async def arun(self, user_input: str, context: Context | None = None) -> Response[str]:
+    async def arun(
+        self,
+        user_input: str,
+        context: Context | None = None,
+        prompt_vars: dict[str, Any] | None = None,
+    ) -> Response[str]:
         """Run the agent asynchronously. Same as response() but non-blocking.
 
         Why: Use in async apps to avoid blocking the event loop. Same behavior
@@ -2424,6 +2620,7 @@ class Agent(metaclass=_AgentMeta):
             context: Optional Context for this call only (see response()). Overrides
                 the agent's context for this call. Used context is on ``result.context``;
                 per-call stats on ``result.context_stats``.
+            prompt_vars: Optional per-call prompt vars for dynamic system prompts.
 
         Returns:
             Response (same as response()).
@@ -2433,6 +2630,7 @@ class Agent(metaclass=_AgentMeta):
         """
         _validate_user_input(user_input, "arun")
         self._call_context = context
+        self._call_prompt_vars = dict(prompt_vars) if prompt_vars else None
         try:
             self._run_report = AgentReport()
             if self._budget is not None or self._token_limits is not None:
@@ -2449,8 +2647,14 @@ class Agent(metaclass=_AgentMeta):
                 raise
         finally:
             self._call_context = None
+            self._call_prompt_vars = None
 
-    def stream(self, user_input: str, context: Context | None = None) -> Iterator[StreamChunk]:
+    def stream(
+        self,
+        user_input: str,
+        context: Context | None = None,
+        prompt_vars: dict[str, Any] | None = None,
+    ) -> Iterator[StreamChunk]:
         """Stream response text as it arrives. Synchronous iterator.
 
         Why: Show tokens in real time (e.g. ChatGPT-style UI). No tool-call loop;
@@ -2459,6 +2663,7 @@ class Agent(metaclass=_AgentMeta):
         Args:
             user_input: User message.
             context: Optional Context for this call only (see response()). Overrides agent's context.
+            prompt_vars: Optional per-call prompt vars for dynamic system prompts.
 
         Yields:
             StreamChunk with text (delta), accumulated_text, cost_so_far,
@@ -2474,6 +2679,7 @@ class Agent(metaclass=_AgentMeta):
         """
         _validate_user_input(user_input, "stream")
         self._call_context = context
+        self._call_prompt_vars = dict(prompt_vars) if prompt_vars else None
         try:
             if self._budget is not None or self._token_limits is not None:
                 self._budget_tracker.reset_run()
@@ -2482,9 +2688,13 @@ class Agent(metaclass=_AgentMeta):
             yield from self._stream_response(user_input)
         finally:
             self._call_context = None
+            self._call_prompt_vars = None
 
     async def astream(
-        self, user_input: str, context: Context | None = None
+        self,
+        user_input: str,
+        context: Context | None = None,
+        prompt_vars: dict[str, Any] | None = None,
     ) -> AsyncIterator[StreamChunk]:
         """Stream response text as it arrives. Async iterator.
 
@@ -2493,6 +2703,7 @@ class Agent(metaclass=_AgentMeta):
         Args:
             user_input: User message.
             context: Optional Context for this call only (see response()). Overrides agent's context.
+            prompt_vars: Optional per-call prompt vars for dynamic system prompts.
 
         Note:
             Astream does not return a Response; for context stats for this run,
@@ -2504,6 +2715,7 @@ class Agent(metaclass=_AgentMeta):
         """
         _validate_user_input(user_input, "astream")
         self._call_context = context
+        self._call_prompt_vars = dict(prompt_vars) if prompt_vars else None
         try:
             if self._budget is not None or self._token_limits is not None:
                 self._budget_tracker.reset_run()
@@ -2569,6 +2781,7 @@ class Agent(metaclass=_AgentMeta):
                 raise ToolExecutionError(f"Streaming failed: {e}") from e
         finally:
             self._call_context = None
+            self._call_prompt_vars = None
 
     def as_router(self, config: Any | None = None, **config_kwargs: Any) -> Any:
         """Return a FastAPI APIRouter for this agent. Mount on your app.

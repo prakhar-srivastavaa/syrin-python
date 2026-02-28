@@ -482,11 +482,36 @@ def validated(
     return decorator
 
 
+def system_prompt(func: Callable[..., str]) -> Callable[..., str]:
+    """Mark a method as the agent's system prompt. One per agent class.
+
+    Use inside an Agent subclass to encapsulate the system prompt.
+
+    Example:
+        class MyAgent(syrin.Agent):
+            @syrin.system_prompt
+            def my_prompt(self, user_name: str = "") -> str:
+                return f"You assist {user_name or 'the user'}."
+
+    Supports signatures: (self), (self, ctx: PromptContext), (self, **kwargs).
+    """
+    func._syrin_system_prompt = True  # type: ignore[attr-defined]
+    return func
+
+
+from syrin.prompt.context import (
+    PromptContext,
+    make_prompt_context,
+)
+
 __all__ = [
     "Prompt",
     "PromptVariable",
     "PromptValidation",
     "PromptVersion",
+    "PromptContext",
+    "make_prompt_context",
     "prompt",
+    "system_prompt",
     "validated",
 ]

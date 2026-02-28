@@ -259,7 +259,14 @@ from syrin.observability import (
 )
 from syrin.output import Output
 from syrin.pipe import Pipe, pipe
-from syrin.prompt import Prompt, prompt, validated
+from syrin.prompt import (
+    Prompt,
+    PromptContext,
+    make_prompt_context,
+    prompt,
+    system_prompt,
+    validated,
+)
 from syrin.response import (
     AgentReport,
     BudgetStatus,
@@ -302,6 +309,7 @@ def run(
     system_prompt: str | None = None,
     tools: list[ToolSpec] | None = None,
     budget: Budget | None = None,
+    prompt_vars: dict[str, Any] | None = None,
     **kwargs: Any,
 ) -> Response[str]:
     """Run a one-shot completion with an agent.
@@ -364,7 +372,7 @@ def run(
         budget=budget,
         **kwargs,
     )
-    return agent.response(input)
+    return agent.response(input, prompt_vars=prompt_vars)
 
 
 __all__ = [
@@ -446,8 +454,11 @@ __all__ = [
     "Pipe",
     "pipe",
     "prompt",
+    "system_prompt",
     "validated",
     "Prompt",
+    "PromptContext",
+    "make_prompt_context",
     "Response",
     "Output",
     "ValidationPipeline",

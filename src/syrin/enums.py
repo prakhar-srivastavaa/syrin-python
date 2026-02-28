@@ -329,6 +329,9 @@ class Hook(StrEnum):
     HITL_APPROVED = "hitl.approved"
     HITL_REJECTED = "hitl.rejected"
 
+    SYSTEM_PROMPT_BEFORE_RESOLVE = "system_prompt.before_resolve"
+    SYSTEM_PROMPT_AFTER_RESOLVE = "system_prompt.after_resolve"
+
     DYNAMIC_PIPELINE_START = "dynamic.pipeline.start"
     DYNAMIC_PIPELINE_PLAN = "dynamic.pipeline.plan"
     DYNAMIC_PIPELINE_EXECUTE = "dynamic.pipeline.execute"

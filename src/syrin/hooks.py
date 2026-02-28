@@ -533,6 +533,28 @@ HOOK_SCHEMAS: dict[Hook, HookContextSchema] = {
             "source": "persistent_memory",
         },
     ),
+    Hook.SYSTEM_PROMPT_BEFORE_RESOLVE: HookContextSchema(
+        hook=Hook.SYSTEM_PROMPT_BEFORE_RESOLVE,
+        description="Before system prompt resolution (dynamic prompts)",
+        fields={
+            "prompt_vars": dict,
+            "source": object,
+        },
+        example={
+            "prompt_vars": {"user_name": "Alice", "date": "2025-02-28"},
+            "source": "<Prompt or callable>",
+        },
+    ),
+    Hook.SYSTEM_PROMPT_AFTER_RESOLVE: HookContextSchema(
+        hook=Hook.SYSTEM_PROMPT_AFTER_RESOLVE,
+        description="After system prompt resolved to string",
+        fields={
+            "resolved": str,
+        },
+        example={
+            "resolved": "You assist Alice. Be professional.",
+        },
+    ),
 }
 
 
