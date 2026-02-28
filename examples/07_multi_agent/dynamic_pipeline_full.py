@@ -11,7 +11,8 @@ For key-less runs: set USE_ALMOCK=1 in .env (agents may not spawn; mock returns 
 
 Run from repo root:
   python -m examples.07_multi_agent.dynamic_pipeline_full
-  python examples/07_multi_agent/dynamic_pipeline_full.py
+Visit: http://localhost:8000/playground
+Requires: uv pip install syrin[serve]
 """
 
 import os
@@ -70,6 +71,7 @@ def export_report(title: str, content: str) -> str:
 
 class TechResearchAgent(Agent):
     name = "tech_researcher"
+    description = "Researches technology trends"
     model = MODEL
     system_prompt = "You research technology trends."
     tools = [search_web, analyze_data]
@@ -77,6 +79,7 @@ class TechResearchAgent(Agent):
 
 class FinanceResearchAgent(Agent):
     name = "finance_researcher"
+    description = "Researches financial markets"
     model = MODEL
     system_prompt = "You research financial markets."
     tools = [fetch_financial, analyze_data]
@@ -84,6 +87,7 @@ class FinanceResearchAgent(Agent):
 
 class HealthcareResearchAgent(Agent):
     name = "healthcare_researcher"
+    description = "Researches healthcare industry"
     model = MODEL
     system_prompt = "You research healthcare industry."
     tools = [search_web, analyze_data]
@@ -91,6 +95,7 @@ class HealthcareResearchAgent(Agent):
 
 class SummarizerAgent(Agent):
     name = "summarizer"
+    description = "Synthesizes research into clear reports"
     model = MODEL
     system_prompt = "You synthesize research into a clear report."
     tools = [generate_chart, export_report]
@@ -134,11 +139,15 @@ pipeline.events.on(
 pipeline.events.on(
     Hook.DYNAMIC_PIPELINE_END, lambda ctx: debugger.log(Hook.DYNAMIC_PIPELINE_END, ctx)
 )
-task = "Conduct market research on AI in Healthcare. Provide a consolidated report."
-start = time.time()
-result = pipeline.run(task, mode="parallel")
-elapsed = time.time() - start
-debugger.print_summary()
-print(f"\nExecution time: {elapsed:.2f}s")
-print(f"Total cost: ${result.cost:.4f}")
-print(f"Preview: {result.content[:300]}...")
+
+if __name__ == "__main__":
+    task = "Conduct market research on AI in Healthcare. Provide a consolidated report."
+    start = time.time()
+    result = pipeline.run(task, mode="parallel")
+    elapsed = time.time() - start
+    debugger.print_summary()
+    print(f"\nExecution time: {elapsed:.2f}s")
+    print(f"Total cost: ${result.cost:.4f}")
+    print(f"Preview: {result.content[:300]}...")
+    print("Serving at http://localhost:8000/playground")
+    pipeline.serve(port=8000, enable_playground=True, debug=True)

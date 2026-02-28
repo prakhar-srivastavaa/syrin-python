@@ -12,7 +12,15 @@ from syrin.enums import CircuitState
 
 @dataclass
 class CircuitBreakerState:
-    """Current state of the circuit breaker."""
+    """Current state of the circuit breaker.
+
+    Attributes:
+        state: CLOSED, OPEN, or HALF_OPEN.
+        failures: Number of consecutive failures.
+        last_failure_time: Timestamp of last failure.
+        last_success_time: Timestamp of last success.
+        half_open_attempts: Attempts in HALF_OPEN.
+    """
 
     state: CircuitState
     failures: int

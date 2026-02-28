@@ -32,7 +32,10 @@ T = TypeVar("T", bound="DomainEvent")
 
 @dataclass(frozen=True)
 class DomainEvent:
-    """Base for domain events. All domain events are immutable dataclasses."""
+    """Base for domain events. All domain events are immutable dataclasses.
+
+    Use EventBus to subscribe and emit. Pass bus=EventBus() to Agent.
+    """
 
 
 @dataclass(frozen=True)

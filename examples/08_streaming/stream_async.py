@@ -5,6 +5,8 @@ Demonstrates:
 - async for chunk in agent.astream(...)
 
 Run: python -m examples.08_streaming.stream_async
+Visit: http://localhost:8000/playground
+Requires: uv pip install syrin[serve]
 """
 
 import asyncio
@@ -18,11 +20,14 @@ from syrin import Agent
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 
-async def _run() -> None:
-    class AsyncStreamAgent(Agent):
-        model = almock
-        system_prompt = "You are a helpful assistant."
+class AsyncStreamAgent(Agent):
+    name = "async-stream-agent"
+    description = "Async token-by-token streaming"
+    model = almock
+    system_prompt = "You are a helpful assistant."
 
+
+async def _run() -> None:
     agent = AsyncStreamAgent()
     full_text = ""
     async for chunk in agent.astream("Explain machine learning in one sentence"):
@@ -31,4 +36,8 @@ async def _run() -> None:
     print(f"Length: {len(full_text)}")
 
 
-asyncio.run(_run())
+if __name__ == "__main__":
+    asyncio.run(_run())
+    agent = AsyncStreamAgent()
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

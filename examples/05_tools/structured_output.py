@@ -8,6 +8,8 @@ Demonstrates:
 - Validation hooks (OUTPUT_VALIDATION_START, etc.)
 
 Run: python -m examples.05_tools.structured_output
+Visit: http://localhost:8000/playground
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -164,3 +166,17 @@ agent = Agent(
 )
 result = agent.response("Create user: John, john@company.com, admin")
 print(f"is_valid: {result.structured.is_valid}")
+
+
+class StructuredOutputAgent(Agent):
+    name = "structured-output"
+    description = "Agent with structured output (UserInfo extraction)"
+    model = almock
+    system_prompt = "You extract user information from text. Return valid UserInfo."
+    output = Output(UserInfo, validation_retries=3)
+
+
+if __name__ == "__main__":
+    agent = StructuredOutputAgent()
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

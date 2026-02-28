@@ -50,6 +50,17 @@ class PostgresBackend:
         table: str = "memories",
         vector_size: int = 0,
     ) -> None:
+        """Initialize Postgres backend.
+
+        Args:
+            host: PostgreSQL host.
+            port: PostgreSQL port.
+            database: Database name.
+            user: Database user.
+            password: Database password.
+            table: Table name for memories.
+            vector_size: If > 0, enable pgvector; requires pgvector extension.
+        """
         if not POSTGRES_AVAILABLE:
             raise ImportError(
                 "psycopg2-binary is not installed. Install with: pip install psycopg2-binary"

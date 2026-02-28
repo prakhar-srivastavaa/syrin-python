@@ -13,7 +13,14 @@ from syrin.threshold import ThresholdContext
 
 @dataclass
 class ContextPayload:
-    """The prepared context for an LLM call."""
+    """The prepared context for an LLM call.
+
+    Attributes:
+        messages: Messages ready for the model.
+        system_prompt: System prompt.
+        tools: Tool definitions.
+        tokens: Total token count.
+    """
 
     messages: list[dict[str, Any]]
     system_prompt: str

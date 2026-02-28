@@ -8,6 +8,8 @@ Demonstrates:
 - Thread-safe configuration
 
 Run: python -m examples.15_advanced.config
+Visit: http://localhost:8000/playground
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -78,3 +80,17 @@ for i in range(3):
 for t in threads:
     t.join()
 configure(trace=False)
+
+if __name__ == "__main__":
+    from examples.models.models import almock
+    from syrin import Agent
+
+    class ConfigDemoAgent(Agent):
+        name = "config-demo"
+        description = "Agent with global config demo"
+        model = almock
+        system_prompt = "You are helpful."
+
+    agent = ConfigDemoAgent()
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

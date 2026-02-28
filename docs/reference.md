@@ -70,6 +70,8 @@ class MyAgent(Agent):
     tools = [my_tool]
 ```
 
+**Group tools in MCP, use MCP in agents:** Define an MCP with `@tool`, add to `tools=[ProductMCP()]`. See [MCP](mcp.md).
+
 **Supported Types:**
 - `str` - Text
 - `int` - Whole numbers
@@ -154,6 +156,44 @@ response.budget_remaining # Budget left
 response.budget_used      # Budget used
 response.raw             # Raw API response
 ```
+
+---
+
+## Serving — HTTP, CLI, STDIO
+
+Serve your agent via HTTP, CLI, or STDIO:
+
+```python
+from syrin.enums import ServeProtocol
+
+agent.serve(port=8000)  # HTTP: POST /chat, /stream, GET /health, etc.
+agent.serve(protocol=ServeProtocol.CLI)  # CLI: terminal REPL
+agent.serve(protocol=ServeProtocol.STDIO)  # STDIO: JSON lines on stdin/stdout
+agent.serve(port=8000, enable_playground=True)  # Web playground at /playground
+```
+
+**Requires:** `uv pip install syrin[serve]`. See [Serving](serving.md).
+
+---
+
+## MCP — Group Tools, Use in Agents
+
+Group related tools in an MCP and add MCP to your agent's tools:
+
+```python
+from syrin import MCP, Agent, tool
+
+class ProductMCP(MCP):
+    @tool
+    def search_products(self, query: str) -> str:
+        """Search products."""
+        return f"Results: {query}"
+
+class ProductAgent(Agent):
+    tools = [ProductMCP()]  # MCP tools become agent tools
+```
+
+When serving, `/mcp` is auto-mounted alongside `/chat`. See [MCP](mcp.md).
 
 ---
 

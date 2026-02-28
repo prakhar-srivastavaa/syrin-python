@@ -69,7 +69,11 @@ class AgentRouter(Servable):
         from fastapi import APIRouter
 
         from syrin.serve.config import ServeConfig
-        from syrin.serve.discovery import build_agent_card_json, should_enable_discovery
+        from syrin.serve.discovery import (
+            AGENT_CARD_PATH,
+            build_agent_card_json,
+            should_enable_discovery,
+        )
         from syrin.serve.http import build_router
 
         cfg = self._config or ServeConfig()
@@ -88,7 +92,7 @@ class AgentRouter(Servable):
             )
             router = build_router(raw, sub_config)
             main.include_router(router)
-        # Root registry at /.well-known/agent.json — lists all agents when discovery enabled
+        # Root registry at /.well-known/agent-card.json — lists all agents when discovery enabled
         if cfg.enable_discovery is not False:
             host = cfg.host or "0.0.0.0"
             port = cfg.port or 8000
@@ -100,7 +104,7 @@ class AgentRouter(Servable):
                 )
             prefix = (self._agent_prefix or "/agent").rstrip("/")
 
-            @main.get("/.well-known/agent.json")
+            @main.get(AGENT_CARD_PATH)
             async def registry() -> dict[str, Any]:
                 """Multi-agent registry: agents with name, description, url."""
                 agents_list: list[dict[str, Any]] = []
@@ -168,11 +172,7 @@ class AgentRouter(Servable):
         from syrin.enums import ServeProtocol
         from syrin.serve.config import ServeConfig
 
-        base = (
-            config
-            if isinstance(config, ServeConfig)
-            else (self._config or ServeConfig())
-        )
+        base = config if isinstance(config, ServeConfig) else (self._config or ServeConfig())
         cfg = ServeConfig(**{**vars(base), **config_kwargs}) if config_kwargs else base
 
         if cfg.protocol == ServeProtocol.CLI:
@@ -208,7 +208,7 @@ class AgentRouter(Servable):
             mount_path = f"/{prefix}/playground" if prefix else "/playground"
             add_playground_static_mount(app, mount_path)
         _add_startup_endpoint_logging(app)
-        uvicorn.run(app, host=cfg.host, port=cfg.port)
+        uvicorn.run(app, host=cfg.host, port=cfg.port, workers=1)
 
     def _select_agent_cli(self) -> Any:
         """Prompt user to select an agent. Returns the selected serveable."""

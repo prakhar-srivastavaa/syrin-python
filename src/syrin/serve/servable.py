@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, Union, cast
 if TYPE_CHECKING:
     from syrin.agent import Agent
     from syrin.agent.multi_agent import DynamicPipeline, Pipeline
+    from syrin.serve.config import ServeConfig
 
 _ServableUnion = Union["Agent", "Pipeline", "DynamicPipeline"]
 
@@ -19,33 +20,54 @@ class Servable:
     """Base class for objects that can be served via HTTP or CLI.
 
     Provides serve() that branches on protocol:
-        - HTTP: FastAPI app + uvicorn
-        - CLI: Interactive REPL (prompt, run, show cost)
+        - HTTP: FastAPI app + uvicorn (default). Exposes /chat, /stream, /playground, etc.
+        - CLI: Interactive REPL (prompt, run, show cost per turn).
+        - STDIO: JSON lines over stdin/stdout for programmatic use.
 
     Agent, Pipeline, and DynamicPipeline inherit from Servable.
+
+    Note:
+        HTTP mode uses workers=1 to keep in-memory state (memory, budget) shared
+        across requests. Multiple workers would each have separate state.
     """
 
     def serve(
         self,
-        config: Any = None,
+        config: ServeConfig | None = None,
         *,
         stdin: Any = None,
         stdout: Any = None,
         **config_kwargs: Any,
     ) -> None:
-        """Serve this object via HTTP or CLI. Blocks until stopped.
+        """Serve this agent or pipeline via HTTP, CLI, or STDIO. Blocks until stopped.
+
+        Starts a server (HTTP) or REPL (CLI) based on the selected protocol.
+        For HTTP: visit the returned URL for /chat, /stream, or /playground.
 
         Args:
-            config: Optional ServeConfig. If None, uses config_kwargs.
-            stdin: Optional input stream for STDIO protocol.
-            stdout: Optional output stream for STDIO protocol.
-            **config_kwargs: Override ServeConfig fields (protocol, host, port,
-                enable_playground, debug, etc.).
+            config: Optional ServeConfig instance. If None, uses config_kwargs to build one.
+                Pass ``ServeConfig(protocol=ServeProtocol.HTTP, port=8000)`` for full control.
+            stdin: Input stream for STDIO protocol only. Used when protocol is STDIO.
+                Default: sys.stdin. Override for testing or embedding.
+            stdout: Output stream for STDIO protocol only. Used when protocol is STDIO.
+                Default: sys.stdout. Override for testing or embedding.
+            **config_kwargs: Override any ServeConfig field. Common options:
+                - protocol: ServeProtocol — HTTP (default), CLI, or STDIO.
+                - host: str — Bind address for HTTP (default "0.0.0.0").
+                - port: int — HTTP port (default 8000).
+                - enable_playground: bool — Serve web UI at /playground when True.
+                - debug: bool — Enable debug mode (verbose logs, event collection).
+                - route_prefix: str — Prefix for routes (e.g. "/agent" → /agent/chat).
+                - include_metadata: bool — Include cost, tokens in responses (default True).
+
+        Raises:
+            ImportError: If protocol is HTTP and uvicorn is not installed.
 
         Example:
-            >>> agent.serve(port=8000)  # HTTP
-            >>> agent.serve(protocol=ServeProtocol.CLI)  # CLI REPL
-            >>> pipeline.serve(protocol=ServeProtocol.CLI, enable_playground=False)
+            >>> agent.serve(port=8000)
+            >>> agent.serve(port=8000, enable_playground=True, debug=True)
+            >>> agent.serve(protocol=ServeProtocol.CLI)
+            >>> agent.serve(protocol=ServeProtocol.STDIO, stdin=stream_in, stdout=stream_out)
         """
         from syrin.enums import ServeProtocol
         from syrin.serve.config import ServeConfig
@@ -62,7 +84,9 @@ class Servable:
             from syrin.serve.http import create_http_app
 
             app = create_http_app(cast(_ServableUnion, self), cfg)
-            uvicorn.run(app, host=cfg.host, port=cfg.port)
+            # workers=1: in-memory state (memory, budget) is per-process; multiple
+            # workers would each have separate state, breaking memory and cost tracking
+            uvicorn.run(app, host=cfg.host, port=cfg.port, workers=1)
 
         elif cfg.protocol == ServeProtocol.CLI:
             from syrin.serve.adapter import to_serveable

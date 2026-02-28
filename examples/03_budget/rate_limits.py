@@ -8,6 +8,9 @@ Demonstrates:
 - RateLimitThreshold with ThresholdMetric
 
 Run: python -m examples.03_budget.rate_limits
+Visit: http://localhost:8000/playground
+
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -92,3 +95,22 @@ agent = Agent(
         ],
     ),
 )
+
+
+class RateLimitedAgent(Agent):
+    """Agent with rate limits (hour/day/month)."""
+
+    name = "rate-limited"
+    description = "Agent with rate limits (hour, day, month)"
+    model = almock
+    budget = Budget(
+        run=0.05,
+        per=RateLimit(hour=2.00, day=10.00, month=100.00),
+        on_exceeded=warn_on_exceeded,
+    )
+
+
+if __name__ == "__main__":
+    agent = RateLimitedAgent()
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

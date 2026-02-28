@@ -54,7 +54,7 @@ Instructions that define the agent’s personality and behavior. Passed with eve
 
 ### Tools
 
-Functions the agent can call during a run (e.g., search, compute, API calls). Defined with `@syrin.tool`.
+Functions the agent can call during a run (e.g., search, compute, API calls). Defined with `@syrin.tool`. You can also **group tools in MCP** and add MCP to `tools=[ProductMCP()]` — see [MCP](../mcp.md).
 
 ### Loop
 
@@ -131,8 +131,24 @@ print(response.content)
 print(response.cost)
 ```
 
+## Serving — HTTP, CLI, Playground
+
+You can serve your agent via **HTTP** (API), **CLI** (terminal REPL), or the **web playground**:
+
+```python
+from syrin.enums import ServeProtocol
+
+agent.serve(port=8000)  # HTTP: POST /chat, /stream, etc.
+agent.serve(protocol=ServeProtocol.CLI)  # CLI: terminal REPL
+agent.serve(port=8000, enable_playground=True)  # Web UI at /playground
+```
+
+See [Serving](../serving.md) for details.
+
 ## Next Steps
 
 - [Creating Agents](creating-agents.md) — Class vs instance, inheritance
 - [Constructor Reference](constructor.md) — All parameters
 - [Running Agents](running.md) — Sync, async, streaming
+- [Tools](tools.md) — Including grouping tools in MCP
+- [Serving](../serving.md) — HTTP, CLI, playground

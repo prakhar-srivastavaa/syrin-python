@@ -44,6 +44,12 @@ class ChromaBackend:
         path: str | None = None,
         collection_name: str = "syrin_memory",
     ) -> None:
+        """Initialize Chroma backend.
+
+        Args:
+            path: Directory for persistent storage; None for ephemeral.
+            collection_name: Collection name for memories.
+        """
         if not CHROMA_AVAILABLE:
             raise ImportError("chromadb is not installed. Install with: pip install chromadb")
 

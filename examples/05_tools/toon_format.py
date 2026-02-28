@@ -8,6 +8,8 @@ Demonstrates:
 - Efficiency comparison across multiple tools
 
 Run: python -m examples.05_tools.toon_format
+Visit: http://localhost:8000/playground
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -17,7 +19,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from syrin import tool
+from examples.models.models import almock
+from syrin import Agent, tool
 from syrin.enums import DocFormat
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
@@ -80,3 +83,17 @@ total_json = sum(len(json.dumps(t.parameters_schema)) for t in tools)
 total_toon = sum(len(t.schema_to_toon()) for t in tools)
 total_sv = ((total_json - total_toon) / total_json) * 100
 print(f"3 tools: JSON {total_json}ch, TOON {total_toon}ch, savings {total_sv:.1f}%")
+
+
+class ToolDemoAgent(Agent):
+    name = "tool-demo"
+    description = "Agent with TOON-format tools (calculate, search_web, send_email)"
+    model = almock
+    system_prompt = "You are a helpful assistant. Use tools when needed."
+    tools = [calculate, search_web, send_email]
+
+
+if __name__ == "__main__":
+    agent = ToolDemoAgent()
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

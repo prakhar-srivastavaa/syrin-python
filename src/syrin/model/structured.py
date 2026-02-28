@@ -19,7 +19,12 @@ T = TypeVar("T")
 
 
 class StructuredOutput:
-    """Container for structured output schema."""
+    """Container for structured output schema.
+
+    Used internally by Model when output type is set. Converts a Python class
+    or JSON schema to a format the provider can use for structured output.
+    Rarely constructed directly; use @structured or model.with_output().
+    """
 
     _schema: dict[str, Any]
     _pydantic_model: type | None = None
@@ -175,7 +180,11 @@ def structured(cls: type[T]) -> type[T]:
 
 
 class OutputType:
-    """Wrapper for output type that can be used with Agent/Model."""
+    """Wrapper for output type. Use with Agent(output=...) or Model(output=...).
+
+    Wraps a Pydantic model or StructuredOutput. Provides schema and pydantic_model
+    for provider integration.
+    """
 
     def __init__(self, output_cls: type | StructuredOutput) -> None:
         if isinstance(output_cls, StructuredOutput):
@@ -208,13 +217,17 @@ class OutputType:
 
 
 def output(output_cls: type[T]) -> OutputType:
-    """Shorthand decorator to create an output type.
+    """Shorthand to create OutputType from a Pydantic model or class.
 
-    Usage:
-        @output
-        class Sentiment:
-            sentiment: str
-            confidence: float
+    Use with Agent(output=OutputType(MyModel)) or Model(output=OutputType(MyModel)).
+    Equivalent to OutputType(output_cls).
+
+    Example:
+        >>> from syrin.model import output
+        >>> @output
+        ... class Sentiment:
+        ...     sentiment: str
+        ...     confidence: float
     """
     return OutputType(output_cls)
 

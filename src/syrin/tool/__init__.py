@@ -23,7 +23,16 @@ _TYPE_TO_JSON: dict[type[Any], str] = {
 
 
 class ToolSpec(BaseModel):
-    """Spec for a tool the model can call. Usually built via syrin.tool()."""
+    """Spec for a tool the model can call. Usually built via @tool decorator or syrin.tool().
+
+    Attributes:
+        name: Tool name. Model uses this in tool_calls.name.
+        description: Description for the model. Use syrin.doc() for compile-time safe docs.
+        parameters_schema: JSON schema for parameters. Model uses this to generate args.
+        func: Python function to run. Receives parsed arguments from the model.
+        requires_approval: If True, block execution until human approval via ApprovalGate.
+        inject_run_context: If True, first param is ctx: RunContext; agent injects at runtime.
+    """
 
     name: str = Field(..., description="Tool name (used in tool_calls.name)")
     description: str = Field(
@@ -123,9 +132,25 @@ def tool(
     description: str | None = None,
     requires_approval: bool = False,
 ) -> Callable[..., Any] | ToolSpec:
-    """
-    Decorator to register a function as a Syrin tool. Extracts name, docstring,
-    and builds a JSON schema from type hints (str, int, float, bool, list, dict).
+    """Decorator to register a function as a Syrin tool.
+
+    Extracts name from function name (or override), description from first line of
+    docstring (or override), and builds JSON schema from type hints.
+
+    Args:
+        func: Function to decorate. If None, returns a decorator.
+        name: Override tool name. Default: function name.
+        description: Override description. Default: first line of docstring.
+        requires_approval: If True, block execution until human approval.
+
+    Returns:
+        ToolSpec when used as @tool or @tool(); callable decorator when used as @tool(name="...").
+
+    Example:
+        >>> @tool
+        ... def get_weather(city: str) -> str:
+        ...     \"\"\"Get current weather for a city.\"\"\"
+        ...     return f"Weather in {city}"
     """
 
     def decorator(f: Callable[..., Any]) -> ToolSpec:

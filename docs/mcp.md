@@ -1,12 +1,16 @@
 # MCP — Model Context Protocol
 
-Syrin integrates MCP (Model Context Protocol) so agents can consume MCP servers as tool sources. Use `syrin.MCP` to define MCP servers declaratively and `syrin.MCPClient` to connect to remote MCP servers.
+Syrin integrates MCP (Model Context Protocol) so you can **group tools in MCP** and **use MCP inside your agent's tools**. Define an MCP server with `@tool` methods (same decorator as Agent), then add the MCP instance to `Agent(tools=[...])`. The agent uses MCP tools as if they were regular tools.
+
+**Two ways to use MCP:**
+1. **Group tools** — Create an MCP class with multiple `@tool` methods. Keeps related tools organized.
+2. **Use MCP in agents** — Put the MCP instance in `tools=[ProductMCP()]`. Agent can call all MCP tools. When serving, `/mcp` is auto-mounted alongside `/chat`.
 
 **Requires:** `uv pip install syrin[serve]` for HTTP serving; `httpx` for MCPClient (included with syrin).
 
-## syrin.MCP — Declarative MCP Server
+## syrin.MCP — Declarative MCP Server (group your tools)
 
-Define tools with `@tool` inside the MCP class, same as Agent.
+Define tools with `@tool` inside the MCP class, same as Agent. Group related tools (e.g. product catalog) in one MCP.
 
 ### Standalone serving
 
@@ -99,7 +103,7 @@ ProductAgent().serve(port=8000)
 # POST /chat          → Agent endpoint
 # POST /stream        → SSE streaming
 # POST /mcp           → MCP server (tools/list, tools/call)
-# GET  /.well-known/agent.json  → A2A Agent Card
+# GET  /.well-known/agent-card.json  → A2A Agent Card
 ```
 
 All served from one process, one port.

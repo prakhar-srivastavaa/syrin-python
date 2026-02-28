@@ -126,3 +126,4 @@ except ToolExecutionError as e:
 
 - [Response Object](response.md) — Fields and usage
 - [Loop Strategies](loop-strategies.md) — Behavior of the main loop
+- [Serving](../serving.md) — Serve via HTTP, CLI, or playground

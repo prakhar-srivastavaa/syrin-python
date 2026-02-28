@@ -10,6 +10,13 @@ from syrin.guardrails.decision import GuardrailDecision
 class LengthGuardrail(Guardrail):
     """Guardrail that enforces min/max text length.
 
+    Fails if text is too short or too long. Use for input/output size limits.
+
+    Args:
+        min_length: Minimum allowed length (default 0).
+        max_length: Maximum allowed length (default 10000).
+        name: Optional custom name.
+
     Example:
         >>> guardrail = LengthGuardrail(min_length=5, max_length=100)
         >>> result = await guardrail.evaluate(context)

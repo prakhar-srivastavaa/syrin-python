@@ -6,6 +6,8 @@ Demonstrates:
 - Hooks: CIRCUIT_TRIP, CIRCUIT_RESET
 
 Run: python -m examples.15_advanced.circuit_breaker
+Visit: http://localhost:8000/playground
+Requires: uv pip install syrin[serve]
 """
 
 from pathlib import Path
@@ -27,16 +29,20 @@ cb = CircuitBreaker(
     fallback=fallback,
 )
 
-agent = Agent(
-    model=almock,
-    system_prompt="You are helpful.",
-    circuit_breaker=cb,
-)
 
-# Hook into circuit events
-agent.events.on(Hook.CIRCUIT_TRIP, lambda c: print(f"[CIRCUIT TRIP] {c}"))
-agent.events.on(Hook.CIRCUIT_RESET, lambda _: print("[CIRCUIT RESET]"))
+class CircuitBreakerAgent(Agent):
+    name = "circuit-breaker"
+    description = "Agent with circuit breaker for LLM failures"
+    model = almock
+    system_prompt = "You are helpful."
+    circuit_breaker = cb
 
-# Normal run
-r = agent.response("What is 2+2?")
-print(f"Response: {r.content[:80]}...")
+
+if __name__ == "__main__":
+    agent = CircuitBreakerAgent()
+    agent.events.on(Hook.CIRCUIT_TRIP, lambda c: print(f"[CIRCUIT TRIP] {c}"))
+    agent.events.on(Hook.CIRCUIT_RESET, lambda _: print("[CIRCUIT RESET]"))
+    r = agent.response("What is 2+2?")
+    print(f"Response: {r.content[:80]}...")
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

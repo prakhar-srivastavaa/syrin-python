@@ -73,7 +73,19 @@ def _tool_span_context(ctx: Any, tool_name: str, tool_args: dict[str, Any], iter
 
 @dataclass
 class LoopResult:
-    """Result from a loop execution."""
+    """Result from a loop execution. Returned by Loop.run() and consumed by _response_from_loop_result.
+
+    Attributes:
+        content: Assistant text content.
+        stop_reason: Why the loop stopped (END_TURN, BUDGET, MAX_ITERATIONS, etc.).
+        iterations: Number of LLM/tool iterations.
+        tools_used: Names of tools executed.
+        cost_usd: Total cost in USD for this run.
+        latency_ms: Total latency in milliseconds.
+        token_usage: Dict with input, output, total token counts.
+        tool_calls: Raw tool calls from the last response (if any).
+        raw_response: Provider-specific raw response.
+    """
 
     content: str
     stop_reason: str
@@ -88,41 +100,47 @@ class LoopResult:
     raw_response: Any = None
 
 
-# Type for tool approval callback
+# Type for tool approval callback: (tool_name, args) -> approved
 ToolApprovalFn = Callable[[str, dict[str, Any]], Awaitable[bool]]
 
 
 class Loop:
-    """Protocol for custom loop strategies.
+    """Protocol for custom loop strategies. Built-in: ReactLoop, SingleShotLoop, etc.
 
-    Implement this to create your own loop. The run context provides
-    build_messages, complete, execute_tool, emit_event, budget/rate-limit
-    checks, and model_id/tools/max_output_tokens for cost calculation.
+    Implement to create your own loop. ctx (AgentRunContext) provides build_messages,
+    complete, execute_tool, emit_event, budget/rate-limit checks, model_id, tools,
+    max_output_tokens for cost calculation.
 
-    class MyLoop:
-        name = "my_loop"
-
-        async def run(self, ctx: AgentRunContext, user_input: str) -> LoopResult:
-            ...
+    Attributes:
+        name: Loop identifier (e.g. "react", "single_shot").
     """
 
     name: str = "base"
 
     async def run(self, ctx: AgentRunContext | Any, user_input: str) -> LoopResult:
-        """Execute the loop. Override in subclasses. ctx is AgentRunContext."""
+        """Execute the loop. Override in subclasses.
+
+        Args:
+            ctx: AgentRunContext with build_messages, complete, execute_tool, etc.
+            user_input: User message to process.
+
+        Returns:
+            LoopResult with content, stop_reason, iterations, cost, etc.
+        """
         raise NotImplementedError
 
 
 class SingleShotLoop(Loop):
     """One-shot execution - single LLM call, no tools iteration.
 
-    Use for: Simple questions, one-step tasks
+    Use for simple questions or one-step tasks. No tool loop; single completion.
+    Default for loop_strategy=SINGLE_SHOT.
     """
 
     name = "single_shot"
 
     async def run(self, ctx: AgentRunContext | Any, user_input: str) -> LoopResult:
-        """Execute single LLM call."""
+        """Execute single LLM call. No tool execution or iteration."""
         from syrin.cost import calculate_cost
         from syrin.events import EventContext
 
@@ -212,9 +230,13 @@ class SingleShotLoop(Loop):
 
 
 class ReactLoop(Loop):
-    """Think → Act → Observe loop (default).
+    """Think → Act → Observe loop. Default for Agent (loop_strategy=REACT).
 
-    Use for: Multi-step tasks requiring tools
+    Iterates: LLM call → tool execution → LLM call until end_turn or max_iterations.
+    Use for multi-step tasks requiring tools.
+
+    Attributes:
+        max_iterations: Max LLM/tool iterations per run (default 10).
     """
 
     name = "react"

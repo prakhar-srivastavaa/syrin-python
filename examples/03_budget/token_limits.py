@@ -7,6 +7,9 @@ Demonstrates:
 - Combining Budget (USD) with TokenLimits (tokens)
 
 Run: python -m examples.03_budget.token_limits
+Visit: http://localhost:8000/playground
+
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -59,3 +62,26 @@ agent = Agent(
 result = agent.response("What is AI in one paragraph?")
 print(f"Cost: ${result.cost:.6f}, Tokens: {result.tokens.total_tokens}")
 print(f"Budget state: {agent.budget_state}")
+
+
+class TokenLimitedAgent(Agent):
+    """Agent with Budget + TokenLimits + TokenRateLimit."""
+
+    name = "token-limited"
+    description = "Agent with token limits (per-run, hourly, daily)"
+    model = almock
+    system_prompt = "You are concise."
+    budget = Budget(run=0.05, on_exceeded=warn_on_exceeded)
+    context = Context(
+        budget=TokenLimits(
+            run=15_000,
+            per=TokenRateLimit(hour=50_000, day=200_000),
+            on_exceeded=warn_on_exceeded,
+        )
+    )
+
+
+if __name__ == "__main__":
+    agent = TokenLimitedAgent()
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

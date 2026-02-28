@@ -1,4 +1,4 @@
-"""Tests for Agent Discovery — Agent Card and /.well-known/agent.json."""
+"""Tests for Agent Discovery — Agent Card and /.well-known/agent-card.json."""
 
 from __future__ import annotations
 
@@ -72,7 +72,7 @@ def test_should_enable_discovery_true_when_explicit() -> None:
 
 @pytest.mark.asyncio
 async def test_well_known_agent_json_route_when_discovery_on() -> None:
-    """GET /.well-known/agent.json returns Agent Card when discovery enabled."""
+    """GET /.well-known/agent-card.json returns Agent Card when discovery enabled."""
     agent = _almock()
     config = ServeConfig(enable_discovery=True)
     router = build_router(agent, config)
@@ -82,7 +82,7 @@ async def test_well_known_agent_json_route_when_discovery_on() -> None:
     app = FastAPI()
     app.include_router(router)
     client = TestClient(app)
-    resp = client.get("/.well-known/agent.json")
+    resp = client.get("/.well-known/agent-card.json")
     assert resp.status_code == 200
     data = resp.json()
     assert data["name"] == "test-agent"
@@ -91,7 +91,7 @@ async def test_well_known_agent_json_route_when_discovery_on() -> None:
 
 @pytest.mark.asyncio
 async def test_well_known_agent_json_not_added_when_discovery_off() -> None:
-    """When enable_discovery=False, GET /.well-known/agent.json returns 404."""
+    """When enable_discovery=False, GET /.well-known/agent-card.json returns 404."""
     agent = _almock()
     config = ServeConfig(enable_discovery=False)
     router = build_router(agent, config)
@@ -101,13 +101,13 @@ async def test_well_known_agent_json_not_added_when_discovery_off() -> None:
     app = FastAPI()
     app.include_router(router)
     client = TestClient(app)
-    resp = client.get("/.well-known/agent.json")
+    resp = client.get("/.well-known/agent-card.json")
     # Route not registered when discovery off → 404
     assert resp.status_code == 404
 
 
 def test_discovery_request_hook_emitted() -> None:
-    """Hook.DISCOVERY_REQUEST is emitted when /.well-known/agent.json is requested."""
+    """Hook.DISCOVERY_REQUEST is emitted when /.well-known/agent-card.json is requested."""
 
     from syrin.enums import Hook
 
@@ -126,12 +126,12 @@ def test_discovery_request_hook_emitted() -> None:
     app = FastAPI()
     app.include_router(router)
     client = TestClient(app)
-    resp = client.get("/.well-known/agent.json")
+    resp = client.get("/.well-known/agent-card.json")
     assert resp.status_code == 200
     assert len(received) == 1
     assert received[0][0] == "DISCOVERY_REQUEST"
     assert received[0][1]["agent_name"] == "test-agent"
-    assert received[0][1]["path"] == "/.well-known/agent.json"
+    assert received[0][1]["path"] == "/.well-known/agent-card.json"
 
 
 def test_agent_card_override_from_class() -> None:

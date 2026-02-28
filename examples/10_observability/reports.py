@@ -13,6 +13,8 @@ Demonstrates:
 - Report reset between calls
 
 Run: python -m examples.10_observability.reports
+Visit: http://localhost:8000/playground
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -38,6 +40,8 @@ class AnalysisOutput(BaseModel):
 
 # 1. Basic report access
 class Assistant(Agent):
+    name = "reports-assistant"
+    description = "Agent with full report sections"
     model = almock
     system_prompt = "You are a helpful assistant."
 
@@ -91,3 +95,8 @@ agent = Assistant()
 r1 = agent.response("What is 2+2?")
 r2 = agent.response("What is 3+3?")
 print("Call 1 tokens:", r1.report.tokens.total_tokens, "Call 2:", r2.report.tokens.total_tokens)
+
+if __name__ == "__main__":
+    agent = Assistant()
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

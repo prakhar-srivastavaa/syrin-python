@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 
 class AgentBuilder:
-    """Fluent builder for Agent instances."""
+    """Fluent builder for Agent instances. Use Agent.builder(model).with_*(...).build()."""
 
     def __init__(self, model: Model) -> None:
         """Start builder with required model.

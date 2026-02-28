@@ -23,8 +23,18 @@ if TYPE_CHECKING:
 def to_serveable(obj: Agent | Pipeline | DynamicPipeline) -> Agent:
     """Convert Agent, Pipeline, or DynamicPipeline to a serveable Agent.
 
-    Agent is returned as-is. Pipeline and DynamicPipeline are wrapped in an
-    internal adapter that implements arun, astream, events, budget_state, etc.
+    Used internally by build_router() and AgentRouter. Agent is returned as-is.
+    Pipeline and DynamicPipeline are wrapped in adapters that implement arun,
+    astream, events, budget_state, etc., so they can be served via HTTP/CLI/STDIO.
+
+    Args:
+        obj: Agent, Pipeline, or DynamicPipeline to convert.
+
+    Returns:
+        Agent-compatible object (same interface as Agent).
+
+    Raises:
+        TypeError: If obj is not Agent, Pipeline, or DynamicPipeline.
     """
     from syrin.agent import Agent
     from syrin.agent.multi_agent import DynamicPipeline, Pipeline

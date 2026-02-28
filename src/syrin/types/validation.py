@@ -18,7 +18,15 @@ class ValidationAction(Enum):
 
 @dataclass
 class ValidationAttempt:
-    """Single validation attempt."""
+    """Single validation attempt for structured output.
+
+    Attributes:
+        attempt: Attempt number (1-based).
+        raw_output: Raw string from model.
+        parsed: Parsed output if successful.
+        error: Error message if failed.
+        timestamp: When attempt occurred.
+    """
 
     attempt: int
     raw_output: str
@@ -29,7 +37,15 @@ class ValidationAttempt:
 
 @dataclass
 class ValidationResult:
-    """Result of validation."""
+    """Result of structured output validation.
+
+    Attributes:
+        is_valid: Whether validation succeeded.
+        parsed: Parsed output if valid.
+        message: Error message if invalid.
+        action: RETRY, STOP, or FALLBACK.
+        hint: Hint for retry (e.g. schema correction).
+    """
 
     is_valid: bool
     parsed: Any = None
@@ -58,7 +74,15 @@ class ValidationResult:
 
 @dataclass
 class ValidationContext:
-    """Context passed to validators."""
+    """Context passed to OutputValidator.validate().
+
+    Attributes:
+        raw_output: Raw string from model.
+        attempt: Current attempt number.
+        max_attempts: Max attempts allowed.
+        user_context: Custom context from Output(context=...).
+        llm_messages: Messages sent to model (for retry hints).
+    """
 
     raw_output: str
     attempt: int

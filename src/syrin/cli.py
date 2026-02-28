@@ -61,7 +61,13 @@ def _color(code: str) -> str:
 
 
 class Colors:
-    """ANSI color codes for terminal output."""
+    """ANSI color codes for terminal output.
+
+    Attributes:
+        RESET, BOLD, DIM: Formatting.
+        GREEN, BLUE, YELLOW, MAGENTA, CYAN, RED, WHITE: Foreground colors.
+        Disabled when stdout is not a TTY.
+    """
 
     RESET = _color("\033[0m")
     BOLD = _color("\033[1m")
@@ -77,7 +83,14 @@ class Colors:
 
 @dataclass
 class DebugEvent:
-    """A single debug event captured from the system."""
+    """A single debug event captured from the system.
+
+    Attributes:
+        timestamp: When the event occurred.
+        hook: Hook enum value (e.g. LLM_CALL_START, TOOL_CALL_END).
+        data: Event payload (tool_name, cost, tokens, etc.).
+        duration_ms: Duration if applicable (e.g. for LLM calls).
+    """
 
     timestamp: datetime
     hook: Hook

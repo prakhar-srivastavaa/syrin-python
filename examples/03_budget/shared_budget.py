@@ -6,6 +6,9 @@ Demonstrates:
 - Budget tracking across agents
 
 Run: python -m examples.03_budget.shared_budget
+Visit: http://localhost:8000/playground
+
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -42,3 +45,18 @@ parent2 = Agent(model=almock, budget=Budget(run=10.0, shared=True))
 for i in range(3):
     parent2.spawn(Child, task=f"Task {i + 1}")
 print(f"Budget after 3 children: {parent2.budget_state}")
+
+
+class SharedBudgetParent(Agent):
+    """Parent agent with shared budget for spawning children."""
+
+    name = "shared-budget"
+    description = "Agent with shared budget (spawn children that borrow)"
+    model = almock
+    budget = Budget(run=10.0, shared=True, on_exceeded=warn_on_exceeded)
+
+
+if __name__ == "__main__":
+    agent = SharedBudgetParent()
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

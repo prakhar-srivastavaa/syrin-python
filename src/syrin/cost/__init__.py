@@ -41,7 +41,15 @@ MODEL_PRICING: dict[str, tuple[float, float]] = {
 
 
 class ModelPricing:
-    """Custom pricing per 1M tokens (input, output) in USD."""
+    """Custom pricing per 1M tokens (input, output) in USD.
+
+    Override MODEL_PRICING for custom models or when you have negotiated rates.
+    Pass to Model(pricing=ModelPricing(...)) or calculate_cost(pricing_override=...).
+
+    Attributes:
+        input_per_1m: USD per 1M input/prompt tokens.
+        output_per_1m: USD per 1M output/completion tokens.
+    """
 
     def __init__(
         self,
@@ -73,11 +81,19 @@ def calculate_cost(
     """Compute cost in USD for the given token usage and model.
 
     Args:
-        model_id: Model identifier (e.g. openai/gpt-4o-mini).
-        token_usage: Input/output token counts.
-        pricing_override: Per-call fixed pricing (ModelPricing); overridden by resolver.
+        model_id: Model identifier (e.g. openai/gpt-4o-mini). Used for MODEL_PRICING lookup.
+        token_usage: Input/output token counts (from ProviderResponse or accumulated).
+        pricing_override: Per-call fixed pricing (ModelPricing). Overridden by resolver.
         pricing_resolver: Optional callable(model_id) -> (input_per_1m, output_per_1m).
             When provided, used instead of pricing_override and MODEL_PRICING.
+
+    Returns:
+        Cost in USD, rounded to 6 decimal places. 0.0 if pricing unknown.
+
+    Example:
+        >>> from syrin.types import TokenUsage
+        >>> calculate_cost("openai/gpt-4o-mini", TokenUsage(input_tokens=100, output_tokens=50))
+        0.000045
     """
     if pricing_resolver is not None:
         inp_p, out_p = pricing_resolver(model_id)
@@ -91,9 +107,21 @@ def calculate_cost(
 
 
 def count_tokens(text: str, model_id: str) -> int:
-    """
-    Estimate token count for text. Uses tiktoken for OpenAI-style models when available;
-    otherwise uses ~4 chars per token.
+    """Estimate token count for text.
+
+    Uses tiktoken for OpenAI-style models (gpt-4, gpt-3.5) when available;
+    otherwise falls back to ~4 characters per token for English.
+
+    Args:
+        text: Text to count.
+        model_id: Model ID (e.g. openai/gpt-4o-mini). Used to select encoding.
+
+    Returns:
+        Estimated token count.
+
+    Example:
+        >>> count_tokens("Hello, world!", "openai/gpt-4o-mini")
+        4
     """
     if not text:
         return 0
@@ -132,14 +160,18 @@ def estimate_cost_for_call(
     """Estimate cost in USD for a single LLM call (best-effort).
 
     Counts input tokens from message contents via count_tokens; uses max_output_tokens
-    for output. Actual cost may differ. Use for pre-call budget checks.
+    for output. Actual cost may differ. Use for pre-call budget checks (e.g. before
+    calling the LLM to see if the run would exceed budget).
 
     Args:
         model_id: Model identifier (e.g. openai/gpt-4o-mini).
         messages: List of message-like objects with .content (str).
         max_output_tokens: Assumed max completion tokens (default 1024).
-        pricing_override: Optional ModelPricing.
+        pricing_override: Optional ModelPricing. Overrides MODEL_PRICING.
         pricing_resolver: Optional callable(model_id) -> (input_per_1m, output_per_1m).
+
+    Returns:
+        Estimated cost in USD. 0.0 if pricing unknown.
     """
     out_tokens = 1024 if max_output_tokens is None else max_output_tokens
     input_tokens = 0

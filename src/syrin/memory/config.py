@@ -145,11 +145,34 @@ class Memory(BaseModel):
     pluggable backends, automatic extraction, forgetting curves, budget
     integration, and position-aware context injection.
 
-    Also acts as a facade to MemoryStore for working with memories.
+    Also acts as a facade to MemoryStore: use remember(), recall(), forget().
+
+    Attributes:
+        backend: Storage backend (memory/sqlite/postgres/qdrant/chroma/redis).
+        path: Path for file-based backends (sqlite, etc.).
+        types: Memory types to use. Default: all four (Core, Episodic, Semantic, Procedural).
+        auto_extract: If True, extract facts from turns into semantic memory (when implemented).
+        extraction_model: Model for extraction. None = use agent's model.
+        top_k: Max memories to recall per query. Higher = more context, higher cost.
+        relevance_threshold: Min similarity (0–1) for recall. Filter out low-relevance.
+        injection_strategy: How to inject recalled memories into context.
+        auto_store: If True, auto-store user+assistant turns as episodic (no remember tool).
+        decay: Forgetting curve. Memories lose importance over time unless reinforced.
+        memory_budget: Cost limits for memory ops. None = no limit.
+        consolidation: Background deduplication/compression. None = disabled.
+        scope: USER or SESSION. Affects isolation.
+        redact_pii: If True, redact PII before storage.
+        retention_days: Max age in days. Older memories pruned. None = no limit.
     """
 
-    backend: MemoryBackend = MemoryBackend.MEMORY
-    path: str | None = None
+    backend: MemoryBackend = Field(
+        default=MemoryBackend.MEMORY,
+        description="Storage backend: memory, sqlite, postgres, qdrant, chroma, redis",
+    )
+    path: str | None = Field(
+        default=None,
+        description="Path for file-based backends (e.g. sqlite DB path)",
+    )
 
     types: list[MemoryType] = Field(
         default=[
@@ -157,35 +180,68 @@ class Memory(BaseModel):
             MemoryType.EPISODIC,
             MemoryType.SEMANTIC,
             MemoryType.PROCEDURAL,
-        ]
+        ],
+        description="Memory types to enable. Default: all four.",
     )
 
-    auto_extract: bool = True
-    extraction_model: str | None = None
+    auto_extract: bool = Field(
+        default=True,
+        description="Extract facts from turns into semantic memory (when implemented)",
+    )
+    extraction_model: str | None = Field(
+        default=None,
+        description="Model for extraction. None = use agent's model",
+    )
 
     top_k: int = Field(
         10,
         gt=0,
-        description="Number of top memories to recall. Must be int >= 1. Pydantic coerces numeric strings.",
+        description="Max memories to recall per query. Higher = more context, higher cost.",
     )
-    relevance_threshold: float = Field(0.7, ge=0.0, le=1.0)
-    injection_strategy: InjectionStrategy = InjectionStrategy.ATTENTION_OPTIMIZED
+    relevance_threshold: float = Field(
+        0.7,
+        ge=0.0,
+        le=1.0,
+        description="Min similarity (0–1) for recall. Filter out low-relevance.",
+    )
+    injection_strategy: InjectionStrategy = Field(
+        default=InjectionStrategy.ATTENTION_OPTIMIZED,
+        description="How to inject recalled memories into context",
+    )
 
     auto_store: bool = Field(
         default=False,
-        description="Automatically store user inputs and agent responses as EPISODIC memories",
+        description="Auto-store user+assistant turns as episodic. No remember tool needed.",
     )
 
-    decay: Decay | None = None
+    decay: Decay | None = Field(
+        default=None,
+        description="Forgetting curve. Memories lose importance over time.",
+    )
 
-    memory_budget: MemoryBudget | None = None
+    memory_budget: MemoryBudget | None = Field(
+        default=None,
+        description="Cost limits for memory ops. None = no limit.",
+    )
 
-    consolidation: Consolidation | None = None
+    consolidation: Consolidation | None = Field(
+        default=None,
+        description="Background deduplication/compression. None = disabled.",
+    )
 
-    scope: MemoryScope = MemoryScope.USER
+    scope: MemoryScope = Field(
+        default=MemoryScope.USER,
+        description="USER or SESSION. Affects isolation.",
+    )
 
-    redact_pii: bool = False
-    retention_days: int | None = None
+    redact_pii: bool = Field(
+        default=False,
+        description="Redact PII before storage",
+    )
+    retention_days: int | None = Field(
+        default=None,
+        description="Max age in days. Older memories pruned. None = no limit.",
+    )
 
     def __init__(self, **data: Any) -> None:
         """Initialize Memory and set up internal store."""

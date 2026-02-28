@@ -17,7 +17,15 @@ logger = logging.getLogger(__name__)
 
 
 class CheckpointTrigger(StrEnum):
-    """When checkpoints are automatically saved."""
+    """When checkpoints are automatically saved.
+
+    Attributes:
+        MANUAL: Only when explicitly requested (no auto-save).
+        STEP: After each agent step (LLM response, no tool calls).
+        TOOL: After each tool call completes.
+        ERROR: When an error occurs during the run.
+        BUDGET: When budget limit is exceeded.
+    """
 
     MANUAL = "manual"
     STEP = "step"
@@ -27,7 +35,21 @@ class CheckpointTrigger(StrEnum):
 
 
 class CheckpointState(BaseModel):
-    """Snapshot of agent state for checkpointing."""
+    """Snapshot of agent state at a checkpoint.
+
+    Serialized and stored by checkpoint backends. Contains messages, memory,
+    budget state, and iteration count for restore/resume.
+
+    Attributes:
+        agent_name: Name of the agent this state belongs to.
+        checkpoint_id: Unique identifier (e.g. "my_agent_3").
+        created_at: When the checkpoint was created.
+        messages: Conversation messages at checkpoint time.
+        memory_data: Serialized memory entries.
+        budget_state: Budget tracker state (spent, remaining, etc.) or None.
+        iteration: Loop iteration number.
+        metadata: Custom key-value data.
+    """
 
     agent_name: str
     checkpoint_id: str
@@ -42,34 +64,70 @@ class CheckpointState(BaseModel):
 
 
 class CheckpointConfig(BaseModel):
-    """Configuration for checkpoint behavior.
+    """Configuration for when and where agent state is checkpointed.
 
-    Immutable after creation (config objects are immutable per architecture).
+    Controls automatic state persistence during agent runs. Immutable after creation.
     Runtime state (checkpoint IDs, saved state) lives in Checkpointer/backends.
 
-    Usage:
-        agent = Agent(
-            model=Model("gpt-4o"),
-            checkpoint=Checkpoint(
-                storage="sqlite",
-                path="/tmp/agent_checkpoints.db",
-                trigger="step",
-                max_checkpoints=10,
-            ),
-        )
+    Pass to Agent via ``checkpoint=CheckpointConfig(...)``. Use ``storage="memory"``
+    for testing (ephemeral); ``storage="sqlite"`` or ``"filesystem"`` for persistence.
+
+    Attributes:
+        enabled: If True (default), checkpoints are saved. Set False to disable.
+        storage: Backend type: "memory" (ephemeral), "sqlite", "postgres", or "filesystem".
+        path: Path for sqlite (db file) or filesystem (directory). Required for sqlite/filesystem.
+        trigger: When to save. STEP = after each step; TOOL = after tool calls; etc.
+        max_checkpoints: Maximum checkpoints to keep per agent. Older ones are pruned.
+        compress: If True, compress stored state (backend-dependent).
+
+    Example:
+        >>> from syrin import Agent, CheckpointConfig, CheckpointTrigger
+        >>> agent = Agent(
+        ...     model=model,
+        ...     checkpoint=CheckpointConfig(
+        ...         storage="sqlite",
+        ...         path="/tmp/agent_checkpoints.db",
+        ...         trigger=CheckpointTrigger.STEP,
+        ...         max_checkpoints=10,
+        ...     ),
+        ... )
     """
 
     model_config = ConfigDict(frozen=True)
 
-    enabled: bool = True
-    storage: str = Field(default="memory", pattern="^(memory|sqlite|postgres|filesystem)$")
-    path: str | None = None
-    trigger: CheckpointTrigger = CheckpointTrigger.STEP
-    max_checkpoints: int = Field(default=10, ge=1)
-    compress: bool = False
+    enabled: bool = Field(default=True, description="Enable checkpoint saving")
+    storage: str = Field(
+        default="memory",
+        pattern="^(memory|sqlite|postgres|filesystem)$",
+        description="Backend: memory (ephemeral), sqlite, postgres, or filesystem",
+    )
+    path: str | None = Field(
+        default=None,
+        description="Path for sqlite (file) or filesystem (dir). Required for persistence.",
+    )
+    trigger: CheckpointTrigger = Field(
+        default=CheckpointTrigger.STEP,
+        description="When to save: MANUAL, STEP, TOOL, ERROR, or BUDGET",
+    )
+    max_checkpoints: int = Field(
+        default=10,
+        ge=1,
+        description="Max checkpoints per agent; older ones pruned",
+    )
+    compress: bool = Field(default=False, description="Compress stored state")
 
     def __init__(self, **data: Any) -> None:
-        """Initialize checkpoint config with validation."""
+        """Create checkpoint config from keyword arguments.
+
+        Args:
+            **data: Keyword arguments matching config fields. Accepts:
+                - enabled: bool — Enable checkpoints (default True).
+                - storage: str — "memory" | "sqlite" | "postgres" | "filesystem".
+                - path: str | None — Path for sqlite file or filesystem dir.
+                - trigger: CheckpointTrigger | str — When to save (default STEP).
+                - max_checkpoints: int — Max per agent (default 10).
+                - compress: bool — Compress stored state (default False).
+        """
         if "trigger" in data and isinstance(data["trigger"], str):
             data["trigger"] = CheckpointTrigger(data["trigger"])
         super().__init__(**data)

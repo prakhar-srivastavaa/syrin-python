@@ -9,14 +9,35 @@ from syrin.enums import ServeProtocol
 
 @dataclass
 class ServeConfig:
-    """Configuration for agent.serve() and serving layer.
+    """Configuration for agent.serve() and the HTTP/CLI/STDIO serving layer.
 
-    Use when calling agent.serve(**config) or agent.serve(config=ServeConfig(...)).
-    MCP routes are driven by syrin.MCP in tools — no enable_mcp flag.
-    Discovery is auto-detected when agent has name; set enable_discovery=False to force off.
+    Use when calling ``agent.serve(**config)`` or ``agent.serve(config=ServeConfig(...))``.
+    All fields have sensible defaults; override only what you need.
 
-    CORS and auth are not handled here. Mount agent.as_router() on your own FastAPI app
-    and add CORSMiddleware, OAuth, etc. from Starlette or other libraries.
+    MCP routes are driven by ``syrin.MCP`` in tools — no separate enable_mcp flag.
+    Discovery (/.well-known/agent-card.json) is auto-detected when the agent has a name;
+    set enable_discovery=False to force off.
+
+    CORS and auth are not handled here. For custom middleware, mount
+    ``agent.as_router()`` on your own FastAPI app and add CORSMiddleware,
+    OAuth, etc. from Starlette or other libraries.
+
+    Attributes:
+        protocol: Which serving mode to use. HTTP (default) for REST + optional playground,
+            CLI for interactive REPL, STDIO for JSON lines over stdin/stdout.
+        host: Bind address for HTTP server. "0.0.0.0" allows external connections.
+        port: HTTP port. Default 8000.
+        route_prefix: Prefix for all routes. E.g. "/agent" → /agent/chat, /agent/stream.
+            Empty string = no prefix.
+        stream: If True (default), /stream endpoint is available for SSE streaming.
+        include_metadata: If True (default), responses include cost, tokens, model, etc.
+            Set False for minimal payloads.
+        debug: Enable debug mode. When True with enable_playground, collects lifecycle
+            events and shows them in the playground. Also enables verbose logging.
+        enable_playground: Serve the web playground at /playground when True. Provides
+            a simple chat UI for testing. Requires debug=True for event collection.
+        enable_discovery: Serve /.well-known/agent-card.json for discovery. None = auto
+            (on when agent has name). Set False to disable.
     """
 
     protocol: ServeProtocol = ServeProtocol.HTTP

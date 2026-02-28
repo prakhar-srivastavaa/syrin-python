@@ -319,7 +319,17 @@ class Budget(BaseModel):
 
 @dataclass
 class CostEntry:
-    """Timestamped cost entry for rolling windows (wall-clock for persistence)."""
+    """Timestamped cost entry for rolling windows (wall-clock for persistence).
+
+    BudgetTracker stores these and prunes older ones. Used internally for
+    rate limits (hour/day/week/month). Not for direct use by users.
+
+    Attributes:
+        cost_usd: Cost in USD for this call.
+        timestamp: Wall-clock time when recorded.
+        model_name: Model used (e.g. gpt-4o-mini).
+        total_tokens: Token count for this call.
+    """
 
     cost_usd: float
     timestamp: float = field(default_factory=time.time)
@@ -333,6 +343,14 @@ class BudgetSummary:
 
     All cost fields are in USD. All token fields are raw token counts.
     Windows are rolling (last hour/day/week/month) or calendar month when so configured.
+    Use BudgetTracker.summary() to get one.
+
+    Attributes:
+        current_run_cost: USD spent since run start.
+        current_run_tokens: Tokens used since run start.
+        hourly_cost, daily_cost, weekly_cost, monthly_cost: USD in each window.
+        hourly_tokens, daily_tokens, weekly_tokens, monthly_tokens: Tokens in each window.
+        entries_count: Number of cost entries in history.
     """
 
     current_run_cost: float  # USD since run start
@@ -382,7 +400,11 @@ def _in_calendar_month(ts: float, now_ts: float) -> bool:
 
 
 class BudgetReservationToken:
-    """Token returned by BudgetTracker.reserve(). Call commit(actual_cost) or rollback()."""
+    """Token returned by BudgetTracker.reserve(). Call commit(actual_cost) or rollback().
+
+    Reserves estimated cost before an LLM call. On success: commit(actual_cost).
+    On failure/cancel: rollback(). Prevents over-counting when multiple calls race.
+    """
 
     def __init__(self, tracker: BudgetTracker, amount: float) -> None:
         self._tracker = tracker
@@ -421,11 +443,19 @@ class BudgetReservationToken:
 
 
 class BudgetTracker:
-    """
-    Tracks cost per run and over rolling windows (hour, day, week, month).
+    """Tracks cost per run and over rolling windows (hour, day, week, month).
+
     Thread-safe. Supports reserve/commit/rollback for pre-call reservation.
-    Month window: configurable via budget.per.month_days (default 30), or
-    budget.per.calendar_month=True for current calendar month.
+    Used internally by Agent; rarely needed directly. Month window: budget.per.month_days
+    (default 30) or budget.per.calendar_month=True for current calendar month.
+
+    Methods:
+        record: Add a cost entry (called after each LLM call).
+        reserve: Reserve estimated cost before a call; returns BudgetReservationToken.
+        check_budget: Check limits; returns CheckBudgetResult.
+        reset_run: Reset run-level counters for a new run.
+        summary: Get BudgetSummary for current state.
+        get_state/load_state: Serialize/restore for persistence.
     """
 
     def __init__(self) -> None:

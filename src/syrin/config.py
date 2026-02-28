@@ -10,7 +10,13 @@ from syrin.types import ModelConfig
 
 
 class GlobalConfig:
-    """Global Syrin configuration."""
+    """Global Syrin configuration. Accessed via get_config().
+
+    Attributes:
+        trace: Whether tracing is enabled. Set via configure(trace=True).
+        default_model: Default ModelConfig when none specified.
+        default_api_key: Default API key (rarely used; pass per Model).
+    """
 
     def __init__(self) -> None:
         self._lock = threading.RLock()
@@ -74,7 +80,11 @@ _config = GlobalConfig()
 
 
 def get_config() -> GlobalConfig:
-    """Get the global configuration instance."""
+    """Get the global Syrin configuration instance.
+
+    Returns:
+        GlobalConfig singleton.
+    """
     return _config
 
 

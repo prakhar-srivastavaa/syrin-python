@@ -8,6 +8,8 @@ Demonstrates:
 - Using Almock for testing
 
 Run: python -m examples.13_models.custom_model
+Visit: http://localhost:8000/playground
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -56,9 +58,14 @@ result = agent.response("Hello with fallback!")
 
 # 5. Class-level model
 class MyAgent(Agent):
+    name = "custom-model"
+    description = "Agent with custom Model subclass"
     model = almock
     system_prompt = "You are a specialized assistant."
 
 
-agent = MyAgent()
-result = agent.response("Hello specialized!")
+if __name__ == "__main__":
+    agent = MyAgent()
+    result = agent.response("Hello specialized!")
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

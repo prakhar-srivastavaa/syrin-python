@@ -13,6 +13,11 @@ class JsonlAuditBackend(AuditBackendProtocol):
     """Write audit entries to a JSONL file. Supports optional query by reading file."""
 
     def __init__(self, path: str = "./audit.jsonl") -> None:
+        """Initialize JSONL audit backend.
+
+        Args:
+            path: Path to JSONL file. Parent directory is created if needed.
+        """
         self._path = Path(path)
         self._path.parent.mkdir(parents=True, exist_ok=True)
 

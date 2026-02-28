@@ -26,8 +26,22 @@ class AgentRunContext(Protocol):
     """Narrow interface for running an agent loop.
 
     Implemented by DefaultAgentRunContext (wrapping Agent). Custom loops
-    should type-hint run(self, ctx: AgentRunContext, user_input: str)
-    and use only the methods and properties defined here.
+    type-hint run(self, ctx: AgentRunContext, user_input: str) and use
+    only the methods and properties defined here.
+
+    Methods:
+        build_messages: Build message list for next LLM call.
+        complete: Call LLM with messages and tools.
+        execute_tool: Execute tool by name.
+        emit_event: Emit lifecycle hook.
+        check_and_apply_budget: Check limits, apply threshold actions.
+        pre_call_budget_check: Run budget check before LLM call.
+        record_cost: Record cost after LLM call.
+
+    Properties:
+        model_id, tools, max_output_tokens: For cost and completion.
+        has_budget, has_rate_limit: Whether limits apply.
+        pricing_override, approval_gate, hitl_timeout, tracer: Optional.
     """
 
     # ---- Message and completion ----
@@ -121,8 +135,9 @@ class AgentRunContext(Protocol):
 class DefaultAgentRunContext:
     """Implements AgentRunContext by delegating to an Agent instance.
 
-    Used internally so that Loop.run() receives a narrow interface
-    instead of the full Agent.
+    Used internally so that Loop.run(ctx, user_input) receives a narrow
+    interface instead of the full Agent. Wraps Agent; delegates build_messages,
+    complete, execute_tool, emit_event, budget checks, etc.
     """
 
     def __init__(self, agent: Any) -> None:

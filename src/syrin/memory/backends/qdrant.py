@@ -47,6 +47,15 @@ class QdrantBackend:
         collection: str = "syrin_memory",
         vector_size: int = 384,
     ) -> None:
+        """Initialize Qdrant backend.
+
+        Args:
+            path: Local path for embedded Qdrant; if set, host/port ignored.
+            host: Qdrant server host.
+            port: Qdrant server port.
+            collection: Collection name for memories.
+            vector_size: Embedding dimension (default 384).
+        """
         if not QDRANT_AVAILABLE:
             raise ImportError(
                 "qdrant-client is not installed. Install with: pip install qdrant-client"

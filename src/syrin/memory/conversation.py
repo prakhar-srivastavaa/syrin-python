@@ -8,7 +8,12 @@ from syrin.types import Message
 
 
 class ConversationMemory(ABC):
-    """Base class for conversation memory. Subclasses implement storage policy."""
+    """Base class for conversation memory. Subclasses implement storage policy.
+
+    Use with Agent(memory=BufferMemory()) for session history. Implements
+    add/get_messages/clear. Memory config uses Memory; ConversationMemory
+    is for session-level buffers.
+    """
 
     @abstractmethod
     def add(self, message: Message) -> None:
@@ -27,7 +32,7 @@ class ConversationMemory(ABC):
 
 
 class BufferMemory(ConversationMemory):
-    """Stores all messages (no limit). Default memory type."""
+    """Stores all messages with no limit. Default for session memory."""
 
     def __init__(self) -> None:
         self._messages: list[Message] = []
@@ -43,7 +48,10 @@ class BufferMemory(ConversationMemory):
 
 
 class WindowMemory(ConversationMemory):
-    """Keeps only the last k message pairs (user + assistant)."""
+    """Keeps only the last k message pairs (user + assistant).
+
+    Use when context is limited; older turns are dropped.
+    """
 
     def __init__(self, k: int = 10) -> None:
         if k < 1:

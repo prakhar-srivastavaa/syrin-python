@@ -8,7 +8,11 @@
   <b>The most developer-friendly Python library for AI agents</b>
 </p>
 <p align="center">
-  <i>Budget control · Lifecycle hooks · Declarative thresholds · Type-safe APIs</i>
+  <i>Budget control · MCP servers · Lifecycle hooks · Declarative thresholds · Type-safe APIs</i>
+</p>
+
+<p align="center">
+  <strong>⭐ Star this repo — it's the only way I know you want me to keep building this.</strong>
 </p>
 
 <p align="center">
@@ -20,7 +24,7 @@
 
 <p align="center">
   <a href="https://syrin.ai">Website</a> ·
-  <a href="https://syrin.ai/docs">Documentation</a> ·
+  <a href="https://github.com/syrin-labs/syrin-python/blob/main/docs/getting-started.md">Documentation</a> ·
   <a href="https://discord.gg/p4jnKxYKpB">Discord</a> ·
   <a href="https://x.com/syrin_dev">Twitter (X)</a>
 </p>
@@ -38,6 +42,26 @@
 5. **How do I know what each run cost?** — No cost or token count on the response. You’re guessing or building it yourself.
 
 Syrin gives you budgeting, thresholds, hooks, observability, context, memory, guardrails, and checkpoints in one lightweight library—so you can answer these questions instead of wondering.
+
+---
+
+## See it in action
+
+Web playground + built-in observability — chat with your agent in the browser, and see cost, tokens, steps, and traces for every reply.
+
+<p align="center">
+  <img src="assets/demos/chatbot_serving.png" alt="Playground chat with chatbot" width="700">
+</p>
+<p align="center">
+  <em>Chat with your agent (e.g. <code>chatbot.py</code>) in the browser.</em>
+</p>
+
+<p align="center">
+  <img src="assets/demos/reply_observability.png" alt="Built-in observability" width="700">
+</p>
+<p align="center">
+  <em>With each reply: the how, why, and what — cost, tokens, steps, traces.</em>
+</p>
 
 > **Jupyter / cookbook user?** Run [examples/getting_started.ipynb](examples/getting_started.ipynb) to see Syrin in action—install, run each cell, and explore.
 
@@ -350,6 +374,70 @@ print(result.cost, result.tool_calls)
 
 ---
 
+## MCP servers — create and co-locate
+
+**When to use:** You want to expose your agent's tools via the Model Context Protocol (MCP) so external clients (Cursor, Claude Desktop, etc.) can use them. Or you want your agent and MCP server on the same process — one deploy, one port.
+
+**Create an MCP server** — same `@tool` decorator as agents:
+
+```python
+from syrin import MCP, Agent, tool
+
+class ProductMCP(MCP):
+    name = "product-mcp"
+    description = "Product catalog tools for e-commerce"
+
+    @tool
+    def search_products(self, query: str, limit: int = 10) -> str:
+        """Search the product catalog by query."""
+        return f"Results for '{query}': [item1, item2, ...]"
+
+    @tool
+    def get_product(self, product_id: str) -> str:
+        """Get product details by ID."""
+        return f"Product {product_id}: name, price, description"
+```
+
+**Co-locate MCP and agent** — put the MCP in `tools=[]`. Syrin auto-mounts `/mcp` alongside `/chat` and serves discovery at `/.well-known/agent-card.json`:
+
+```python
+class ProductAgent(Agent):
+    name = "product-agent"
+    description = "E-commerce product search and cart management"
+    model = almock
+    system_prompt = "You help users find products."
+    tools = [ProductMCP()]  # MCP in tools → /mcp + /.well-known/agent-card.json
+
+agent = ProductAgent()
+agent.serve(port=8000)
+# → POST /chat, POST /stream, POST /mcp, GET /.well-known/agent-card.json — all on the same port.
+```
+
+**In plain English:** Define your MCP with `@tool` methods. Add it to the agent's `tools` — `/mcp` and Agent Card discovery are wired automatically. No separate server, no config flags.
+
+---
+
+## Web playground — chat, cost, budget, observability
+
+**When to use:** You want a browser UI to test your agent without wiring a frontend. Chat, see cost and tokens per message, budget gauge, and (when `debug=True`) a real-time observability panel.
+
+```python
+agent = Assistant()
+agent.serve(port=8000, enable_playground=True, debug=True)
+# Visit http://localhost:8000/playground
+```
+
+**Playground features:**
+- Chat interface with streaming responses
+- Cost and token count per message
+- Budget gauge when the agent has a budget
+- Observability panel (hook stream, LLM traces, tool calls) when `debug=True`
+- Supports single agent, multi-agent (agent selector), and dynamic pipelines
+
+**Run:** `python -m examples.16_serving.playground_single` then open http://localhost:8000/playground. Requires `syrin[serve]`.
+
+---
+
 ## Streaming (async, token-by-token)
 
 **When to use:** You want to stream the reply to the user and show running cost (e.g. in a UI).
@@ -432,6 +520,20 @@ For deep dives: [Budget & thresholds](docs/budget-control.md), [Memory](docs/mem
 
 ---
 
+## Support this project ⭐
+
+**Star this repo.** It's the only metric I use to decide whether to keep investing time in Syrin.
+
+No surveys, no mailing lists, no analytics — just the star count. If you find this useful and want me to keep building (MCP, playground, vector memory, and more), **please star the project**. It tells me you're here and you care.
+
+<p align="center">
+  <a href="https://github.com/syrin-labs/syrin-python">
+    <img src="https://img.shields.io/github/stars/syrin-labs/syrin-python?style=social" alt="Star Syrin on GitHub">
+  </a>
+</p>
+
+---
+
 ## Community — Connect here
 
 - 🌐 [Website](https://syrin.ai) — syrin.ai
@@ -457,6 +559,10 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 <p align="center">
   <b>Declare agents. Control costs. See every step. Ship to production.</b>
+</p>
+
+<p align="center">
+  <strong>⭐ <a href="https://github.com/syrin-labs/syrin-python">Star Syrin on GitHub</a> — the only way to tell me you want this to keep growing.</strong>
 </p>
 
 <p align="center">

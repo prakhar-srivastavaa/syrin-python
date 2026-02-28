@@ -1,4 +1,4 @@
-"""HTTP serving — FastAPI routes for /chat, /stream, /health, /ready, /budget, /describe, /.well-known/agent.json."""
+"""HTTP serving — FastAPI routes for /chat, /stream, /health, /ready, /budget, /describe, /.well-known/agent-card.json."""
 
 from __future__ import annotations
 
@@ -52,10 +52,17 @@ def build_router(
     """Build a FastAPI APIRouter for the given agent, pipeline, or dynamic pipeline.
 
     Accepts Agent, Pipeline, or DynamicPipeline. Pipelines are wrapped in an
-    internal adapter that implements arun, astream, events, etc.
+    adapter that implements arun, astream, events, budget_state, etc.
 
     Routes: POST /chat, POST /stream, GET /health, GET /ready, GET /budget, GET /describe.
-    Use agent.as_router(), pipeline.serve(), or mount the router on an existing FastAPI app.
+    With enable_playground: GET /playground, GET /stream (SSE).
+
+    Args:
+        agent: Agent, Pipeline, or DynamicPipeline to serve.
+        config: ServeConfig (protocol, host, port, enable_playground, etc.).
+
+    Returns:
+        FastAPI APIRouter. Mount with app.include_router(router, prefix="/agent").
 
     Requires syrin[serve] (fastapi, uvicorn).
     """
@@ -322,8 +329,12 @@ def build_router(
         mcp_prefix = _route("/mcp").rstrip("/")
         router.include_router(mcp_router, prefix=mcp_prefix)
 
-    # A2A Agent Card (/.well-known/agent.json) — discovery for agent-to-agent
-    from syrin.serve.discovery import build_agent_card_json, should_enable_discovery
+    # A2A Agent Card (/.well-known/agent-card.json) — discovery for agent-to-agent
+    from syrin.serve.discovery import (
+        AGENT_CARD_PATH,
+        build_agent_card_json,
+        should_enable_discovery,
+    )
 
     if should_enable_discovery(agent, config):
         host = getattr(config, "host", "0.0.0.0")
@@ -335,9 +346,9 @@ def build_router(
         if prefix:
             base_url = (base_url.rstrip("/") + "/" + prefix.lstrip("/")).rstrip("/")
 
-        @router.get(_route("/.well-known/agent.json"))
+        @router.get(_route(AGENT_CARD_PATH))
         async def agent_card() -> dict[str, Any]:
-            """A2A Agent Card for discovery. GET /.well-known/agent.json."""
+            """A2A Agent Card for discovery. GET /.well-known/agent-card.json."""
             emit = getattr(agent, "_emit_event", None)
             if emit is not None:
                 from syrin.enums import Hook
@@ -348,7 +359,7 @@ def build_router(
                     EventContext(
                         {
                             "agent_name": getattr(agent, "name", ""),
-                            "path": "/.well-known/agent.json",
+                            "path": AGENT_CARD_PATH,
                         }
                     ),
                 )
@@ -402,7 +413,15 @@ def create_http_app(
 ) -> Any:
     """Create a FastAPI app for agent, pipeline, or dynamic pipeline.
 
-    Use with agent.serve(), pipeline.serve(), or for custom mounting.
+    Used internally by agent.serve() / pipeline.serve(). Mounts the router
+    and optionally the playground. Use for custom app setup.
+
+    Args:
+        obj: Agent, Pipeline, or DynamicPipeline.
+        config: ServeConfig.
+
+    Returns:
+        FastAPI app instance.
     """
     from fastapi import FastAPI
 

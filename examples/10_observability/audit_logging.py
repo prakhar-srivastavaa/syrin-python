@@ -5,6 +5,8 @@ to JSONL files or custom backends. Use for compliance, debugging, and
 cost attribution.
 
 Run: python examples/10_observability/audit_logging.py
+Visit: http://localhost:8000/playground
+Requires: uv pip install syrin[serve]
 """
 
 import syrin
@@ -52,5 +54,16 @@ def main() -> None:
         print(f"  {e.timestamp} | {e.event} | {e.source}")
 
 
+class AuditDemoAgent(syrin.Agent):
+    name = "audit-agent"
+    description = "Agent with audit logging"
+    model = syrin.Model.Almock()
+    system_prompt = "You are helpful."
+
+
 if __name__ == "__main__":
     main()
+    audit = syrin.AuditLog(path="./audit_serve.jsonl")
+    agent = AuditDemoAgent(audit=audit)
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

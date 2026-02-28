@@ -6,7 +6,7 @@ Demonstrates:
 
 Requires: uv pip install syrin[serve]
 
-Run: python -m examples.serving.playground_serve
+Run: python -m examples.16_serving.playground_serve
 Visit: http://localhost:8000/playground
 """
 
@@ -21,8 +21,8 @@ if str(_root) not in sys.path:
 
 from dotenv import load_dotenv
 
-from examples.models.models import almock
-from syrin import Agent, Budget, RateLimit
+from examples.models.models import gpt4_mini
+from syrin import Agent, Budget, Context, Memory, MemoryBackend, RateLimit
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
@@ -30,9 +30,11 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 class Assistant(Agent):
     name = "assistant"
     description = "Helpful assistant — playground demo"
-    model = almock
+    model = gpt4_mini
     system_prompt = "You are a helpful assistant. Be concise."
     budget = Budget(run=0.5, per=RateLimit(hour=10, day=100, week=700))
+    memory = Memory(backend=MemoryBackend.MEMORY, top_k=10)
+    context = Context(max_tokens=1000)
 
 
 if __name__ == "__main__":

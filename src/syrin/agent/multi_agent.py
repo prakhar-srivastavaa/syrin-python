@@ -393,14 +393,20 @@ class PipelineRun:
 class Pipeline(Servable):
     """Pipeline for running multiple agents sequentially or in parallel.
 
-    Supports fluent API via run() method:
-        pipeline.run(agents)               # Run one after another (default)
-        pipeline.run(agents).sequential()  # Run one after another (explicit)
-        pipeline.run(agents).parallel()    # Run simultaneously
+    Static pipeline: fixed list of agents. Each agent receives output of the previous
+    (sequential) or runs independently (parallel). Inherits Servable — use .serve().
 
-    Also supports traditional API:
+    Fluent API:
+        pipeline.run(agents).sequential()  # One after another (default)
+        pipeline.run(agents).parallel()    # Simultaneously
+
+    Traditional API:
         pipeline.run_sequential(agents)
         pipeline.run_parallel(agents)
+
+    Attributes:
+        events: Pipeline lifecycle hooks (PIPELINE_START, PIPELINE_AGENT_START, etc.).
+        agents: List of agent classes or (agent_class, task) tuples (if set at init).
     """
 
     def __init__(
@@ -409,18 +415,20 @@ class Pipeline(Servable):
         timeout: float | None = None,
         agents: list[type[Agent] | tuple[type[Agent], str]] | None = None,
         sequential: bool = True,
-        debug: bool = False,  # Enable debug logging
+        debug: bool = False,
         audit: AuditLog | None = None,
     ) -> None:
         """Initialize pipeline.
 
         Args:
-            budget: Optional shared budget for all agents in pipeline
-            timeout: Optional timeout in seconds for each agent run
-            agents: Optional list of agents to run immediately
-            sequential: Whether to run agents sequentially (default True) or in parallel
-            debug: Enable debug logging to console
-            audit: Optional AuditLog for pipeline-level audit
+            budget: Optional shared budget for all agents. Each agent shares the same
+                Budget instance; spend accumulates across agents.
+            timeout: Optional timeout in seconds per agent run. None = no timeout.
+            agents: Optional list of agent classes or (agent_class, task) tuples.
+                If provided, run(agents) can be omitted when calling run() with same list.
+            sequential: Default execution mode. True = sequential, False = parallel.
+            debug: Enable debug logging to console.
+            audit: Optional AuditLog for pipeline-level audit. Events emitted to it.
         """
         self._budget = budget
         self._timeout = timeout
@@ -713,19 +721,14 @@ class DynamicPipeline(Servable):
 
         Args:
             agents: List of Agent classes available for spawning.
-                Each agent's name is:
-                - The `name` attribute if set, otherwise
-                - The class name (lowercase)
-                Example: ResearcherAgent → "researcher"
-            budget: Optional budget for all spawned agents
-            model: REQUIRED - Model to use for the orchestrator agent.
-                Must be a Model instance (e.g., Model(provider="openai", model_id="gpt-4o-mini"))
-            format: Format for internal agent communication (TOON, JSON, YAML).
-                Default is TOON for ~40% fewer tokens.
-            max_parallel: Maximum number of agents to spawn in parallel.
-                This is a limit, not a guarantee - LLM decides how many to actually use.
-            debug: Enable debug logging to console
-            audit: Optional AuditLog for dynamic pipeline audit
+                Each agent's name: Agent.name if set, else lowercase class name.
+            budget: Optional shared budget for all spawned agents.
+            model: REQUIRED. Model for the orchestrator LLM that plans and spawns agents.
+            format: Format for agent descriptions (TOON, JSON, YAML). TOON = ~40% fewer tokens.
+            max_parallel: Max agents to spawn in parallel. LLM decides actual count.
+            debug: Enable debug logging to console.
+            audit: Optional AuditLog for dynamic pipeline audit.
+            output_format: "clean" (chat-friendly) or "verbose" (debug with headers/cost).
         """
         if model is None:
             raise ValueError(
@@ -744,7 +747,7 @@ class DynamicPipeline(Servable):
         # Build agent name mapping (uses Agent.name; fallback to lowercase class name)
         self._agent_names: dict[str, type[Agent]] = {}
         for agent_class in self._agents:
-            name = getattr(agent_class, "_Syrin_default_name", None)
+            name = getattr(agent_class, "_syrin_default_name", None)
             if name is None:
                 name = agent_class.__name__.lower()
             self._agent_names[name] = agent_class
@@ -856,7 +859,7 @@ class DynamicPipeline(Servable):
 
     def _get_agent_description(self, agent_class: type[Agent]) -> str:
         """Get description for an agent class."""
-        name = getattr(agent_class, "_Syrin_default_name", None) or agent_class.__name__.lower()
+        name = getattr(agent_class, "_syrin_default_name", None) or agent_class.__name__.lower()
         prompt = getattr(agent_class, "system_prompt", "Specialized agent")[:100]
         return f"- {name}: {prompt}"
 

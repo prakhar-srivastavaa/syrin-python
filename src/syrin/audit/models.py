@@ -11,7 +11,23 @@ from syrin.enums import AuditBackend
 
 
 class AuditEntry(BaseModel):
-    """Single audit log entry. Written to backend as JSONL line."""
+    """Single audit log entry. Written to audit backend as JSONL line.
+
+    Attributes:
+        timestamp: When the event occurred.
+        source: Agent class name, Pipeline, or DynamicPipeline.
+        event: Audit event type (e.g. llm_call, tool_call).
+        model: Model ID used.
+        tokens: Input/output/total token counts.
+        cost_usd: Cost in USD.
+        budget_percent: Budget utilization percentage.
+        duration_ms: Duration in milliseconds.
+        trace_id, run_id: Observability IDs.
+        iteration: Loop iteration number.
+        tool_calls, tool_name, tool_error: Tool execution info.
+        stop_reason: Why the run ended.
+        extra: Hook-specific fields.
+    """
 
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     source: str = Field(description="Agent class name, Pipeline, or DynamicPipeline")
@@ -36,7 +52,14 @@ class AuditEntry(BaseModel):
 
 
 class AuditFilters(BaseModel):
-    """Filters for querying audit entries (optional backend support)."""
+    """Filters for querying audit entries (optional backend support).
+
+    Attributes:
+        agent: Filter by source agent name.
+        event: Filter by event type.
+        since, until: Time range.
+        limit: Max entries to return (default 100).
+    """
 
     agent: str | None = None
     event: str | None = None
@@ -46,7 +69,18 @@ class AuditFilters(BaseModel):
 
 
 class AuditLog(BaseModel):
-    """Audit configuration for Agent, Pipeline, or DynamicPipeline."""
+    """Audit configuration for Agent, Pipeline, or DynamicPipeline.
+
+    Pass to Agent(audit=AuditLog(...)) or Pipeline(audit=...). Events are
+    written to the backend (JSONL by default).
+
+    Attributes:
+        backend: AuditBackend (JSONL, FILE, OTLP).
+        path: File path for JSONL backend.
+        include_llm_calls, include_tool_calls, include_handoff_spawn: Event filters.
+        include_budget, include_user_input, include_model_output: Content filters.
+        custom_backend: Optional AuditBackendProtocol (overrides backend/path).
+    """
 
     backend: AuditBackend | str = AuditBackend.JSONL
     path: str | None = Field(default=None, description="File path for JSONL backend")

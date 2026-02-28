@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-02-28
+
+### Added
+
+- **Agent Serving** — `agent.serve()` with HTTP, CLI, STDIO; composable features from agent composition (MCP, discovery). `AgentRouter` for multi-agent on one server.
+- **MCP** — `syrin.MCP` declarative server (`@tool` in class); `syrin.MCPClient` for remote MCP; `.select()`, `.tools()`; MCP in `tools=[]` auto-mounts `/mcp`.
+- **Agent Discovery** — A2A Agent Card at `GET /.well-known/agent-card.json`; auto-generated from agent metadata; multi-agent registry.
+- **Dynamic prompts** — `@prompt`, callable `system_prompt`, `prompt_vars`, `PromptContext` with built-ins (`date`, `thread_id`, etc.).
+- **Web playground** — `enable_playground=True` for chat UI; `debug=True` for observability (cost, tokens, traces per reply); supports single, multi-agent, pipeline.
+- **Serving extras** — `syrin[serve]` for FastAPI, uvicorn; `/chat`, `/stream`, `/health`, `/ready`, `/describe`, `/budget`.
+
+### Changed
+
+- **Discovery path** — Agent Card served at `/.well-known/agent-card.json` (was `/.well-known/agent.json`). Canonical URL: `https://{domain}/.well-known/agent-card.json`.
+
+---
+
 ## [0.3.0] - 2026-02-27
 
 ### Added

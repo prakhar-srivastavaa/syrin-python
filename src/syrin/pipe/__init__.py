@@ -17,9 +17,11 @@ def _run_maybe_async(val: Any) -> Any:
 
 
 class Pipe(Generic[T]):
-    """
-    Fluent pipe: Pipe(value).then(fn1).then(fn2).result().
-    Supports async: if a then() callable returns a coroutine, result() runs it.
+    """Fluent pipe for chaining transformations.
+
+    Pipe(value).then(fn1).then(fn2).result(). Supports async: if a then()
+    callable returns a coroutine, result() runs it via asyncio.run.
+    Use pipe(x, f, g) shorthand.
     """
 
     def __init__(self, value: T) -> None:
@@ -63,9 +65,9 @@ def pipe(
     value: T,
     *fns: Callable[[Any], Any],
 ) -> Pipe[Any]:
-    """
-    Wrap a value for piping. pipe(x) returns Pipe(x); pipe(x, f, g) returns Pipe(x).then(f).then(g).
-    Use .result() to run the chain.
+    """Wrap a value for piping. pipe(x) returns Pipe(x); pipe(x, f, g) chains f then g.
+
+    Use .result() to run the chain. .result_async() for async steps.
     """
     p: Pipe[Any] = Pipe(value)
     for fn in fns:

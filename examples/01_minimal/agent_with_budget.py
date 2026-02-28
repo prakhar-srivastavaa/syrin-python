@@ -5,8 +5,10 @@ Demonstrates:
 - Budget tracking via response.cost and agent.budget_state
 - Budget limits and exceeded handling
 
-Run: python ./examples/01_minimal/agent_with_budget.py
-  or: python -m examples.01_minimal.agent_with_budget (from project root)
+Run: python -m examples.01_minimal.agent_with_budget
+Visit: http://localhost:8000/playground
+
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -27,17 +29,15 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 
 class Assistant(Agent):
+    name = "assistant"
+    description = "Assistant with budget control"
     model = almock
     system_prompt = "You are a helpful assistant."
     budget = Budget(run=0.10, on_exceeded=warn_on_exceeded)
 
 
-assistant = Assistant()
-print(f"Budget: ${assistant.budget.run}")
-result = assistant.response("Explain quantum computing briefly")
-print(f"Response: {result.content[:80]}...")
-print(f"Cost: ${result.cost:.6f}")
-state = assistant.budget_state
-print(
-    f"Budget: spent=${state.spent:.4f}, remaining=${state.remaining:.4f}" if state else "No budget"
-)
+if __name__ == "__main__":
+    assistant = Assistant()
+    print("Serving at http://localhost:8000/playground")
+    assistant.serve(port=8000, enable_playground=True, debug=True)
+    # assistant.serve(protocol=ServeProtocol.CLI)

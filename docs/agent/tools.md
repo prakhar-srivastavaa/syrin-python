@@ -83,7 +83,48 @@ Custom loops can call tools via `execute_tool`:
 result = await agent.execute_tool("search", {"query": "hello"})
 ```
 
+## Grouping Tools in MCP
+
+You can group related tools in an MCP server and use the MCP as an agent tool source.
+
+Define an MCP with `@tool` (same as Agent):
+
+```python
+from syrin import MCP, Agent, tool
+
+class ProductMCP(MCP):
+    name = "product-mcp"
+    description = "Product catalog tools"
+
+    @tool
+    def search_products(self, query: str, limit: int = 10) -> str:
+        """Search the product catalog."""
+        return f"Results for: {query}"
+
+    @tool
+    def get_product(self, product_id: str) -> str:
+        """Get product by ID."""
+        return f"Product {product_id} details"
+```
+
+## Using MCP Inside Agent Tools
+
+Add the MCP instance to your agent's `tools=[]`. The agent can call all MCP tools:
+
+```python
+product_mcp = ProductMCP()
+
+class ProductAgent(Agent):
+    model = almock
+    tools = [product_mcp]  # MCP tools become agent tools
+
+# Or pick specific tools: tools=[product_mcp.select("search_products")]
+```
+
+When serving, if MCP is in `tools`, `/mcp` is auto-mounted alongside `/chat`. See [MCP](mcp.md) for details.
+
 ## See Also
 
+- [MCP](../mcp.md) — Group tools, use MCP in agents, co-location
 - [Use Case 2: Research Agent with Tools](../research-agent-with-tools.md)
 - [Loop Strategies](loop-strategies.md) — How tools integrate with loops

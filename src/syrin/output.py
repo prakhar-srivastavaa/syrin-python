@@ -17,7 +17,15 @@ from syrin.types.validation import OutputValidator
 class Output:
     """Configuration for structured output validation.
 
-    Groups all structured output options in one place for cleaner API.
+    Pass to Agent(output=Output(MyPydanticModel)). Groups all structured
+    output options in one place. Use Output(MyModel) shorthand for defaults.
+
+    Attributes:
+        type: Pydantic model to validate output against.
+        validation_retries: Number of retries (default 3).
+        context: Dict passed to validators for dynamic validation.
+        validator: Custom OutputValidator for business logic.
+        strict: Use strict validation mode.
 
     Example:
         agent = Agent(

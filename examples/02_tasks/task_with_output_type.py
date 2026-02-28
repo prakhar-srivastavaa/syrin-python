@@ -6,6 +6,9 @@ Demonstrates:
 - For full structured output, use Agent with output=Output(MyModel)
 
 Run: python -m examples.02_tasks.task_with_output_type
+Visit: http://localhost:8000/playground
+
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -23,6 +26,8 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 class TriageAgent(Agent):
     """Agent that triages items with structured output."""
 
+    name = "triage"
+    description = "Triage agent returning priority, category, summary"
     model = almock
     system_prompt = (
         "You are a triage assistant. For each item, return priority (high/medium/low), "
@@ -45,7 +50,7 @@ class TriageAgent(Agent):
         }
 
 
-agent = TriageAgent()
-result = agent.triage("User reports login failures after update")
-print("Input: User reports login failures after update")
-print(f"Result: {result}")
+if __name__ == "__main__":
+    agent = TriageAgent()
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

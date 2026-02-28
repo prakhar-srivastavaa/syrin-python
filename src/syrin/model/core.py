@@ -96,6 +96,13 @@ class ModelVariable:
 
     Used internally for introspection (e.g., UI or validation).
     Developers rarely need to construct this directly.
+
+    Attributes:
+        name: Parameter name (e.g., "temperature", "max_tokens").
+        type_hint: Expected type (float, int, str, etc.).
+        default: Default value if not provided.
+        description: Human-readable description for docs/UI.
+        required: Whether the parameter must be provided.
     """
 
     def __init__(
@@ -118,6 +125,16 @@ class ModelSettings:
 
     Accessed via ``model.settings``. Use these to inspect or validate
     what parameters will be sent to the LLM.
+
+    Attributes:
+        context_window: Max input tokens the model supports. None = provider default.
+        max_output_tokens: Max completion tokens per call. None = provider default.
+        default_reserve_tokens: Tokens reserved for output in context budget.
+        temperature: Sampling temperature (0–2). Higher = more random.
+        top_p: Nucleus sampling. None = provider default.
+        top_k: Top-k sampling. None = provider default.
+        stop: Stop sequences. Generation stops when any appears.
+        extra: Additional provider-specific settings.
     """
 
     def __init__(
@@ -1402,6 +1419,12 @@ class ModelRegistry:
 
     Register models once, then get them by string (e.g., from config). Useful when
     the model choice is driven by config or feature flags.
+
+    Example:
+        >>> registry = ModelRegistry()
+        >>> registry.register("default", Model.OpenAI("gpt-4o-mini"))
+        >>> registry.register("fallback", Model.Anthropic("claude-3-haiku"))
+        >>> model = registry.get("default")
     """
 
     _instance: ModelRegistry | None = None

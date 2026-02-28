@@ -6,6 +6,8 @@ Demonstrates:
 - Prompt composition via function calls
 
 Run: python -m examples.14_prompts.prompt_decorator
+Visit: http://localhost:8000/playground
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -76,3 +78,16 @@ for domain in ["Python", "JavaScript", "Rust"]:
     )
     result = agent.response(f"What is {domain} best for?")
     print(f"{domain}: {result.content[:50]}...")
+
+
+class PromptDemoAgent(Agent):
+    name = "prompt-demo"
+    description = "Agent with @prompt parameterized system prompts"
+    model = almock
+    system_prompt = expert_prompt(domain="general", tone="concise")
+
+
+if __name__ == "__main__":
+    agent = PromptDemoAgent()
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

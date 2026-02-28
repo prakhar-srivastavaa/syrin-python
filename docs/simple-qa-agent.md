@@ -62,6 +62,19 @@ if __name__ == "__main__":
 python my_qa_agent.py
 ```
 
+**Want to serve your agent?** Use **HTTP**, **CLI**, or the **playground**:
+
+```python
+from syrin.enums import ServeProtocol
+
+agent = MyQAAgent()
+agent.serve(port=8000)  # HTTP: POST /chat, /stream
+agent.serve(protocol=ServeProtocol.CLI)  # CLI: terminal REPL
+agent.serve(port=8000, enable_playground=True)  # Web playground at /playground
+```
+
+See [Serving](serving.md). Use `debug=True` or `--trace` to see traces.
+
 ## How to Customize
 
 ### Change the AI Model

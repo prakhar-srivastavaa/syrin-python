@@ -8,7 +8,11 @@ from typing import Any, Protocol
 
 
 class ApprovalGateProtocol(Protocol):
-    """Human-in-the-loop approval backend. Implement for Slack, webhook, etc."""
+    """Human-in-the-loop approval backend. Implement for Slack, webhook, custom UI.
+
+    Use with HumanInTheLoop(approval_gate=MyGate()). Implement request() to
+    block until human approves or rejects (or timeout).
+    """
 
     async def request(
         self,
@@ -40,11 +44,14 @@ def _sync_to_async(fn: Callable[..., bool]) -> Callable[..., Awaitable[bool]]:
 
 
 class ApprovalGate:
-    """Callback-based approval gate. Default for HITL.
+    """Callback-based approval gate. Use with HumanInTheLoop(approval_gate=...).
+
+    Sync or async callback: (message, timeout, context) -> bool.
+    On timeout, treat as rejection (False).
 
     Example:
         >>> gate = ApprovalGate(callback=lambda msg, timeout, ctx: input("Approve? [y/n]: ") == "y")
-        >>> approved = await gate.request("Execute delete?", timeout=60)
+        >>> agent = Agent(loop=HumanInTheLoop(approval_gate=gate))
     """
 
     def __init__(

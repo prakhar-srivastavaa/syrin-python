@@ -1,9 +1,12 @@
-"""Agent Discovery — A2A Agent Card generation and /.well-known/agent.json."""
+"""Agent Discovery — A2A Agent Card generation and /.well-known/agent-card.json."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
+
+# A2A Agent Card path — https://{agent-server-domain}/.well-known/agent-card.json
+AGENT_CARD_PATH = "/.well-known/agent-card.json"
 
 if TYPE_CHECKING:
     from syrin.agent import Agent
@@ -11,7 +14,12 @@ if TYPE_CHECKING:
 
 @dataclass
 class AgentCardProvider:
-    """Provider metadata for Agent Card (organization, url)."""
+    """Provider metadata for Agent Card (organization, url).
+
+    Attributes:
+        organization: Organization name.
+        url: Organization URL.
+    """
 
     organization: str = "Syrin"
     url: str = "https://github.com/Syrin-Labs/syrin-python"
@@ -19,7 +27,12 @@ class AgentCardProvider:
 
 @dataclass
 class AgentCardAuth:
-    """Authentication metadata for Agent Card."""
+    """Authentication metadata for Agent Card.
+
+    Attributes:
+        schemes: Auth schemes (e.g. bearer).
+        oauth_url: OAuth URL if applicable.
+    """
 
     schemes: list[str] = field(default_factory=lambda: ["bearer"])
     oauth_url: str | None = None
@@ -81,7 +94,7 @@ class AgentCard:
         )
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to JSON-serializable dict for /.well-known/agent.json."""
+        """Convert to JSON-serializable dict for /.well-known/agent-card.json."""
         out: dict[str, Any] = {
             "name": self.name,
             "description": self.description,
@@ -111,7 +124,18 @@ class AgentCard:
 
 
 def build_agent_card_json(agent: Agent, base_url: str = "http://localhost:8000") -> dict[str, Any]:
-    """Build A2A Agent Card JSON from agent. Uses agent_card class attr to override auto-generated fields."""
+    """Build A2A Agent Card JSON from agent for /.well-known/agent-card.json.
+
+    Uses AgentCard.from_agent(); if agent has agent_card class attr, merges overrides.
+    Auto-populates name, description, url, skills from tools.
+
+    Args:
+        agent: Agent to build card for.
+        base_url: Base URL for the agent (default localhost:8000).
+
+    Returns:
+        JSON-serializable dict for /.well-known/agent-card.json.
+    """
     base_card = AgentCard.from_agent(agent, base_url=base_url)
     override = getattr(agent.__class__, "agent_card", None)
     if not isinstance(override, AgentCard):
@@ -147,7 +171,11 @@ def build_agent_card_json(agent: Agent, base_url: str = "http://localhost:8000")
 
 
 def should_enable_discovery(agent: Agent, config: Any) -> bool:
-    """Return True if discovery should be enabled (enable_discovery + agent has name)."""
+    """Return True if discovery (/.well-known/agent-card.json) should be enabled.
+
+    True when config.enable_discovery is True, or when None (auto) and agent has name.
+    False when config.enable_discovery is False.
+    """
     enable = getattr(config, "enable_discovery", None)
     if enable is False:
         return False

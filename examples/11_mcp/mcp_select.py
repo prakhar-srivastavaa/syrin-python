@@ -6,6 +6,7 @@ Demonstrates:
 - Reduces tool surface for simpler agents
 
 Requires: uv pip install syrin[serve]
+Visit: http://localhost:8000/playground
 
 Run: python -m examples.11_mcp.mcp_select
 """
@@ -82,3 +83,5 @@ if __name__ == "__main__":
         "\nSearchOnlyAgent response:",
         result.content[:200] + "..." if len(result.content) > 200 else result.content,
     )
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

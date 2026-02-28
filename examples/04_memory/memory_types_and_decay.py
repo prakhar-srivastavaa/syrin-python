@@ -9,6 +9,8 @@ Demonstrates:
 - Storage backends (memory, sqlite)
 
 Run: python -m examples.04_memory.memory_types_and_decay
+Visit: http://localhost:8000/playground
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -101,3 +103,21 @@ mem_backend = get_backend(MemoryBackend.MEMORY)
 mem_backend.add(MemoryEntry(id="mem-1", content="In-memory is fast", type=MemoryType.SEMANTIC))
 results = mem_backend.search("fast")
 print(f"In-memory: {results[0].content if results else 'none'}")
+
+
+# 7. Agent class for serving
+class MemoryDemoAgent(Agent):
+    name = "memory-demo"
+    description = "Agent with 4 memory types (Core, Episodic, Semantic, Procedural) and decay"
+    model = almock
+    system_prompt = "You are a helpful assistant with persistent memory."
+    memory = Memory(
+        types=[MemoryType.CORE, MemoryType.EPISODIC, MemoryType.SEMANTIC, MemoryType.PROCEDURAL],
+        top_k=5,
+    )
+
+
+if __name__ == "__main__":
+    agent = MemoryDemoAgent()
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

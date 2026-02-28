@@ -1,4 +1,21 @@
-"""Syrin — Python library for building AI agents with budget management and DSL codegen."""
+"""Syrin — Python library for building AI agents with budget management and DSL codegen.
+
+Quick start::
+
+    from syrin import Agent
+    from syrin.model import Model
+
+    agent = Agent(
+        model=Model.OpenAI("gpt-4o-mini", api_key="..."),
+        system_prompt="You are a helpful assistant.",
+        budget=Budget(run=0.50),
+    )
+    r = agent.response("Hello!")
+    print(r.content, r.cost)
+
+Key exports: Agent, Model, Budget, Memory, Context, CheckpointConfig, Guardrails.
+See docs/ and examples/ for full guides.
+"""
 
 import atexit
 import sys

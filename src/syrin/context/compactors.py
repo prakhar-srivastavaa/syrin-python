@@ -24,7 +24,14 @@ class ContextCompactorProtocol(Protocol):
 
 @dataclass
 class CompactionResult:
-    """Result of a compaction operation."""
+    """Result of a compaction operation.
+
+    Attributes:
+        messages: Compacted message list.
+        method: Method used (e.g. middle_out_truncate, summarize, none).
+        tokens_before: Token count before compaction.
+        tokens_after: Token count after compaction.
+    """
 
     messages: list[dict[str, Any]]
     method: str
@@ -33,7 +40,7 @@ class CompactionResult:
 
 
 class Compactor:
-    """Base compactor interface."""
+    """Base compactor interface. Implement compact() for custom strategies."""
 
     def compact(
         self,

@@ -8,6 +8,8 @@ Demonstrates:
 - Using pipe with Agent
 
 Run: python -m examples.15_advanced.pipe_operator
+Visit: http://localhost:8000/playground
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -50,6 +52,8 @@ print(f"| operator: '{result}'")
 
 # 4. Pipe with Agent
 class TransformAgent(Agent):
+    name = "transform-agent"
+    description = "Agent for pipe operator demo"
     model = almock
     system_prompt = "You are helpful."
 
@@ -110,3 +114,8 @@ result = pipe(
     lambda s: " | ".join(s),
 ).result()
 print(f"Data: '{result}'")
+
+if __name__ == "__main__":
+    agent = TransformAgent()
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

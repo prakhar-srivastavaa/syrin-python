@@ -6,6 +6,7 @@ Demonstrates:
 - tools=[mcp.select(...)] — Pick specific tools from remote
 
 Requires: uv pip install syrin[serve]
+Visit: http://localhost:8000/playground
 
 Usage:
   1. Start an MCP server in another terminal:
@@ -62,3 +63,5 @@ if __name__ == "__main__":
     result = agent.response("What shoes do you have?")
     preview = result.content[:300] + "..." if len(result.content) > 300 else result.content
     print("\nAgent response:", preview)
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

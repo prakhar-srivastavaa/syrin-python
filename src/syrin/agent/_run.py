@@ -103,12 +103,41 @@ async def run_agent_loop_async(agent: Any, user_input: str) -> Response[str]:
 
         agent._last_iteration = result.iterations
 
+        # Auto-store user input and assistant response as episodic memories
+        _auto_store_turn(agent, user_input, result.content)
+
         return cast(
             Response[str],
             agent._with_context_on_response(
                 _response_from_loop_result(agent, result, tokens, tool_calls_list, structured),
             ),
         )
+
+
+def _auto_store_turn(agent: Any, user_input: str, assistant_content: str | None) -> None:
+    """Store user input and assistant response as episodic memories when auto_store is enabled."""
+    pm = getattr(agent, "_persistent_memory", None)
+    if pm is None or not getattr(pm, "auto_store", False):
+        return
+    if getattr(agent, "_memory_backend", None) is None:
+        return
+    try:
+        from syrin.enums import MemoryType
+
+        if user_input and user_input.strip():
+            agent.remember(
+                f"User said: {user_input.strip()}",
+                memory_type=MemoryType.EPISODIC,
+                importance=0.7,
+            )
+        if assistant_content and assistant_content.strip():
+            agent.remember(
+                f"Assistant replied: {assistant_content.strip()}",
+                memory_type=MemoryType.EPISODIC,
+                importance=0.6,
+            )
+    except Exception:
+        pass  # Don't fail the turn if auto_store fails
 
 
 def _tokens_from_result(result: LoopResult) -> TokenUsage:

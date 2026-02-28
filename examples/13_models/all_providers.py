@@ -8,6 +8,8 @@ Demonstrates:
 - api_key and api_base configuration
 
 Run: python -m examples.13_models.all_providers
+Visit: http://localhost:8000/playground
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -74,3 +76,16 @@ model = Model.Anthropic(
     Model.Ollama("llama3"),
 )
 print(f"Fallbacks: {len(model.fallback)}")
+
+if __name__ == "__main__":
+    from syrin import Agent
+
+    class ProvidersDemoAgent(Agent):
+        name = "providers-demo"
+        description = "Agent with Almock (model providers demo)"
+        model = Model.Almock(latency_seconds=0.01, lorem_length=50)
+        system_prompt = "You are a helpful assistant."
+
+    agent = ProvidersDemoAgent()
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

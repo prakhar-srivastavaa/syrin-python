@@ -6,6 +6,9 @@ Demonstrates:
 - Accessing response properties (content, cost, tokens)
 
 Run: python -m examples.01_minimal.basic_agent
+Visit: http://localhost:8000/playground
+
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -26,13 +29,14 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 
 class Assistant(Agent):
+    name = "assistant"
+    description = "Basic helpful assistant"
     model = almock
     system_prompt = "You are a helpful assistant."
 
 
-assistant = Assistant()
-result = assistant.response("What is 2 + 2?")
-print("Question: What is 2 + 2?")
-print(f"Answer: {result.content}")
-print(f"Cost: ${result.cost:.6f}")
-print(f"Tokens: {result.tokens.total_tokens}")
+if __name__ == "__main__":
+    assistant = Assistant()
+    print("Serving at http://localhost:8000/playground")
+    assistant.serve(port=8000, enable_playground=True, debug=True)
+    # assistant.serve(protocol=ServeProtocol.CLI)

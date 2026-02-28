@@ -6,6 +6,7 @@ Demonstrates:
 - .tools() and .select() for tool access
 
 Requires: uv pip install syrin[serve]
+Visit: http://localhost:8000/playground
 
 Run: python -m examples.11_mcp.mcp_server_class
 """
@@ -38,10 +39,28 @@ class ProductMCP(MCP):
 
 
 if __name__ == "__main__":
+    from pathlib import Path
+
+    from dotenv import load_dotenv
+
+    from examples.models.models import almock
+    from syrin import Agent
+
+    load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+
+    class ProductAgent(Agent):
+        name = "product-agent"
+        description = "Product catalog agent (MCP tools)"
+        model = almock
+        system_prompt = "You help users find products."
+        tools = [ProductMCP()]
+
     mcp = ProductMCP()
     print("Tools:", [t.name for t in mcp.tools()])
     print("Selected:", [t.name for t in mcp.select("get_product")])
-    # Execute a tool
     spec = mcp.tools()[0]
     result = spec.func(query="shoes", limit=5)
     print("search_products result:", result)
+    agent = ProductAgent()
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

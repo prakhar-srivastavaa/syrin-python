@@ -520,6 +520,33 @@ print(movie_agent.response("Recommend an action movie"))
 print(chef_agent.response("What's a good Italian recipe?"))
 ```
 
+## Grouping Tools in MCP and Using MCP in Agents
+
+You can **group related tools in an MCP** and **use the MCP inside your agent's tools**. Define an MCP with `@tool` (same as Agent), then add the MCP to `tools=[]`:
+
+```python
+from Syrin import MCP, Agent, tool
+
+class ProductMCP(MCP):
+    """MCP that groups product catalog tools."""
+
+    @tool
+    def search_products(self, query: str, limit: int = 10) -> str:
+        """Search the product catalog."""
+        return f"Results for: {query}"
+
+    @tool
+    def get_product(self, product_id: str) -> str:
+        """Get product by ID."""
+        return f"Product {product_id} details"
+
+class ProductAgent(Agent):
+    model = Model.OpenAI("gpt-4o-mini")
+    tools = [ProductMCP()]  # MCP tools become agent tools
+```
+
+When serving, if MCP is in `tools`, `/mcp` is auto-mounted alongside `/chat`. See [MCP](mcp.md).
+
 ## Next Steps
 
 - **Add Memory** → Learn [Use Case 3: Agent with Memory](agent-with-memory.md)

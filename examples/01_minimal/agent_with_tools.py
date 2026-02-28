@@ -6,6 +6,9 @@ Demonstrates:
 - Multiple tools working together
 
 Run: python -m examples.01_minimal.agent_with_tools
+Visit: http://localhost:8000/playground
+
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -46,13 +49,15 @@ def get_weather(city: str, unit: str = "celsius") -> str:
 
 
 class MathAssistant(Agent):
+    name = "math-assistant"
+    description = "Assistant with calculator and weather tools"
     model = almock
     system_prompt = "You are a helpful assistant. Use tools for calculations."
     tools = [calculate, get_weather]
 
 
-assistant = MathAssistant()
-result = assistant.response("What is 15 times 7?")
-print("Question: What is 15 times 7?")
-print(f"Answer: {result.content}")
-print(f"Tool calls: {len(result.tool_calls)}")
+if __name__ == "__main__":
+    assistant = MathAssistant()
+    print("Serving at http://localhost:8000/playground")
+    assistant.serve(port=8000, enable_playground=True, debug=True)
+    # assistant.serve(protocol=ServeProtocol.CLI)

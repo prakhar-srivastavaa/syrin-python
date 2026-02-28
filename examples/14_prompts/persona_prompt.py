@@ -6,6 +6,8 @@ Demonstrates:
 - Method signatures: (self), (self, **kwargs)
 
 Run: python -m examples.14_prompts.persona_prompt
+Visit: http://localhost:8000/playground
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -21,6 +23,8 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 
 class PersonaAgent(Agent):
+    name = "persona-agent"
+    description = "Agent with @system_prompt in-class"
     model = almock
 
     @system_prompt
@@ -29,6 +33,9 @@ class PersonaAgent(Agent):
         return f"You assist {user_name or 'the user'}. Be {tone}."
 
 
-agent = PersonaAgent(prompt_vars={"user_name": "Carol", "tone": "witty"})
-r = agent.response("What's your personality?")
-print(f"Carol: {r.content[:80]}...")
+if __name__ == "__main__":
+    agent = PersonaAgent(prompt_vars={"user_name": "Carol", "tone": "witty"})
+    r = agent.response("What's your personality?")
+    print(f"Carol: {r.content[:80]}...")
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

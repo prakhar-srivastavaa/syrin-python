@@ -50,7 +50,12 @@ def _unlock_file(f: Any) -> None:
 
 
 class BudgetStore(ABC):
-    """Abstract interface for persisting budget tracker state."""
+    """Abstract interface for persisting budget tracker state across restarts.
+
+    Use with Agent(budget_store=FileBudgetStore(...), budget_store_key="user_123")
+    for per-user or per-session budget persistence. Implement load/save for
+    custom backends.
+    """
 
     @abstractmethod
     def load(self, key: str) -> BudgetTracker | None:
@@ -64,7 +69,7 @@ class BudgetStore(ABC):
 
 
 class InMemoryBudgetStore(BudgetStore):
-    """In-memory store; state is lost when process exits."""
+    """In-memory store. State is lost when process exits. Use for testing."""
 
     def __init__(self) -> None:
         self._store: dict[str, dict[str, Any]] = {}
@@ -82,7 +87,13 @@ class InMemoryBudgetStore(BudgetStore):
 
 
 class FileBudgetStore(BudgetStore):
-    """JSON file store for rate limits across restarts. One file per key or single file with keys."""
+    """JSON file store for budget persistence across restarts.
+
+    Use with Agent(budget_store=FileBudgetStore("/path/to/budgets.json")).
+    single_file=True (default): one file, keys as JSON object keys.
+    single_file=False: one file per key (path/key.json).
+    Uses file locking for concurrent access.
+    """
 
     def __init__(self, path: str | Path, *, single_file: bool = True) -> None:
         self._path = Path(path)

@@ -29,7 +29,17 @@ def _get_event_loop() -> asyncio.AbstractEventLoop:
 
 
 class Provider(ABC):
-    """Abstract base for LLM providers. Implement complete() and optionally complete_sync()."""
+    """Abstract base for LLM providers. Implement complete(); stream() defaults to one chunk.
+
+    Built-in providers: OpenAIProvider, AnthropicProvider, LiteLLMProvider, etc.
+    To add a new LLM: subclass Provider, implement complete(), optionally override stream().
+
+    Methods:
+        complete: Async completion. Required. Returns ProviderResponse.
+        complete_sync: Sync wrapper. Uses run_until_complete.
+        stream: Async iterator of chunks. Default: yields single full response.
+        stream_sync: Sync streaming. Default: yields single full response.
+    """
 
     @abstractmethod
     async def complete(
@@ -39,7 +49,17 @@ class Provider(ABC):
         tools: list[ToolSpec] | None = None,
         **kwargs: Any,
     ) -> ProviderResponse:
-        """Run a completion. Returns content, tool_calls, and token_usage."""
+        """Run a completion. Required. Returns content, tool_calls, token_usage.
+
+        Args:
+            messages: Conversation messages (system, user, assistant, tool).
+            model: ModelConfig with model_id, api_key, base_url.
+            tools: Optional tool specs for function calling.
+            **kwargs: Provider-specific (temperature, max_tokens, etc.).
+
+        Returns:
+            ProviderResponse with content, tool_calls, token_usage.
+        """
         ...
 
     def _run_async(self, coro: Any) -> ProviderResponse | None:
@@ -74,7 +94,7 @@ class Provider(ABC):
         tools: list[ToolSpec] | None = None,
         **kwargs: Any,
     ) -> ProviderResponse | None:
-        """Synchronous wrapper using asyncio.run()."""
+        """Synchronous wrapper. Uses run_until_complete(complete(...))."""
         return self._run_async(self.complete(messages=messages, model=model, tools=tools, **kwargs))
 
     async def stream(
@@ -84,7 +104,7 @@ class Provider(ABC):
         tools: list[ToolSpec] | None = None,
         **kwargs: Any,
     ) -> AsyncIterator[ProviderResponse]:
-        """Stream response chunks. Yields partial responses."""
+        """Stream response chunks. Default: yields one full response (from complete)."""
         response = await self.complete(messages, model, tools, **kwargs)
         yield response
 
@@ -95,7 +115,7 @@ class Provider(ABC):
         tools: list[ToolSpec] | None = None,
         **kwargs: Any,
     ) -> Iterator[ProviderResponse]:
-        """Synchronous streaming - yields responses."""
+        """Synchronous streaming. Default: yields one full response."""
         response = self._run_async(self.complete(messages, model, tools, **kwargs))
         if response:
             yield response

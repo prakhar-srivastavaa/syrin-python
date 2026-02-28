@@ -8,6 +8,8 @@ Demonstrates:
 - CapabilityToken and CapabilityIssuer
 
 Run: python -m examples.09_guardrails.authority_layer
+Visit: http://localhost:8000/playground
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -155,4 +157,19 @@ async def _run() -> None:
     await example_capability_tokens()
 
 
-asyncio.run(_run())
+if __name__ == "__main__":
+    asyncio.run(_run())
+    from examples.models.models import almock
+    from syrin import Agent
+    from syrin.guardrails import ContentFilter
+
+    class AuthorityDemoAgent(Agent):
+        name = "authority-demo"
+        description = "Agent with authority layer guardrails demo"
+        model = almock
+        system_prompt = "You are a helpful assistant."
+        guardrails = [ContentFilter(blocked_words=["unauthorized"])]
+
+    agent = AuthorityDemoAgent()
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

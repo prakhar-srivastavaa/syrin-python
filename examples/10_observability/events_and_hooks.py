@@ -8,6 +8,8 @@ Demonstrates:
 - Hook categories: agent, guardrail, budget, memory, output, context
 
 Run: python -m examples.10_observability.events_and_hooks
+Visit: http://localhost:8000/playground
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -80,3 +82,18 @@ agent4.events.on(Hook.MEMORY_RECALL, lambda _: memory_ops.append("recall"))
 agent4.remember("Python is great", memory_type=MemoryType.CORE)
 agent4.recall("Python")
 print(f"Memory operations: {memory_ops}")
+
+
+class EventsDemoAgent(Agent):
+    name = "events-demo"
+    description = "Agent with events and hooks"
+    model = almock
+    system_prompt = "You are a helpful assistant."
+    budget = Budget(run=1.0, on_exceeded=warn_on_exceeded)
+    memory = Memory()
+
+
+if __name__ == "__main__":
+    agent = EventsDemoAgent()
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

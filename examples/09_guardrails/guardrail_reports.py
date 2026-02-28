@@ -7,6 +7,8 @@ Demonstrates:
 - Custom output guardrails
 
 Run: python -m examples.09_guardrails.guardrail_reports
+Visit: http://localhost:8000/playground
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -27,6 +29,8 @@ guardrail = ContentFilter(blocked_words=["hack", "steal", "password"])
 
 
 class Assistant(Agent):
+    name = "guardrail-assistant"
+    description = "Assistant with ContentFilter guardrail"
     model = almock
     system_prompt = "You are a helpful assistant."
     guardrails = [guardrail]
@@ -82,3 +86,8 @@ result = assistant.response("Hello, how are you?")
 print(
     f"Guardrail passed: {result.report.guardrail.passed}, budget: ${result.report.budget.used:.4f}"
 )
+
+if __name__ == "__main__":
+    agent = Assistant()
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

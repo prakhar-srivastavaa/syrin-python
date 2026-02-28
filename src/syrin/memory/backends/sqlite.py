@@ -16,6 +16,11 @@ class SQLiteBackend:
     """SQLite-based storage for memories (persistent, file-based)."""
 
     def __init__(self, path: str | None = None) -> None:
+        """Initialize SQLite backend.
+
+        Args:
+            path: Path to SQLite file. Defaults to ~/.syrin/memory.db.
+        """
         if path is None:
             path = str(Path.home() / ".syrin" / "memory.db")
 

@@ -2,12 +2,12 @@
 
 Demonstrates:
 - agent_card = AgentCard(...) — Override auto-generated Agent Card fields
-- Hook.DISCOVERY_REQUEST — Emitted when /.well-known/agent.json is requested
+- Hook.DISCOVERY_REQUEST — Emitted when /.well-known/agent-card.json is requested
 
 Requires: uv pip install syrin[serve]
 
 Run: python -m examples.serving.discovery_override
-Then: curl http://localhost:8000/.well-known/agent.json
+Then: curl http://localhost:8000/.well-known/agent-card.json
 """
 
 from __future__ import annotations
@@ -57,5 +57,5 @@ if __name__ == "__main__":
     )
 
     print("Serving at http://localhost:8000")
-    print("GET /.well-known/agent.json to see custom Agent Card")
+    print("GET /.well-known/agent-card.json to see custom Agent Card")
     agent.serve(port=8000)

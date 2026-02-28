@@ -16,7 +16,15 @@ from dataclasses import dataclass
 
 @dataclass
 class TokenCount:
-    """Token count breakdown."""
+    """Token count breakdown for messages and system prompt.
+
+    Attributes:
+        total: Total tokens.
+        system: System prompt tokens.
+        messages: Message tokens.
+        tools: Tool definition tokens.
+        memory: Memory injection tokens.
+    """
 
     total: int
     system: int = 0
@@ -26,10 +34,16 @@ class TokenCount:
 
 
 class TokenCounter:
-    """Token counter with support for multiple providers.
+    """Token counter with support for multiple encodings.
 
-    Uses tiktoken for accurate counting when available, with
-    estimation fallback for other providers.
+    Uses tiktoken when available for accurate counting; falls back to
+    ~4 chars per token when tiktoken is not installed. Used by context
+    manager for budget and compaction.
+
+    Methods:
+        count: Count tokens in text.
+        count_messages: Count tokens in message list with breakdown.
+        count_tools: Count tokens in tool definitions.
     """
 
     def __init__(self, encoding: str = "cl100k_base"):
@@ -132,7 +146,11 @@ _default_counter: TokenCounter | None = None
 
 
 def get_counter() -> TokenCounter:
-    """Get the default token counter."""
+    """Get the default token counter singleton.
+
+    Returns:
+        TokenCounter instance. Shared across context manager usage.
+    """
     global _default_counter
     if _default_counter is None:
         _default_counter = TokenCounter()

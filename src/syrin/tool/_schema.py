@@ -9,7 +9,15 @@ from syrin.enums import DocFormat
 
 
 def schema_to_toon(schema: dict[str, Any], indent: int = 0) -> str:
-    """Convert a JSON schema to TOON format (token-efficient)."""
+    """Convert a JSON schema to TOON format (token-efficient).
+
+    Args:
+        schema: JSON schema dict (type, properties, required, etc.).
+        indent: Indentation level for nesting.
+
+    Returns:
+        TOON-format string (~40% fewer tokens than JSON).
+    """
     lines: list[str] = []
     prefix = "  " * indent
 
@@ -68,7 +76,17 @@ def tool_schema_to_format_dict(
     parameters_schema: dict[str, Any],
     format: DocFormat = DocFormat.TOON,
 ) -> dict[str, Any]:
-    """Build provider-style tool schema dict from components (no ToolSpec dependency)."""
+    """Build provider-style tool schema dict from components (no ToolSpec dependency).
+
+    Args:
+        name: Tool name.
+        description: Tool description.
+        parameters_schema: JSON schema for parameters.
+        format: DocFormat.TOON (default) or DocFormat.JSON.
+
+    Returns:
+        Provider-ready schema dict (type/function/name/description/parameters).
+    """
     if format == DocFormat.TOON:
         toon_params = schema_to_toon(parameters_schema or {})
         return {

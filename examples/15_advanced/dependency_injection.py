@@ -6,6 +6,8 @@ Demonstrates:
 - Testing with mock dependencies (inject MockDeps)
 
 Run: python -m examples.15_advanced.dependency_injection
+Visit: http://localhost:8000/playground
+Requires: uv pip install syrin[serve]
 """
 
 from dataclasses import dataclass
@@ -66,6 +68,8 @@ def get_user_preference(ctx: RunContext[SearchDeps], key: str) -> str:
 class SearchAgent(Agent):
     """Agent with dependency injection."""
 
+    name = "search-agent"
+    description = "Agent with dependency injection"
     model = almock
     system_prompt = "Use search and get_user_preference. Be concise."
     tools = [search, get_user_preference]
@@ -95,3 +99,5 @@ if __name__ == "__main__":
     test_agent = SearchAgent(deps=mock_deps)
     test_result = test_agent.response("Search for testing")
     print(f"\nWith mock: {test_result.content[:100]}...")
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

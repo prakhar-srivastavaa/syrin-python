@@ -13,7 +13,15 @@ from syrin.guardrails.base import Guardrail
 
 @dataclass
 class AttackResult:
-    """Result of an attack attempt."""
+    """Result of an attack attempt.
+
+    Attributes:
+        attack_type: Type (jailbreak, prompt_injection, encoding).
+        payload: Attack payload used.
+        blocked: Whether guardrail blocked it.
+        bypassed: Whether guardrail allowed it (bypass).
+        metadata: Additional info (rule, etc.).
+    """
 
     attack_type: str
     payload: str
@@ -24,7 +32,14 @@ class AttackResult:
 
 @dataclass
 class FuzzingResult:
-    """Result of fuzzing attempt."""
+    """Result of fuzzing attempt.
+
+    Attributes:
+        original: Original input.
+        mutated: Mutated input that was tested.
+        mutation_type: Type of mutation applied.
+        bypassed: Whether guardrail was bypassed.
+    """
 
     original: str
     mutated: str

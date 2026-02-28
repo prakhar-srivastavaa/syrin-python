@@ -9,6 +9,8 @@ Demonstrates:
 - GuardrailDecision inspection (confidence, alternatives, metadata)
 
 Run: python -m examples.09_guardrails.pii_and_evaluation
+Visit: http://localhost:8000/playground
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -18,6 +20,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+from examples.models.models import almock
+from syrin import Agent
 from syrin.enums import GuardrailStage
 from syrin.guardrails import (
     ContentFilter,
@@ -173,4 +177,16 @@ async def _run() -> None:
     await example_decision_inspection()
 
 
-asyncio.run(_run())
+class GuardrailDemoAgent(Agent):
+    name = "guardrail-demo"
+    description = "Agent with ContentFilter and PIIScanner guardrails"
+    model = almock
+    system_prompt = "You are a helpful assistant."
+    guardrails = [ContentFilter(blocked_words=["password", "secret"]), PIIScanner()]
+
+
+if __name__ == "__main__":
+    asyncio.run(_run())
+    agent = GuardrailDemoAgent()
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

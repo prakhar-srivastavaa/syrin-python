@@ -38,7 +38,17 @@ from syrin.observability import Span
 
 @dataclass
 class SamplingPolicy:
-    """Policy for determining which traces to sample."""
+    """Policy for determining which traces to sample.
+
+    Attributes:
+        rate: Sample rate (0.0 to 1.0).
+        sample_errors: Always sample traces with errors.
+        sample_slow_traces: Always sample slow traces.
+        slow_threshold_ms: Threshold for slow traces (ms).
+        sample_expensive: Always sample expensive traces.
+        expensive_threshold_usd: Threshold for expensive traces (USD).
+        sample_by_attribute: Sample by attribute match (dict).
+    """
 
     rate: float = 1.0  # Sample rate (0.0 to 1.0)
     sample_errors: bool = True  # Always sample traces with errors

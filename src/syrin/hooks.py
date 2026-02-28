@@ -99,7 +99,7 @@ BUDGET
 
 DISCOVERY
 ---------
-- DISCOVERY_REQUEST: When /.well-known/agent.json is requested
+- DISCOVERY_REQUEST: When /.well-known/agent-card.json is requested
   Context: {agent_name: str, path: str, user_agent: str (optional)}
 
 CONTEXT
@@ -459,14 +459,14 @@ HOOK_SCHEMAS: dict[Hook, HookContextSchema] = {
     ),
     Hook.DISCOVERY_REQUEST: HookContextSchema(
         hook=Hook.DISCOVERY_REQUEST,
-        description="When /.well-known/agent.json is requested",
+        description="When /.well-known/agent-card.json is requested",
         fields={
             "agent_name": str,
             "path": str,
         },
         example={
             "agent_name": "product-agent",
-            "path": "/.well-known/agent.json",
+            "path": "/.well-known/agent-card.json",
         },
     ),
     Hook.CHECKPOINT_SAVE: HookContextSchema(

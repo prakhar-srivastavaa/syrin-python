@@ -15,14 +15,23 @@ from typing import Any, cast
 
 @dataclass
 class RateLimitState:
-    """Serialized rate limit state for persistence."""
+    """Serialized rate limit state for persistence.
+
+    Attributes:
+        entries: List of rate limit entries (timestamp, tokens, etc.).
+        last_updated: Last update timestamp.
+    """
 
     entries: list[dict[str, Any]] = field(default_factory=list)
     last_updated: float = field(default_factory=time.time)
 
 
 class RateLimitBackend(ABC):
-    """Abstract base class for rate limit backends."""
+    """Abstract base class for rate limit backends.
+
+    Implement save/load/delete/exists to persist rate limit state
+    (in-memory, SQLite, Redis, etc.). Used by APIRateLimit backend.
+    """
 
     @abstractmethod
     def save(self, key: str, state: RateLimitState) -> None:

@@ -95,8 +95,14 @@ class ToolCall(BaseModel):
 class Message(BaseModel):
     """A single message in a conversation. Used with ``model.complete(messages)``.
 
-    Build a list of Message objects to send to the model. Roles: system (instructions),
-    user (human input), assistant (model reply), tool (tool result for function calling).
+    Build a list of Message objects to send to the model.
+
+    Attributes:
+        role: Message role — system (instructions), user (human), assistant (model), tool.
+        content: Message text. Empty for tool messages with tool_calls.
+        tool_call_id: ID of the tool call this message responds to (role=tool only).
+        tool_calls: Tool calls requested by the model (role=assistant only).
+        metadata: Optional custom metadata.
     """
 
     role: MessageRole = Field(
@@ -146,8 +152,15 @@ class CostInfo(BaseModel):
 class ProviderResponse(BaseModel):
     """Response from ``model.complete()`` or ``model.acomplete()``.
 
-    The main fields you use: ``content`` (the text), ``token_usage`` (for cost/budget),
-    and ``tool_calls`` (if the model requested function calls).
+    Main fields: ``content`` (text), ``token_usage`` (for cost/budget), ``tool_calls``
+    (if the model requested function calls). Use token_usage with calculate_cost().
+
+    Attributes:
+        content: Assistant text. None if only tool_calls. Parsed to Pydantic if output type set.
+        tool_calls: Tool/function calls the model requested. Process and add tool results.
+        token_usage: Input/output token counts. Use for cost and budget tracking.
+        stop_reason: Why the model stopped (end_turn, tool_call, max_tokens, etc.).
+        raw_response: Provider-specific raw response (OpenAI, Anthropic, etc.).
     """
 
     content: str | None = Field(

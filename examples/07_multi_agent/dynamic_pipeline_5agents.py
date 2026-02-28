@@ -8,7 +8,8 @@ Demonstrates:
 
 Run from repo root:
   python -m examples.07_multi_agent.dynamic_pipeline_5agents
-  python examples/07_multi_agent/dynamic_pipeline_5agents.py --trace
+Visit: http://localhost:8000/playground
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -46,6 +47,7 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 # Use for: finding information, web search, gathering data, investigating topics
 class ResearcherAgent(Agent):
     name = "researcher"
+    description = "Researches topics and gathers information"
     model = almock_researcher
     system_prompt = (
         "You research topics and gather information. Use for: finding facts, "
@@ -56,6 +58,7 @@ class ResearcherAgent(Agent):
 # Use for: analyzing data, comparing options, evaluating pros/cons, structured reasoning
 class AnalystAgent(Agent):
     name = "analyst"
+    description = "Analyzes data and provides structured reasoning"
     model = almock_analyst
     system_prompt = (
         "You analyze data and provide structured reasoning. Use for: comparing "
@@ -66,6 +69,7 @@ class AnalystAgent(Agent):
 # Use for: writing content, drafting text, creative writing, formatting
 class WriterAgent(Agent):
     name = "writer"
+    description = "Writes content in clear, engaging style"
     model = almock_writer
     system_prompt = (
         "You write content in a clear, engaging style. Use for: drafting text, "
@@ -76,6 +80,7 @@ class WriterAgent(Agent):
 # Use for: fact-checking, verifying claims, validating accuracy
 class FactCheckerAgent(Agent):
     name = "fact_checker"
+    description = "Fact-checks and verifies claims"
     model = almock_fact_checker
     system_prompt = (
         "You fact-check and verify claims. Use for: validating accuracy, "
@@ -86,6 +91,7 @@ class FactCheckerAgent(Agent):
 # Use for: summarizing long content, condensing, executive summaries
 class SummarizerAgent(Agent):
     name = "summarizer"
+    description = "Synthesizes and summarizes content"
     model = almock_summarizer
     system_prompt = (
         "You synthesize and summarize content. Use for: executive summaries, "
@@ -135,3 +141,19 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+    budget = Budget(run=2.0)
+    serve_pipeline = DynamicPipeline(
+        agents=[
+            ResearcherAgent,
+            AnalystAgent,
+            WriterAgent,
+            FactCheckerAgent,
+            SummarizerAgent,
+        ],
+        model=almock_orchestrator,
+        budget=budget,
+        max_parallel=5,
+        debug=True,
+    )
+    print("Serving at http://localhost:8000/playground")
+    serve_pipeline.serve(port=8000, enable_playground=True, debug=True)

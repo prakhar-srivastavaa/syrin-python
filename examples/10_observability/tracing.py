@@ -5,7 +5,9 @@ Demonstrates:
 - Manual span creation with syrin.observability
 - Console output for trace visibility
 
-Run: python -m examples.07_observability.tracing
+Run: python -m examples.10_observability.tracing
+Visit: http://localhost:8000/playground
+Requires: uv pip install syrin[serve]
 """
 
 from pathlib import Path
@@ -18,10 +20,17 @@ from syrin import Agent
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 
-agent = Agent(
-    model=almock,
-    system_prompt="You are helpful.",
-    debug=True,
-)
-result = agent.response("What is AI?")
-print(f"Response: {result.content[:80]}...")
+class TracingAgent(Agent):
+    name = "tracing-agent"
+    description = "Agent with debug tracing enabled"
+    model = almock
+    system_prompt = "You are helpful."
+    debug = True
+
+
+if __name__ == "__main__":
+    agent = TracingAgent()
+    result = agent.response("What is AI?")
+    print(f"Response: {result.content[:80]}...")
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

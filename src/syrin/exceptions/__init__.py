@@ -6,7 +6,7 @@ from typing import Any
 
 
 class SyrinError(Exception):
-    """Base exception for all Syrin errors."""
+    """Base exception for all Syrin errors. Catch this for generic handling."""
 
     pass
 
@@ -36,7 +36,16 @@ class BudgetExceededError(SyrinError):
 
 
 class BudgetThresholdError(SyrinError):
-    """Raised when a budget threshold triggers an action."""
+    """Raised when a budget threshold triggers a stop action.
+
+    When a BudgetThreshold action raises stop_on_exceeded or similar,
+    this is raised. Use for graceful handling when budget is nearly exhausted.
+
+    Attributes:
+        message: Error message.
+        threshold_percent: Threshold percentage that was crossed.
+        action_taken: Action identifier (e.g. "stop").
+    """
 
     def __init__(
         self,
@@ -50,37 +59,55 @@ class BudgetThresholdError(SyrinError):
 
 
 class ModelNotFoundError(SyrinError):
-    """Raised when a requested model is not found in the registry."""
+    """Raised when a requested model is not found in the registry.
+
+    Typically when ModelRegistry.resolve() cannot find a model by name.
+    """
 
     pass
 
 
 class ToolExecutionError(SyrinError):
-    """Raised when a tool execution fails."""
+    """Raised when a tool execution fails.
+
+    Wraps the underlying exception. Check __cause__ for the original error.
+    """
 
     pass
 
 
 class TaskError(SyrinError):
-    """Raised when a task execution fails."""
+    """Raised when a task execution fails.
+
+    Use when AgentTask or similar task orchestration fails.
+    """
 
     pass
 
 
 class ProviderError(SyrinError):
-    """Raised when an LLM provider returns an error."""
+    """Raised when an LLM provider returns an error.
+
+    API errors, rate limits, auth failures, etc. Check message for details.
+    """
 
     pass
 
 
 class ProviderNotFoundError(SyrinError):
-    """Raised when a requested provider name is not registered (e.g. typo in provider=)."""
+    """Raised when a requested provider name is not registered.
+
+    Typically a typo in provider= or model_id prefix. Check ModelRegistry.
+    """
 
     pass
 
 
 class CodegenError(SyrinError):
-    """Raised when DSL code generation fails."""
+    """Raised when .syrin DSL code generation fails.
+
+    Parsing or translation errors from Syrin DSL to Python.
+    """
 
     pass
 

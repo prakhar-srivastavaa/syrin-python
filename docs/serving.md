@@ -1,6 +1,19 @@
 # Serving Agents — HTTP, CLI, STDIO
 
-Serve Syrin agents over HTTP, CLI REPL, or STDIO (background/subprocess).
+Serving is built-in — one line to run your agent. No extra wiring.
+
+**Serve via HTTP or CLI:**
+
+| Protocol | When to Use | How |
+|----------|-------------|-----|
+| **HTTP** | Production API, webhooks, chatbots | `agent.serve(port=8000)` — POST `/chat`, `/stream`, etc. |
+| **CLI** | Local dev, interactive testing | `agent.serve(protocol=ServeProtocol.CLI)` — terminal REPL |
+| **STDIO** | Background tasks, subprocess | `agent.serve(protocol=ServeProtocol.STDIO)` — JSON lines on stdin/stdout |
+
+- **Web playground** — Add `enable_playground=True` and visit http://localhost:8000/playground. Chat, see cost, budget, and traces.
+- **CLI REPL** — Use `protocol=ServeProtocol.CLI` for interactive terminal testing.
+
+**Tip:** Use `debug=True` when serving, or run scripts with `--trace`, to see LLM calls, tool calls, and costs in the console.
 
 **Requires:** `uv pip install syrin[serve]` (fastapi, uvicorn)
 
@@ -44,13 +57,13 @@ When using `agent.serve()` or `agent.as_router()`:
 | `/describe` | GET | Agent introspection (name, tools, budget) |
 | `/playground` | GET | Web playground (when `enable_playground=True`) |
 | `/mcp` | POST | MCP JSON-RPC (when MCP in agent tools) |
-| `/.well-known/agent.json` | GET | A2A Agent Card (when discovery enabled) |
+| `/.well-known/agent-card.json` | GET | A2A Agent Card (when discovery enabled) |
 
 **Request body for `/chat` and `/stream`:** `{"message": "..."}` or `{"input": "..."}`
 
 ## Agent Discovery — A2A Agent Card
 
-When `enable_discovery` is on (auto when agent has `name`), the serve layer exposes an A2A Agent Card at `GET /.well-known/agent.json`. Other agents, frontends, and infrastructure can discover capabilities without manual configuration.
+When `enable_discovery` is on (auto when agent has `name`), the serve layer exposes an A2A Agent Card at `GET /.well-known/agent-card.json`. Other agents, frontends, and infrastructure can discover capabilities without manual configuration.
 
 ```python
 class ProductAgent(Agent):
@@ -60,7 +73,7 @@ class ProductAgent(Agent):
     tools = [search_products, get_product]
 
 ProductAgent().serve(port=8000)
-# GET /.well-known/agent.json returns: name, description, url, skills (tools), etc.
+# GET /.well-known/agent-card.json returns: name, description, url, skills (tools), etc.
 ```
 
 **Override Agent Card** — Set `agent_card = syrin.AgentCard(...)` on your Agent class to override auto-generated fields (provider, authentication, capabilities, name, description, etc.):
@@ -78,7 +91,7 @@ class ProductAgent(Agent):
     )
 ```
 
-**Discovery hook** — `Hook.DISCOVERY_REQUEST` is emitted when `/.well-known/agent.json` is requested. Context: `agent_name`, `path`.
+**Discovery hook** — `Hook.DISCOVERY_REQUEST` is emitted when `/.well-known/agent-card.json` is requested. Context: `agent_name`, `path`.
 
 **Disable discovery:** `ServeConfig(enable_discovery=False)`
 

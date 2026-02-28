@@ -9,6 +9,8 @@ Demonstrates:
 - FuzzingEngine — mutation-based bypass discovery
 
 Run: python -m examples.09_guardrails.intelligence_layer
+Visit: http://localhost:8000/playground
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -181,4 +183,19 @@ async def _run() -> None:
     await example_fuzzing()
 
 
-asyncio.run(_run())
+if __name__ == "__main__":
+    asyncio.run(_run())
+    from examples.models.models import almock
+    from syrin import Agent
+    from syrin.guardrails import ContentFilter
+
+    class IntelligenceDemoAgent(Agent):
+        name = "intelligence-demo"
+        description = "Agent with ContentFilter (intelligence layer demo)"
+        model = almock
+        system_prompt = "You are a helpful assistant."
+        guardrails = [ContentFilter(blocked_words=["password"])]
+
+    agent = IntelligenceDemoAgent()
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

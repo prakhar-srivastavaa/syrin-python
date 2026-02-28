@@ -6,6 +6,8 @@ Demonstrates:
 - effective_prompt_vars() and get_prompt_builtins() for introspection
 
 Run: python -m examples.14_prompts.dynamic_prompt
+Visit: http://localhost:8000/playground
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -30,6 +32,8 @@ def persona_prompt(
 
 
 class PersonaAgent(Agent):
+    name = "persona-agent"
+    description = "Agent with dynamic prompt_vars"
     model = almock
     system_prompt = persona_prompt
     prompt_vars = {"tone": "friendly"}
@@ -46,3 +50,9 @@ print(f"Alice: {r1.content[:80]}...")
 # Per-call override (same agent, different user)
 r2 = alice.response("Hi", prompt_vars={"user_name": "Bob"})
 print(f"Bob (per-call): {r2.content[:80]}...")
+
+
+if __name__ == "__main__":
+    agent = PersonaAgent(prompt_vars={"user_name": "Demo", "tone": "concise"})
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

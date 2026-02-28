@@ -2,6 +2,7 @@
 
 from syrin.serve.config import ServeConfig
 from syrin.serve.discovery import (
+    AGENT_CARD_PATH,
     AgentCard,
     AgentCardAuth,
     AgentCardProvider,
@@ -13,6 +14,7 @@ from syrin.serve.router import AgentRouter
 from syrin.serve.servable import Servable
 
 __all__ = [
+    "AGENT_CARD_PATH",
     "Servable",
     "add_playground_static_mount",
     "create_http_app",

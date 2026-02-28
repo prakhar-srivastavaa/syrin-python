@@ -6,6 +6,9 @@ Demonstrates:
 - Named entry points for different capabilities
 
 Run: python -m examples.02_tasks.multiple_tasks
+Visit: http://localhost:8000/playground
+
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -23,6 +26,8 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 class Writer(Agent):
     """Agent with research and write tasks. Uses @syrin.task for named APIs."""
 
+    name = "writer"
+    description = "Writer with research(topic) and write(topic, style) tasks"
     model = almock
     system_prompt = "You are a professional writer. Research thoroughly and write clearly."
 
@@ -39,9 +44,8 @@ class Writer(Agent):
         return r.content or ""
 
 
-writer = Writer()
-topic = "renewable energy"
-research = writer.research(topic)
-print(f"Research ({topic}): {research[:100]}...")
-article = writer.write(topic, style="concise")
-print(f"Article: {article[:150]}...")
+if __name__ == "__main__":
+    writer = Writer()
+    print("Serving at http://localhost:8000/playground")
+    writer.serve(port=8000, enable_playground=True, debug=True)
+    # writer.serve(protocol=ServeProtocol.CLI)

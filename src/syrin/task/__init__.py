@@ -14,9 +14,23 @@ def task(
     *,
     name: str | None = None,
 ) -> TaskSpec | Callable[..., TaskSpec]:
-    """
-    Decorator that marks a method as an agent task. Invoke like a method:
-    agent.task_name(args). Parameter types are validated from type hints.
+    """Decorator that marks a method as an agent task.
+
+    Invoke like agent.task_name(args). Parameter types and return type
+    are inferred from type hints.
+
+    Args:
+        func: Function to decorate. If None, returns a decorator.
+        name: Override task name. Default: function name.
+
+    Returns:
+        TaskSpec when used as @task; callable decorator when used as @task(name="...").
+
+    Example:
+        >>> class MyAgent(Agent):
+        ...     @task
+        ...     def summarize(self, text: str) -> str:
+        ...         return self.response(f"Summarize: {text}").content
     """
 
     def decorator(f: Callable[..., Any]) -> TaskSpec:

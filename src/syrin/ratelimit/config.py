@@ -9,7 +9,14 @@ from syrin.threshold import RateLimitThreshold, ThresholdContext
 
 @dataclass
 class RateLimitStats:
-    """Statistics about rate limit usage."""
+    """Statistics about rate limit usage (RPM, TPM, RPD).
+
+    Attributes:
+        rpm_used, rpm_limit: Requests per minute.
+        tpm_used, tpm_limit: Tokens per minute.
+        rpd_used, rpd_limit: Requests per day.
+        thresholds_triggered: Names of triggered thresholds.
+    """
 
     rpm_used: int = 0
     rpm_limit: int = 0
@@ -33,6 +40,15 @@ class APIRateLimit:
         thresholds: List of RateLimitThreshold
         wait_backoff: Seconds to wait when WAIT action triggers (default 1.0)
         auto_switch: Auto-switch model on exceeded (default True)
+
+    Attributes:
+        rpm, tpm, rpd: Limits (requests/min, tokens/min, requests/day).
+        thresholds: RateLimitThreshold actions (e.g. warn at 80%).
+        wait_backoff: Seconds to wait when WAIT action triggers.
+        auto_switch: Auto-switch model on exceeded.
+        auto_detect: Auto-detect limits from model_id.
+        retry_on_429: Retry on 429 with backoff.
+        max_retries: Max retries on 429.
 
     Example:
         >>> from syrin import Agent, Model

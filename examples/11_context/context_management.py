@@ -10,6 +10,8 @@ Demonstrates:
 - CONTEXT_COMPRESS event
 
 Run: python -m examples.11_context.context_management
+Visit: http://localhost:8000/playground
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -126,3 +128,17 @@ class MyContextManager(ContextManager):
 
 agent = Agent(model=almock, context=MyContextManager())
 agent.response("Hello custom!")
+
+
+class ContextDemoAgent(Agent):
+    name = "context-demo"
+    description = "Agent with context management"
+    model = almock
+    system_prompt = "You are a helpful assistant."
+    context = Context(max_tokens=1000)
+
+
+if __name__ == "__main__":
+    agent = ContextDemoAgent()
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

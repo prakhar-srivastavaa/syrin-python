@@ -10,8 +10,12 @@ from typing import Any
 class GuardrailCheckResult:
     """Result of guardrail check (sync API).
 
-    Returned by GuardrailChain.check() and used when the agent runs
-    guardrails during a request.
+    Returned by GuardrailChain.check() when agent runs guardrails.
+
+    Attributes:
+        passed: Whether the guardrail check passed.
+        reason: Human-readable reason if failed.
+        metadata: Arbitrary metadata about the check.
     """
 
     passed: bool

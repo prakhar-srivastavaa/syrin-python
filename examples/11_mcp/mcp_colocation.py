@@ -3,12 +3,12 @@
 Demonstrates:
 - MCP instance in Agent tools
 - /mcp route auto-mounted alongside /chat
-- GET /.well-known/agent.json for discovery
+- GET /.well-known/agent-card.json for discovery
 
 Requires: uv pip install syrin[serve]
 
 Run: python -m examples.11_mcp.mcp_colocation
-Then: curl http://localhost:8000/.well-known/agent.json
+Then: curl http://localhost:8000/.well-known/agent-card.json
       curl -X POST http://localhost:8000/mcp -H "Content-Type: application/json" \\
         -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
 """

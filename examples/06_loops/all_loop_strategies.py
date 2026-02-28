@@ -9,6 +9,8 @@ Demonstrates:
 - Custom loop — implement your own strategy
 
 Run: python -m examples.06_loops.all_loop_strategies
+Visit: http://localhost:8000/playground
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -124,9 +126,22 @@ def example_custom_loop() -> None:
     print(f"A: {result.content[:80]}...")
 
 
-example_single_shot()
-example_react()
-example_human_in_the_loop()
-example_plan_execute()
-example_code_action()
-example_custom_loop()
+class LoopDemoAgent(Agent):
+    name = "loop-demo"
+    description = "Agent with ReactLoop (Think, Act, Observe)"
+    model = almock
+    system_prompt = "You are a helpful assistant. Use tools when needed."
+    loop = ReactLoop(max_iterations=5)
+
+
+if __name__ == "__main__":
+    example_single_shot()
+    example_react()
+    example_human_in_the_loop()
+    example_plan_execute()
+    example_code_action()
+    example_custom_loop()
+
+    agent = LoopDemoAgent()
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

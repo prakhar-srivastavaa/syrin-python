@@ -287,8 +287,8 @@ class _AgentMeta(type):
         **kwargs: Any,
     ) -> type:
         for attr, internal in (
-            ("name", "_Syrin_default_name"),
-            ("description", "_Syrin_default_description"),
+            ("name", "_syrin_default_name"),
+            ("description", "_syrin_default_description"),
         ):
             if attr in namespace:
                 val = namespace[attr]
@@ -328,8 +328,22 @@ class Agent(Servable, metaclass=_AgentMeta):
         - Or subclass and set class attributes: ``model = Model.OpenAI(...)``
         - Child classes override parent for model/prompt/budget; tools are merged.
 
-    Attributes:
-        events: Lifecycle hooks (before/on/after). Use agent.events.on(Hook.LLM_REQUEST_END, fn).
+    Subclass attributes (set on your Agent subclass; override parent defaults):
+        model: Model | None — LLM to use (Model.OpenAI, Model.Anthropic, etc.). Required.
+        system_prompt: str — Instructions sent with every request. Default: "".
+        name: str | None — Agent identifier for handoffs, discovery. Default: None.
+        description: str — Human-readable description. Default: "".
+        tools: list[ToolSpec] — Tools the agent can call. Merged with parent. Default: [].
+        budget: Budget | None — Cost limits (run, per-period). Default: None (unlimited).
+        memory: Memory | None — Persistent memory config. Default: None.
+        guardrails: list[Guardrail] — Input/output guardrails. Merged with parent. Default: [].
+        context: Context | None — Context window config. Default: None.
+        checkpoint: CheckpointConfig | None — State checkpoint config. Default: None.
+        prompt_vars: dict[str, Any] — Template vars for dynamic system prompts. Default: {}.
+
+    Instance attributes (read after creation):
+        events: Lifecycle hooks. Use agent.events.on(Hook.LLM_REQUEST_END, fn).
+        budget_state: BudgetState | None — Current budget state when budget configured.
 
     Example:
         >>> from syrin import Agent
@@ -343,15 +357,16 @@ class Agent(Servable, metaclass=_AgentMeta):
         2 + 2 equals 4.
     """
 
-    _Syrin_default_model: Model | ModelConfig | None = None
-    _Syrin_default_system_prompt: str | Any = ""
-    _Syrin_system_prompt_method: Any = None  # @system_prompt method if present
-    _Syrin_default_prompt_vars: dict[str, Any] = ()  # type: ignore[assignment]
-    _Syrin_default_tools: list[ToolSpec] = []
-    _Syrin_default_budget: Budget | None = None
-    _Syrin_default_guardrails: list[Guardrail] = []
-    _Syrin_default_name: str | None = None
-    _Syrin_default_description: str = ""
+    _syrin_default_model: Model | ModelConfig | None = None
+    _syrin_default_memory: Memory | None = None
+    _syrin_default_system_prompt: str | Any = ""
+    _syrin_system_prompt_method: Any = None  # @system_prompt method if present
+    _syrin_default_prompt_vars: dict[str, Any] = ()  # type: ignore[assignment]
+    _syrin_default_tools: list[ToolSpec] = []
+    _syrin_default_budget: Budget | None = None
+    _syrin_default_guardrails: list[Guardrail] = []
+    _syrin_default_name: str | None = None
+    _syrin_default_description: str = ""
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
@@ -361,9 +376,11 @@ class Agent(Servable, metaclass=_AgentMeta):
         default_tools = _merge_class_attrs(mro, "tools", merge=True)
         default_budget = _merge_class_attrs(mro, "budget", merge=False)
         default_guardrails = _merge_class_attrs(mro, "guardrails", merge=True)
+        default_memory = _merge_class_attrs(mro, "memory", merge=False)
         default_name = _merge_class_attrs(mro, "name", merge=False)
         default_description = _merge_class_attrs(mro, "description", merge=False)
-        cls._Syrin_default_model = default_model if default_model is not _UNSET else None
+        cls._syrin_default_model = default_model if default_model is not _UNSET else None
+        cls._syrin_default_memory = default_memory if default_memory is not _UNSET else None
         method_names = _get_system_prompt_method_names(cls)
         if len(method_names) > 1:
             names_str = ", ".join(f"'{n}'" for n in method_names)
@@ -372,8 +389,8 @@ class Agent(Servable, metaclass=_AgentMeta):
                 f"(only one allowed): {names_str}. Remove the extras or merge them "
                 "into a single @system_prompt method."
             )
-        cls._Syrin_system_prompt_method = _collect_system_prompt_method(cls)
-        cls._Syrin_default_system_prompt = default_prompt if default_prompt is not _UNSET else ""
+        cls._syrin_system_prompt_method = _collect_system_prompt_method(cls)
+        cls._syrin_default_system_prompt = default_prompt if default_prompt is not _UNSET else ""
         merged_prompt_vars: dict[str, Any] = {}
         for c in mro:
             if c is object:
@@ -381,7 +398,7 @@ class Agent(Servable, metaclass=_AgentMeta):
             pv = c.__dict__.get("prompt_vars", _UNSET)
             if pv is not _UNSET and isinstance(pv, dict):
                 merged_prompt_vars = {**merged_prompt_vars, **pv}
-        cls._Syrin_default_prompt_vars = merged_prompt_vars
+        cls._syrin_default_prompt_vars = merged_prompt_vars
         # Merge: class @tool methods first, then explicit tools. Explicit overrides by name.
         # MCP and MCPClient kept for init-time expansion; MCP also for co-location.
         class_tools = _collect_class_tools(cls)
@@ -397,19 +414,19 @@ class Agent(Servable, metaclass=_AgentMeta):
                         by_name[s.name] = s
             elif hasattr(t, "tools") and callable(getattr(t, "tools", None)):
                 mcp_sources.append(t)
-        cls._Syrin_default_tools = list(by_name.values()) + mcp_sources
-        cls._Syrin_default_budget = default_budget if default_budget is not _UNSET else None
-        cls._Syrin_default_guardrails = (
+        cls._syrin_default_tools = list(by_name.values()) + mcp_sources
+        cls._syrin_default_budget = default_budget if default_budget is not _UNSET else None
+        cls._syrin_default_guardrails = (
             list(default_guardrails) if default_guardrails is not _UNSET else []
         )
         if default_name is not _UNSET and isinstance(default_name, str):
-            cls._Syrin_default_name = default_name
-        elif default_name is _UNSET and "_Syrin_default_name" not in cls.__dict__:
-            cls._Syrin_default_name = None
+            cls._syrin_default_name = default_name
+        elif default_name is _UNSET and "_syrin_default_name" not in cls.__dict__:
+            cls._syrin_default_name = None
         if default_description is not _UNSET:
-            cls._Syrin_default_description = default_description
-        elif default_description is _UNSET and "_Syrin_default_description" not in cls.__dict__:
-            cls._Syrin_default_description = ""
+            cls._syrin_default_description = default_description
+        elif default_description is _UNSET and "_syrin_default_description" not in cls.__dict__:
+            cls._syrin_default_description = ""
 
     def __init__(
         self,
@@ -501,11 +518,11 @@ class Agent(Servable, metaclass=_AgentMeta):
         """
         cls = self.__class__
         if model is _UNSET:
-            model = getattr(cls, "_Syrin_default_model", None)
+            model = getattr(cls, "_syrin_default_model", None)
         if system_prompt is _UNSET:
-            system_prompt = getattr(cls, "_Syrin_default_system_prompt", "") or ""
+            system_prompt = getattr(cls, "_syrin_default_system_prompt", "") or ""
         # Merge class tools (@tool methods + class tools=[]) with constructor tools (later overrides by name)
-        base_tools = getattr(cls, "_Syrin_default_tools", None) or []
+        base_tools = getattr(cls, "_syrin_default_tools", None) or []
         if tools is _UNSET:
             tools = base_tools
         else:
@@ -531,13 +548,15 @@ class Agent(Servable, metaclass=_AgentMeta):
                     by_name[t.name] = t
             tools = list(by_name.values())
         if budget is _UNSET:
-            budget = getattr(cls, "_Syrin_default_budget", None)
+            budget = getattr(cls, "_syrin_default_budget", None)
         if guardrails is _UNSET:
-            guardrails = getattr(cls, "_Syrin_default_guardrails", None) or []
+            guardrails = getattr(cls, "_syrin_default_guardrails", None) or []
+        if memory is None:
+            memory = getattr(cls, "_syrin_default_memory", None)
         if name is _UNSET:
-            name = getattr(cls, "_Syrin_default_name", None)
+            name = getattr(cls, "_syrin_default_name", None)
         if description is _UNSET:
-            description = getattr(cls, "_Syrin_default_description", "") or ""
+            description = getattr(cls, "_syrin_default_description", "") or ""
         if name is None:
             name = cls.__name__.lower()
         if description is None:
@@ -561,7 +580,7 @@ class Agent(Servable, metaclass=_AgentMeta):
                 f"max_tool_iterations must be >= 1, got {max_tool_iterations}. "
                 "Use at least 1 to allow at least one LLM call."
             )
-        has_system_prompt_method = getattr(cls, "_Syrin_system_prompt_method", None)
+        has_system_prompt_method = getattr(cls, "_syrin_system_prompt_method", None)
         if (
             has_system_prompt_method is None
             and system_prompt is not None
@@ -621,7 +640,7 @@ class Agent(Servable, metaclass=_AgentMeta):
         )
         if self._system_prompt_source is _UNSET:
             self._system_prompt_source = ""
-        class_pv = getattr(cls, "_Syrin_default_prompt_vars", None) or {}
+        class_pv = getattr(cls, "_syrin_default_prompt_vars", None) or {}
         instance_pv = dict(prompt_vars or {})
         self._prompt_vars = {**class_pv, **instance_pv}
         self._inject_builtins = inject_builtins
@@ -1878,12 +1897,12 @@ class Agent(Servable, metaclass=_AgentMeta):
 
         Resolved prompt at runtime is built by _resolve_system_prompt.
         """
-        method = getattr(self.__class__, "_Syrin_system_prompt_method", None)
+        method = getattr(self.__class__, "_syrin_system_prompt_method", None)
         return method if method is not None else self._system_prompt_source
 
     def effective_prompt_vars(self, call_vars: dict[str, Any] | None = None) -> dict[str, Any]:
         """Return merged prompt_vars: class + instance + call. For introspection."""
-        class_pv = getattr(self.__class__, "_Syrin_default_prompt_vars", None) or {}
+        class_pv = getattr(self.__class__, "_syrin_default_prompt_vars", None) or {}
         merged = {**class_pv, **self._prompt_vars}
         if call_vars:
             merged = {**merged, **call_vars}
@@ -1917,7 +1936,7 @@ class Agent(Servable, metaclass=_AgentMeta):
         """
         import inspect
 
-        source = getattr(self.__class__, "_Syrin_system_prompt_method", None)
+        source = getattr(self.__class__, "_syrin_system_prompt_method", None)
         if source is None:
             source = self._system_prompt_source
         if source is None or source == "":
@@ -1982,7 +2001,7 @@ class Agent(Servable, metaclass=_AgentMeta):
                 Hook.SYSTEM_PROMPT_BEFORE_RESOLVE,
                 EventContext(
                     prompt_vars=effective_vars,
-                    source=getattr(self.__class__, "_Syrin_system_prompt_method", None)
+                    source=getattr(self.__class__, "_syrin_system_prompt_method", None)
                     or self._system_prompt_source,
                 ),
             )
@@ -2752,6 +2771,18 @@ class Agent(Servable, metaclass=_AgentMeta):
                             total_tokens=total_tokens.total_tokens - prev_tokens.total_tokens,
                         )
                         if delta_cost > 0 or delta_tokens.total_tokens > 0:
+                            # Providers often omit cost_usd on streaming chunks; derive from tokens
+                            if delta_cost <= 0 and delta_tokens.total_tokens > 0:
+                                pricing = (
+                                    getattr(self._model, "pricing", None)
+                                    if self._model is not None
+                                    else None
+                                )
+                                delta_cost = calculate_cost(
+                                    self._model_config.model_id,
+                                    delta_tokens,
+                                    pricing_override=pricing,
+                                )
                             cost_info = CostInfo(
                                 cost_usd=delta_cost,
                                 token_usage=delta_tokens,
@@ -2780,6 +2811,36 @@ class Agent(Servable, metaclass=_AgentMeta):
                 raise
             except Exception as e:
                 raise ToolExecutionError(f"Streaming failed: {e}") from e
+            else:
+                # End-of-stream fallback: if we have tokens but never recorded cost
+                if (
+                    (self._budget is not None or self._token_limits is not None)
+                    and total_tokens.total_tokens > 0
+                    and self._budget_tracker.current_run_cost <= 0
+                ):
+                    pricing = (
+                        getattr(self._model, "pricing", None) if self._model is not None else None
+                    )
+                    cost_usd = calculate_cost(
+                        self._model_config.model_id,
+                        total_tokens,
+                        pricing_override=pricing,
+                    )
+                    if cost_usd > 0:
+                        cost_info = CostInfo(
+                            cost_usd=cost_usd,
+                            token_usage=total_tokens,
+                            model_name=self._model_config.model_id,
+                        )
+                        self._budget_tracker.record(cost_info)
+                        if self._budget is not None:
+                            self._budget._set_spent(self._budget_tracker.current_run_cost)
+                        if self._budget_store is not None:
+                            self._budget_store.save(self._budget_store_key, self._budget_tracker)
+                # Auto-store turn when streaming (playground uses /stream)
+                from syrin.agent._run import _auto_store_turn
+
+                _auto_store_turn(self, user_input, accumulated)
         finally:
             self._call_context = None
             self._call_prompt_vars = None

@@ -357,7 +357,17 @@ class DocFormat(StrEnum):
 
 
 class MemoryType(StrEnum):
-    """Types of memory an agent can store and retrieve."""
+    """Types of memory an agent can store and retrieve.
+
+    Based on cognitive science: different types for different use cases.
+    Use with Memory.types, remember(), and recall(memory_type=...).
+
+    Attributes:
+        CORE: Identity, preferences, persistent facts about the agent/user.
+        EPISODIC: Past events, conversations, "what happened when".
+        SEMANTIC: General knowledge, facts, concepts (extracted or stored).
+        PROCEDURAL: How-to knowledge, skills, workflows.
+    """
 
     CORE = "core"
     EPISODIC = "episodic"
@@ -368,12 +378,18 @@ class MemoryType(StrEnum):
 class ServeProtocol(StrEnum):
     """Transport protocol for serving agents.
 
-    Use when calling agent.serve(protocol=ServeProtocol.HTTP).
+    Use when calling ``agent.serve(protocol=ServeProtocol.HTTP)`` or via
+    ServeConfig.protocol.
+
+    Attributes:
+        HTTP: FastAPI server. Exposes /chat, /stream, /playground, etc. Default.
+        CLI: Interactive REPL in terminal. Prompt → run → show cost.
+        STDIO: JSON lines over stdin/stdout. For process spawning, background tasks.
     """
 
-    CLI = "cli"  # Interactive REPL on terminal
-    HTTP = "http"  # FastAPI server
-    STDIO = "stdio"  # stdin/stdout (background tasks, process spawning)
+    CLI = "cli"
+    HTTP = "http"
+    STDIO = "stdio"
 
 
 class MemoryBackend(StrEnum):

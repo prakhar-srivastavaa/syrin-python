@@ -8,6 +8,8 @@ Demonstrates:
 - Checkpoint report access
 
 Run: python -m examples.12_checkpoints.basic_checkpoint
+Visit: http://localhost:8000/playground
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -68,3 +70,16 @@ agent.save_checkpoint()
 agent.save_checkpoint()
 report = agent.get_checkpoint_report()
 print(f"Saves: {report.checkpoints.saves}, Loads: {report.checkpoints.loads}")
+
+
+class CheckpointDemoAgent(Agent):
+    name = "checkpoint-demo"
+    description = "Agent with checkpoint persistence"
+    model = almock
+    system_prompt = "You are a research assistant."
+
+
+if __name__ == "__main__":
+    agent = CheckpointDemoAgent()
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

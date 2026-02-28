@@ -6,6 +6,8 @@ Demonstrates:
 - Hooks: HITL_PENDING, HITL_APPROVED, HITL_REJECTED
 
 Run: python -m examples.15_advanced.hitl_approval
+Visit: http://localhost:8000/playground
+Requires: uv pip install syrin[serve]
 """
 
 from pathlib import Path
@@ -35,16 +37,23 @@ def approve_cb(msg: str, timeout: int, ctx: dict) -> bool:
 
 
 gate = ApprovalGate(callback=approve_cb)
-agent = Agent(
-    model=almock,
-    system_prompt="Use delete_record to delete, search to find.",
-    tools=[delete_record, search],
-    approval_gate=gate,
-    hitl_timeout=60,
-)
 
-agent.events.on(Hook.HITL_PENDING, lambda ctx: print(f"  [HITL PENDING] {ctx.get('name')}"))
-agent.events.on(Hook.HITL_APPROVED, lambda ctx: print(f"  [HITL APPROVED] {ctx.get('name')}"))
 
-r = agent.response("Delete record abc123")
-print(f"Result: {r.content[:80]}...")
+class HITLAgent(Agent):
+    name = "hitl-agent"
+    description = "Agent with human-in-the-loop approval"
+    model = almock
+    system_prompt = "Use delete_record to delete, search to find."
+    tools = [delete_record, search]
+    approval_gate = gate
+    hitl_timeout = 60
+
+
+if __name__ == "__main__":
+    agent = HITLAgent()
+    agent.events.on(Hook.HITL_PENDING, lambda ctx: print(f"  [HITL PENDING] {ctx.get('name')}"))
+    agent.events.on(Hook.HITL_APPROVED, lambda ctx: print(f"  [HITL APPROVED] {ctx.get('name')}"))
+    r = agent.response("Delete record abc123")
+    print(f"Result: {r.content[:80]}...")
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

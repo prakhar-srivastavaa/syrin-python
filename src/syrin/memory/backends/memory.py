@@ -10,6 +10,7 @@ class InMemoryBackend:
     """In-memory storage for memories (testing, ephemeral)."""
 
     def __init__(self, path: str | None = None) -> None:
+        """Initialize in-memory backend. path is ignored (for interface compatibility)."""
         _ = path  # For interface compatibility with other backends
         self._memories: dict[str, MemoryEntry] = {}
 

@@ -16,7 +16,7 @@ from syrin.exceptions import (
 )
 
 
-def test_Syrin_error_base() -> None:
+def test_syrin_error_base() -> None:
     e = SyrinError("test")
     assert str(e) == "test"
     assert isinstance(e, Exception)

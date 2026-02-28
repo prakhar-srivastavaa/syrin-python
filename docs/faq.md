@@ -90,6 +90,49 @@ Yes! Tools can return strings, dicts, or objects. The agent receives the result 
 
 Tools execute and their results are added to conversation history. The agent can then use those results in subsequent calls.
 
+### How do I group tools in MCP and use them in my agent?
+
+Create an MCP class with `@tool` methods (same as Agent), then add the MCP to your agent's `tools`:
+
+```python
+from syrin import MCP, Agent, tool
+
+class ProductMCP(MCP):
+    @tool
+    def search_products(self, query: str) -> str:
+        """Search products."""
+        return f"Results: {query}"
+
+    @tool
+    def get_product(self, id: str) -> str:
+        """Get product by ID."""
+        return f"Product {id}"
+
+class ProductAgent(Agent):
+    model = almock
+    tools = [ProductMCP()]  # MCP tools become agent tools
+```
+
+When serving, `/mcp` is auto-mounted alongside `/chat`. See [MCP](mcp.md).
+
+---
+
+## Serving
+
+### How do I serve my agent via HTTP or CLI?
+
+Serving is built-in. Use HTTP (default), CLI REPL, or STDIO:
+
+```python
+from syrin.enums import ServeProtocol
+
+agent.serve(port=8000)  # HTTP: POST /chat, /stream, etc.
+agent.serve(protocol=ServeProtocol.CLI)  # CLI: terminal REPL in your terminal
+agent.serve(protocol=ServeProtocol.STDIO)  # STDIO: JSON lines on stdin/stdout
+```
+
+Add `enable_playground=True` for the web playground at http://localhost:8000/playground. See [Serving](serving.md).
+
 ---
 
 ## Memory

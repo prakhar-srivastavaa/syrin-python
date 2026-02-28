@@ -1886,11 +1886,13 @@ name = "syrin"
 version = "0.3.0"
 source = { editable = "." }
 dependencies = [
+    { name = "fastapi" },
     { name = "httpx" },
     { name = "jsonschema" },
     { name = "pydantic" },
     { name = "python-dotenv" },
     { name = "tiktoken" },
+    { name = "uvicorn" },
 ]
 
 [package.optional-dependencies]
@@ -1921,6 +1923,7 @@ serve = [
 [package.metadata]
 requires-dist = [
     { name = "anthropic", marker = "extra == 'anthropic'" },
+    { name = "fastapi", specifier = ">=0.133.1" },
     { name = "fastapi", marker = "extra == 'dev'" },
     { name = "fastapi", marker = "extra == 'serve'" },
     { name = "httpx" },
@@ -1936,6 +1939,7 @@ requires-dist = [
     { name = "python-dotenv", marker = "extra == 'dev'" },
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "tiktoken" },
+    { name = "uvicorn", specifier = ">=0.41.0" },
     { name = "uvicorn", marker = "extra == 'dev'" },
     { name = "uvicorn", marker = "extra == 'serve'" },
 ]

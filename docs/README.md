@@ -6,6 +6,10 @@ Welcome to the **Syrin** library! Build powerful AI agents with budgets, memory,
 
 **New to Syrin?** Start with [Getting Started](getting-started.md) - a beginner-friendly guide.
 
+**Want to run your agent?** Serving is built-in. Serve via **HTTP** (`agent.serve(port=8000)`), **CLI** (`agent.serve(protocol=ServeProtocol.CLI)`), or the **playground** (`enable_playground=True`). See traces with `debug=True` or `--trace`. → [Serving](serving.md) · [Playground](playground.md)
+
+**Group tools in MCP?** Define an MCP server with `@tool` methods and add it to your agent: `tools=[ProductMCP()]`. MCP tools become agent tools. → [MCP](mcp.md)
+
 ## 🎯 Use Case Guides
 
 Learn by doing! Pick a use case that matches what you want to build:
@@ -101,6 +105,9 @@ response = agent.response("Hello! How are you?")
 print(response.content)
 ```
 
+**Try it in the playground:** `agent.serve(port=8000, enable_playground=True)` → visit http://localhost:8000/playground  
+**See traces:** Add `debug=True` to your agent, or run `python my_agent.py --trace`
+
 ## 💡 Key Concepts
 
 ### Agent
@@ -122,16 +129,17 @@ Get responses in real-time instead of waiting.
 Execute code at specific moments during agent execution.
 
 ### Observability
-Trace and debug agent execution with spans and sessions.
+Trace and debug agent execution with spans and sessions. Use `debug=True` or `--trace` to see LLM calls, tool calls, and costs in the console.
 
 ## 🎓 Learning Path
 
 1. Read [Getting Started](getting-started.md) (5 min)
-2. Try [Use Case 1: Simple Q&A](simple-qa-agent.md) (15 min)
-3. Try [Use Case 2: With Tools](research-agent-with-tools.md) (20 min)
-4. Try [Use Case 3: With Memory](agent-with-memory.md) (15 min)
-5. Add budget with [Use Case 4](budget-control.md) (10 min)
-6. Explore other use cases as needed
+2. **Run your agent:** `agent.serve(port=8000, enable_playground=True)` → visit http://localhost:8000/playground. Use `debug=True` or `--trace` to see traces. → [Serving](serving.md) · [Playground](playground.md)
+3. Try [Use Case 1: Simple Q&A](simple-qa-agent.md) (15 min)
+4. Try [Use Case 2: With Tools](research-agent-with-tools.md) (20 min)
+5. Try [Use Case 3: With Memory](agent-with-memory.md) (15 min)
+6. Add budget with [Use Case 4](budget-control.md) (10 min)
+7. Explore other use cases as needed
 
 **Want more?** 
 - [Advanced Topics](advanced-topics.md) - Hooks, observability, checkpointing, guardrails
@@ -142,6 +150,8 @@ Trace and debug agent execution with spans and sessions.
 ## ⚡ Quick Links
 
 ### By Use Case
+- 🚀 **Serving** → [Serving](serving.md) — serve via HTTP, CLI, or playground
+- 🔌 **MCP** → [MCP](mcp.md) — group tools in MCP, use MCP inside agent tools
 - 📝 **Writing** → [Use Case 1: Simple Q&A](simple-qa-agent.md)
 - 🔍 **Research** → [Use Case 2: With Tools](research-agent-with-tools.md)
 - 👤 **Personal Assistant** → [Use Case 3: With Memory](agent-with-memory.md)
@@ -150,6 +160,9 @@ Trace and debug agent execution with spans and sessions.
 - 🌐 **Web Apps** → [Use Case 6: Streaming](streaming.md)
 
 ### By Feature
+- **Serving** → [Serving](serving.md) — HTTP, CLI, STDIO; `agent.serve()` in one line
+- **Playground** → [Playground](playground.md) — web UI for chat, cost, traces
+- **Observability & Traces** → [Observability](observability.md) — use `debug=True` or `--trace` to see execution
 - **Agents** → [Agent Documentation](agent/README.md) — complete agent reference
 - **Models** → [Models Guide](models.md) — built-in, custom, inheritance
 - **Tools** → [Use Case 2](research-agent-with-tools.md)
@@ -200,6 +213,8 @@ python examples/01_simple_qa_agent.py
 
 ✨ **Budget Management** - Built-in cost control (not an afterthought)
 
+🚀 **Easy Serving** - One line to serve: `agent.serve(port=8000, enable_playground=True)`. Web playground, CLI REPL, or HTTP API. No extra wiring.
+
 🧠 **Memory System** - Agents remember conversations (4 types of memory)
 
 🛠️ **Tools** - Give agents special abilities easily
@@ -214,7 +229,7 @@ python examples/01_simple_qa_agent.py
 
 🔌 **Hooks & Events** - Execute code at any point in agent lifecycle
 
-📊 **Observability** - Full tracing and debugging capabilities
+📊 **Observability** - Use `debug=True` or `--trace` to see LLM calls, tool calls, and costs. Full tracing built-in.
 
 ## 🔄 Version Info
 

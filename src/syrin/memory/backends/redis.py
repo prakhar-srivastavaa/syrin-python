@@ -46,6 +46,16 @@ class RedisBackend:
         prefix: str = "syrin:memory:",
         ttl: int | None = None,
     ) -> None:
+        """Initialize Redis backend.
+
+        Args:
+            host: Redis host.
+            port: Redis port.
+            db: Redis database number.
+            password: Optional password for auth.
+            prefix: Key prefix for all memory keys.
+            ttl: Optional TTL in seconds for expiring memories.
+        """
         if not REDIS_AVAILABLE:
             raise ImportError("redis is not installed. Install with: pip install redis")
 

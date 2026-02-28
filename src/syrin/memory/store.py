@@ -17,13 +17,11 @@ logger = logging.getLogger(__name__)
 
 
 class MemoryStore:
-    """Full-featured memory storage with:
+    """Full-featured memory storage. Used by Memory config; rarely instantiated directly.
 
-    - 4-type memory (Core, Episodic, Semantic, Procedural)
-    - Decay curves (exponential, linear, logarithmic, step)
-    - Budget awareness (check costs before operations)
-    - Observability (spans for all operations)
-    - Event hooks (emit events for lifecycle)
+    Features: 4-type memory (Core, Episodic, Semantic, Procedural), decay curves,
+    budget awareness, observability spans, event hooks. Use Memory(backend=...)
+    to configure; MemoryStore is created internally.
     """
 
     def __init__(

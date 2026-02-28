@@ -67,6 +67,74 @@ That's it! You just created an AI agent that can answer questions.
 
 **Tip:** You can tweak model properties: `temperature`, `max_tokens`, `context_window`, etc. See the [Models Guide](models.md) for the full list.
 
+## Serving is easy — HTTP, CLI, or playground
+
+Once you have an agent, you can serve it via **HTTP** (API), **CLI** (terminal REPL), or the **web playground**. Serving is built-in — no extra wiring.
+
+### HTTP (default) — Production API
+
+```python
+agent.serve(port=8000)  # POST /chat, POST /stream, GET /health, etc.
+```
+
+Use for webhooks, chatbots, production APIs.
+
+### CLI REPL — Terminal testing
+
+```python
+from syrin.enums import ServeProtocol
+
+agent.serve(protocol=ServeProtocol.CLI)
+# Interactive prompt in the terminal — type messages, see responses and cost
+```
+
+Use for local dev and interactive testing.
+
+### Web playground (easiest way to test)
+
+Install `syrin[serve]` and add one line:
+
+```bash
+uv pip install syrin[serve]
+```
+
+```python
+agent = SimpleAgent()
+agent.serve(port=8000, enable_playground=True)
+# Visit http://localhost:8000/playground — chat, see cost, budget, and traces
+```
+
+Visit **http://localhost:8000/playground** to chat with your agent, see cost per message, and (when `debug=True`) inspect traces in real time.
+
+### CLI REPL (terminal testing)
+
+```python
+from syrin.enums import ServeProtocol
+
+agent.serve(protocol=ServeProtocol.CLI)
+# Interactive prompt in the terminal — type messages, see responses and cost
+```
+
+### See what’s happening: `debug=True` or `--trace`
+
+Use **`debug=True`** to print traces to the console:
+
+```python
+agent = SimpleAgent(debug=True)
+response = agent.response("Hello!")
+# You'll see spans: agent.run, llm.request, tool.call, etc.
+```
+
+Or run any script with **`--trace`** to enable trace output:
+
+```bash
+python my_agent.py --trace
+```
+
+Traces show LLM calls, tool calls, memory ops, and costs — no extra setup.
+
+**Next:** [Serving](serving.md) (HTTP, CLI, STDIO) · [Playground](playground.md) · [Observability](observability.md)
+
 ### What just happened?
 
 1. We created a class called `SimpleAgent` that inherited from `Agent`
@@ -76,6 +144,10 @@ That's it! You just created an AI agent that can answer questions.
 5. We got back a response with the answer
 
 ## Next Steps
+
+**Want to serve your agent?** Add `agent.serve(port=8000, enable_playground=True)` and open http://localhost:8000/playground. See [Serving](serving.md) and [Playground](playground.md).
+
+**Use `debug=True` or `--trace`** to see traces (LLM calls, tool calls, costs). See [Observability](observability.md).
 
 You can now read the **Use Case Guides** below:
 
@@ -131,6 +203,12 @@ A: Using Tools! See Use Case 2.
 
 **Q: Can I run code while my agent is thinking?**
 A: Yes! See Use Case 6 about Streaming.
+
+**Q: How do I serve my agent or try it in a browser?**
+A: Use `agent.serve(port=8000, enable_playground=True)` and visit http://localhost:8000/playground. Or use `agent.serve(protocol=ServeProtocol.CLI)` for a terminal REPL. See [Serving](serving.md).
+
+**Q: How do I see what my agent is doing (LLM calls, tools, etc.)?**
+A: Use `agent = Agent(..., debug=True)` or run your script with `python my_agent.py --trace`. Traces print to the console.
 
 ## Troubleshooting
 

@@ -6,6 +6,8 @@ Demonstrates:
 - Basic orchestration without full debugging
 
 Run: python -m examples.07_multi_agent.dynamic_pipeline_basic
+Visit: http://localhost:8000/playground
+Requires: uv pip install syrin[serve]
 """
 
 from pathlib import Path
@@ -20,20 +22,23 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 
 class TechAgent(Agent):
-    model = almock
     name = "tech"
+    description = "Researches technology trends"
+    model = almock
     system_prompt = "You research technology trends."
 
 
 class FinanceAgent(Agent):
-    model = almock
     name = "finance"
+    description = "Researches financial markets"
+    model = almock
     system_prompt = "You research financial markets."
 
 
 class SummarizerAgent(Agent):
-    model = almock
     name = "summarizer"
+    description = "Synthesizes research into concise reports"
+    model = almock
     system_prompt = "You synthesize research into a concise report."
 
 
@@ -42,9 +47,12 @@ pipeline = DynamicPipeline(
     model=almock,
     max_parallel=3,
 )
-result = pipeline.run(
-    "Conduct market research on AI in healthcare. Provide a brief summary.",
-    mode="parallel",
-)
-print(f"Result: {result.content[:300]}...")
-print(f"Cost: ${result.cost:.4f}")
+if __name__ == "__main__":
+    result = pipeline.run(
+        "Conduct market research on AI in healthcare. Provide a brief summary.",
+        mode="parallel",
+    )
+    print(f"Result: {result.content[:300]}...")
+    print(f"Cost: ${result.cost:.4f}")
+    print("Serving at http://localhost:8000/playground")
+    pipeline.serve(port=8000, enable_playground=True, debug=True)

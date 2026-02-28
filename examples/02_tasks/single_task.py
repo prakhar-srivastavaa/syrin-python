@@ -6,6 +6,9 @@ Demonstrates:
 - Invoking tasks via agent.task_name(args)
 
 Run: python -m examples.02_tasks.single_task
+Visit: http://localhost:8000/playground
+
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -23,6 +26,8 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 class Researcher(Agent):
     """Agent that researches topics. Uses @syrin.task for a named API."""
 
+    name = "researcher"
+    description = "Research assistant with research(topic) task"
     model = almock
     system_prompt = "You are a research assistant. Provide concise, factual summaries."
 
@@ -33,7 +38,8 @@ class Researcher(Agent):
         return response.content or ""
 
 
-researcher = Researcher()
-result = researcher.research("AI in healthcare")
-print("Topic: AI in healthcare")
-print(f"Summary: {result[:200]}...")
+if __name__ == "__main__":
+    researcher = Researcher()
+    print("Serving at http://localhost:8000/playground")
+    researcher.serve(port=8000, enable_playground=True, debug=True)
+    # researcher.serve(protocol=ServeProtocol.CLI)

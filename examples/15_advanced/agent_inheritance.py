@@ -7,6 +7,8 @@ Demonstrates:
 - Multi-level inheritance
 
 Run: python -m examples.15_advanced.agent_inheritance
+Visit: http://localhost:8000/playground
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -29,6 +31,8 @@ def repeat(text: str, count: int = 1) -> str:
 
 
 class BaseAgent(Agent):
+    name = "base-agent"
+    description = "Base agent with repeat tool"
     model = almock
     system_prompt = "You are a helpful assistant."
     tools = [repeat]
@@ -92,3 +96,8 @@ class Level3(Level2):
 for cls in [Level1, Level2, Level3]:
     agent = cls()
     print(f"{cls.__name__}: {agent._system_prompt}")
+
+if __name__ == "__main__":
+    agent = SpecializedAgent()
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

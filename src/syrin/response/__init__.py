@@ -121,7 +121,14 @@ class StructuredOutput:
 
 @dataclass
 class TraceStep:
-    """A single step in an execution trace."""
+    """A single step in an execution trace (LLM call, tool call, etc.).
+
+    Attributes:
+        step_type: Type (llm_call, tool_call, etc.).
+        timestamp: Unix timestamp.
+        model, tokens, cost_usd, latency_ms: Step metrics.
+        extra: Additional key-value data.
+    """
 
     step_type: str
     timestamp: float
@@ -158,7 +165,14 @@ class StreamChunk:
 
 @dataclass
 class BudgetStatus:
-    """Budget status returned by response.budget"""
+    """Budget status. Access via response.budget or response.report.budget.
+
+    Attributes:
+        remaining: Remaining budget (USD). None if unlimited.
+        used: Spent this run (USD).
+        total: Total limit (USD). None if unlimited.
+        cost: Same as used.
+    """
 
     remaining: float | None
     used: float
@@ -180,7 +194,18 @@ class BudgetStatus:
 
 @dataclass
 class GuardrailReport:
-    """Report of guardrail evaluations for a single run."""
+    """Report of guardrail evaluations for a single run.
+
+    Attributes:
+        input_passed: Whether input guardrails passed.
+        input_reason: Reason if input guardrail failed.
+        input_guardrails: List of input guardrails run.
+        output_passed: Whether output guardrails passed.
+        output_reason: Reason if output guardrail failed.
+        output_guardrails: List of output guardrails run.
+        blocked: Whether request was blocked.
+        blocked_stage: Stage at which blocked (input/output).
+    """
 
     input_passed: bool = True
     input_reason: str | None = None
@@ -198,7 +223,15 @@ class GuardrailReport:
 
 @dataclass
 class ContextReport:
-    """Report of context usage for a single run."""
+    """Report of context usage for a single run.
+
+    Attributes:
+        initial_tokens: Tokens before compaction.
+        final_tokens: Tokens after compaction.
+        max_tokens: Context window max.
+        compressions: Number of compactions.
+        offloads: Number of offloads (if used).
+    """
 
     initial_tokens: int = 0
     final_tokens: int = 0
@@ -209,7 +242,14 @@ class ContextReport:
 
 @dataclass
 class MemoryReport:
-    """Report of memory operations for a single run."""
+    """Report of memory operations for a single run.
+
+    Attributes:
+        recalls: Number of recall operations.
+        stores: Number of store operations.
+        forgets: Number of forget operations.
+        consolidated: Number of consolidations.
+    """
 
     recalls: int = 0
     stores: int = 0
@@ -219,7 +259,14 @@ class MemoryReport:
 
 @dataclass
 class TokenReport:
-    """Report of token usage for a single run."""
+    """Report of token usage for a single run.
+
+    Attributes:
+        input_tokens: Input token count.
+        output_tokens: Output token count.
+        total_tokens: Total tokens.
+        cost_usd: Total cost (USD).
+    """
 
     input_tokens: int = 0
     output_tokens: int = 0
@@ -229,7 +276,14 @@ class TokenReport:
 
 @dataclass
 class OutputReport:
-    """Report of output validation for a single run."""
+    """Report of output validation for a single run.
+
+    Attributes:
+        validated: Whether output was validated.
+        attempts: Number of validation attempts.
+        is_valid: Final validation result.
+        final_error: Error message if validation failed.
+    """
 
     validated: bool = False
     attempts: int = 0
@@ -239,7 +293,13 @@ class OutputReport:
 
 @dataclass
 class RateLimitReport:
-    """Report of rate limit checks for a single run."""
+    """Report of rate limit checks for a single run.
+
+    Attributes:
+        checks: Number of rate limit checks.
+        throttles: Number of throttle events.
+        exceeded: Whether limit was exceeded.
+    """
 
     checks: int = 0
     throttles: int = 0
@@ -248,7 +308,12 @@ class RateLimitReport:
 
 @dataclass
 class CheckpointReport:
-    """Report of checkpoint operations for a single run."""
+    """Report of checkpoint operations for a single run.
+
+    Attributes:
+        saves: Number of checkpoint saves.
+        loads: Number of checkpoint loads.
+    """
 
     saves: int = 0
     loads: int = 0
@@ -297,22 +362,31 @@ class AgentReport:
 class Response(Generic[T]):
     """Result returned by agent.response(), agent.arun().
 
-    Why: Single object for content, cost, tokens, model, and full report. Use
+    Single object for content, cost, tokens, model, and full report. Use
     str(response) for quick printing (returns content).
 
-    Key fields:
+    Attributes:
         content: Main reply text (or parsed type if output= set).
+        raw: Raw string from the model before parsing.
         cost: USD cost of this run.
         tokens: TokenUsage (input_tokens, output_tokens, total_tokens).
-        model: Model ID used.
+        model: Model ID used (e.g. "openai/gpt-4o-mini").
+        duration: Run duration in seconds.
+        budget_remaining: Remaining budget (USD) if budget configured. None if unlimited.
+        budget_used: Spent this run (USD).
+        trace: Execution trace steps (LLM calls, tool calls, etc.).
+        tool_calls: Tool calls requested by the model (if any).
         stop_reason: Why the run ended (END_TURN, BUDGET, MAX_ITERATIONS, etc.).
         structured: StructuredOutput if output= configured; else None.
+        iterations: Number of LLM/tool iterations.
         report: Full AgentReport (guardrails, memory, budget, etc.).
+        context_stats: Context usage stats for this call.
+        context: Context used (when overridden per-call).
 
     For structured output (output=Output(MyModel)):
-        result.data           # Parsed dict
-        result.structured.parsed  # Pydantic instance
-        result.structured.is_valid  # Validation succeeded
+        result.data — Parsed dict
+        result.structured.parsed — Pydantic instance
+        result.structured.is_valid — Validation succeeded
 
     Example:
         >>> r = agent.response("What is 2+2?")

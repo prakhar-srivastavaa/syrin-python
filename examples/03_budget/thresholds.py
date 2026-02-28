@@ -7,6 +7,9 @@ Demonstrates:
 - Class-level thresholds
 
 Run: python -m examples.03_budget.thresholds
+Visit: http://localhost:8000/playground
+
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -76,6 +79,8 @@ print(f"Thresholds triggered: {levels}")
 
 # 3. Class-level thresholds
 class MonitoredAgent(Agent):
+    name = "monitored"
+    description = "Agent with budget thresholds (warn at 80%)"
     model = almock
     budget = Budget(
         run=1.00,
@@ -90,6 +95,7 @@ class MonitoredAgent(Agent):
     )
 
 
-agent = MonitoredAgent()
-agent.response("Hello!")
-print(f"Budget state: {agent.budget_state}")
+if __name__ == "__main__":
+    agent = MonitoredAgent()
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

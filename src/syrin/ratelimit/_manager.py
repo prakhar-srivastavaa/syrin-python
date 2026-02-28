@@ -18,7 +18,13 @@ _SEC_PER_DAY = 86400.0
 
 @dataclass
 class RateLimitEntry:
-    """Single usage entry for rate tracking."""
+    """Single usage entry for rate tracking.
+
+    Attributes:
+        requests: Request count.
+        tokens: Token count.
+        timestamp: When entry was recorded.
+    """
 
     requests: int = 0
     tokens: int = 0

@@ -7,7 +7,8 @@ Demonstrates:
 - HandoffRetryRequested — target signals invalid data, caller retries
 
 Run: python -m examples.07_multi_agent.handoff_intercept
-     or: python examples/07_multi_agent/handoff_intercept.py
+Visit: http://localhost:8000/playground
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -27,17 +28,23 @@ from syrin import Agent, HandoffBlockedError, HandoffRetryRequested, Hook, Respo
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 
+class SourceAgent(Agent):
+    name = "source"
+    description = "Researcher that hands off to presenter"
+    model = almock
+    system_prompt = "You are a researcher. Provide brief findings."
+
+
+class TargetAgent(Agent):
+    name = "target"
+    description = "Presents findings clearly"
+    model = almock
+    system_prompt = "You present findings clearly."
+
+
 def main_observability() -> None:
     """Log what is passed on handoff for debugging."""
     print("=== Observability: HANDOFF_START / HANDOFF_END ===\n")
-
-    class SourceAgent(Agent):
-        model = almock
-        system_prompt = "You are a researcher. Provide brief findings."
-
-    class TargetAgent(Agent):
-        model = almock
-        system_prompt = "You present findings clearly."
 
     source = SourceAgent()
 
@@ -61,15 +68,19 @@ def main_block() -> None:
     """Block handoff when task fails validation."""
     print("=== Block: before-handler raises HandoffBlockedError ===\n")
 
-    class SourceAgent(Agent):
+    class BlockSourceAgent(Agent):
+        name = "block-source"
+        description = "Source for block demo"
         model = almock
         system_prompt = "You research."
 
-    class TargetAgent(Agent):
+    class BlockTargetAgent(Agent):
+        name = "block-target"
+        description = "Target for block demo"
         model = almock
         system_prompt = "You present."
 
-    source = SourceAgent()
+    source = BlockSourceAgent()
     source.events.on(Hook.HANDOFF_BLOCKED, lambda ctx: print(f"  BLOCKED: {ctx.reason}\n"))
 
     def block_if_invalid(ctx) -> None:
@@ -84,12 +95,12 @@ def main_block() -> None:
     source.events.before(Hook.HANDOFF_START, block_if_invalid)
 
     # Valid task — succeeds
-    result = source.handoff(TargetAgent, "Summarize topic X")
+    result = source.handoff(BlockTargetAgent, "Summarize topic X")
     print(f"Valid task: {result.content[:50]}...\n")
 
     # Invalid task — blocked
     try:
-        source.handoff(TargetAgent, "Handle forbidden content")
+        source.handoff(BlockTargetAgent, "Handle forbidden content")
     except HandoffBlockedError as e:
         print(f"Blocked as expected: {e}\n")
 
@@ -98,11 +109,15 @@ def main_retry() -> None:
     """Target raises HandoffRetryRequested; caller retries with format hint."""
     print("=== Retry: HandoffRetryRequested with format_hint ===\n")
 
-    class SourceAgent(Agent):
+    class RetrySourceAgent(Agent):
+        name = "retry-source"
+        description = "Source for retry demo"
         model = almock
         system_prompt = "You format data."
 
-    class TargetAgent(Agent):
+    class RetryTargetAgent(Agent):
+        name = "retry-target"
+        description = "Target for retry demo"
         model = almock
         system_prompt = "You expect JSON with 'title' and 'items'."
 
@@ -124,12 +139,12 @@ def main_retry() -> None:
                 tokens=TokenUsage(input_tokens=10, output_tokens=20, total_tokens=30),
             )
 
-    source = SourceAgent()
+    source = RetrySourceAgent()
 
     task = "plain text"
     for attempt in range(2):
         try:
-            result = source.handoff(TargetAgent, task)
+            result = source.handoff(RetryTargetAgent, task)
             print(f"Attempt {attempt + 1}: success — {result.content[:50]}...\n")
             break
         except HandoffRetryRequested as e:
@@ -143,3 +158,7 @@ if __name__ == "__main__":
     main_observability()
     main_block()
     main_retry()
+
+    agent = SourceAgent()
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

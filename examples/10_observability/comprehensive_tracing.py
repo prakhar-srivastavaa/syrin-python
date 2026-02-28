@@ -7,6 +7,8 @@ Demonstrates:
 - Span inspection from agent.report
 
 Run: python -m examples.10_observability.comprehensive_tracing
+Visit: http://localhost:8000/playground
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -57,3 +59,17 @@ syrin.configure(trace=True)
 result = syrin.run("Traced call", model=almock)
 print(f"Trace steps: {len(result.trace)}")
 syrin.configure(trace=False)
+
+
+class TracingDemoAgent(Agent):
+    name = "tracing-demo"
+    description = "Agent with comprehensive tracing"
+    model = almock
+    system_prompt = "You are a helpful assistant."
+    debug = True
+
+
+if __name__ == "__main__":
+    agent = TracingDemoAgent()
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

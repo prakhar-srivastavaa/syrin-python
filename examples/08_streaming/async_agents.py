@@ -6,6 +6,8 @@ Demonstrates:
 - Async patterns with syrin agents
 
 Run: python -m examples.08_streaming.async_agents
+Visit: http://localhost:8000/playground
+Requires: uv pip install syrin[serve]
 """
 
 from __future__ import annotations
@@ -100,6 +102,13 @@ async def example_async_with_timeout() -> None:
         print("Timed out!")
 
 
+class AsyncDemoAgent(Agent):
+    name = "async-demo"
+    description = "Agent with async arun() execution"
+    model = almock
+    system_prompt = "You are a helpful assistant."
+
+
 async def _run() -> None:
     await example_basic_arun()
     await example_parallel_agents()
@@ -107,4 +116,8 @@ async def _run() -> None:
     await example_async_with_timeout()
 
 
-asyncio.run(_run())
+if __name__ == "__main__":
+    asyncio.run(_run())
+    agent = AsyncDemoAgent()
+    print("Serving at http://localhost:8000/playground")
+    agent.serve(port=8000, enable_playground=True, debug=True)

@@ -47,7 +47,17 @@ class ThresholdContext:
     """Event object passed to threshold actions (Budget, Context, RateLimit).
 
     Use when you need to react at a utilization percentage (e.g. compact at 75%).
-    For context thresholds, call **compact()** to run compaction.
+    For context thresholds, call compact() to run compaction; no-op when not in prepare.
+
+    Attributes:
+        percentage: Utilization percentage (0-100) that triggered this threshold.
+        metric: Metric tracked (e.g. ThresholdMetric.TOKENS, ThresholdMetric.COST).
+        current_value: Current value (tokens used, cost so far).
+        limit_value: Limit or cap (max_tokens, run budget).
+        budget_run: Alias for limit_value when metric is COST.
+        parent: Parent object (Agent, Budget) when available.
+        metadata: Extra key-value data.
+        compact: (Context only.) Call to compact; no-op when not inside prepare.
     """
 
     percentage: int
@@ -84,7 +94,14 @@ T = TypeVar("T", bound="BaseThreshold")
 
 @dataclass
 class BaseThreshold:
-    """Base class for thresholds."""
+    """Base class for BudgetThreshold, ContextThreshold, RateLimitThreshold.
+
+    Attributes:
+        at: Percentage (0-100) at which to trigger (when pct >= at).
+        at_range: Optional (min, max); trigger only when min <= pct <= max.
+        action: Callable receiving ThresholdContext when triggered.
+        metric: ThresholdMetric (COST, TOKENS, RPM, etc.).
+    """
 
     at: int = 0
     action: Any = None  # Callable[[ThresholdContext], None]
