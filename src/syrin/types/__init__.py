@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -53,17 +52,17 @@ class TaskSpec(BaseModel):
     """Specification for an agent task. Callable when accessed from an instance: agent.task_name(args)."""
 
     name: str = Field(..., description="Task name")
-    parameters: dict[str, Any] = Field(
+    parameters: dict[str, object] = Field(
         default_factory=dict, description="Parameter schema or metadata"
     )
-    return_type: type[Any] | None = Field(default=None, description="Declared return type")
-    func: Callable[..., Any] | None = Field(default=None, description="Bound callable")
+    return_type: type[object] | None = Field(default=None, description="Declared return type")
+    func: Callable[..., object] | None = Field(default=None, description="Bound callable")
 
     model_config = {"arbitrary_types_allowed": True}
 
     def __get__(
-        self, instance: Any, owner: type[Any] | None = None
-    ) -> TaskSpec | Callable[..., Any]:
+        self, instance: object, owner: type[object] | None = None
+    ) -> TaskSpec | Callable[..., object]:
         """When accessed from an agent instance, return a callable so agent.task_name(args) works."""
         if instance is None:
             return self
@@ -71,7 +70,7 @@ class TaskSpec(BaseModel):
         if func is None:
             raise TypeError(f"Task {self.name!r} has no func")
 
-        def bound(*args: Any, **kwargs: Any) -> Any:
+        def bound(*args: object, **kwargs: object) -> object:
             return func(instance, *args, **kwargs)
 
         return bound
@@ -86,7 +85,7 @@ class ToolCall(BaseModel):
 
     id: str = Field(..., description="Unique ID for this call. Use when returning tool results.")
     name: str = Field(..., description="Tool/function name to invoke")
-    arguments: dict[str, Any] = Field(
+    arguments: dict[str, object] = Field(
         default_factory=dict,
         description="JSON arguments to pass to the tool",
     )
@@ -118,7 +117,7 @@ class Message(BaseModel):
         default_factory=list,
         description="Tool calls requested by the model (for role=assistant)",
     )
-    metadata: dict[str, Any] = Field(
+    metadata: dict[str, object] = Field(
         default_factory=dict,
         description="Optional metadata for custom use",
     )
@@ -179,7 +178,7 @@ class ProviderResponse(BaseModel):
         default=None,
         description="Why the model stopped: end_turn, tool_call, max_tokens, etc.",
     )
-    raw_response: Any = Field(
+    raw_response: object | None = Field(
         default=None,
         description="Provider-specific raw response (OpenAI, Anthropic, etc.).",
     )
@@ -195,15 +194,15 @@ class AgentConfig(BaseModel):
         default="",
         description="System instructions. Sets agent personality and constraints.",
     )
-    tools: list[Any] = Field(
+    tools: list[object] = Field(
         default_factory=list,
         description="Tools the agent can call (ToolSpec from syrin.tool). Empty = no tools.",
     )
-    budget: dict[str, Any] | None = Field(
+    budget: dict[str, object] | None = Field(
         default=None,
         description="Budget config (max_cost, max_tokens, etc.). None = no limit.",
     )
-    metadata: dict[str, Any] = Field(
+    metadata: dict[str, object] = Field(
         default_factory=dict,
         description="Custom metadata for logging, tracing, or app logic",
     )

@@ -626,8 +626,24 @@ class GuardrailChain:
     def __init__(self, guardrails: List[Guardrail] = None)
     def add(self, guardrail: Guardrail) -> None
     async def evaluate(self, context: GuardrailContext) -> EvaluationResult
+    def check(self, text: str, stage: Any = None, *, budget: Any = None, agent: Any = None) -> GuardrailCheckResult
     def __len__(self) -> int
 ```
+
+### GuardrailCheckResult
+
+Returned by `GuardrailChain.check()` (sync API):
+
+```python
+@dataclass
+class GuardrailCheckResult:
+    passed: bool
+    reason: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+    guardrail_name: str | None = None  # Name of the guardrail that produced this result
+```
+
+When a check fails, `guardrail_name` identifies which guardrail in the chain blocked the content.
 
 ### AuthorityCheck
 

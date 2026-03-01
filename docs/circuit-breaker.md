@@ -96,6 +96,8 @@ Flow:
 | `fallback`         | None    | Model (or model ID string) to use when circuit is OPEN |
 | `on_trip`          | None    | Callback when the circuit trips to OPEN |
 
+**API:** Use `cb.state` to read the current state (`CLOSED`, `OPEN`, or `HALF_OPEN`). Use `cb.get_state()` for full state details (failures, timestamps).
+
 ---
 
 ## Fallback model

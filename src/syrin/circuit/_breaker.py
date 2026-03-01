@@ -5,9 +5,9 @@ from __future__ import annotations
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
 
 from syrin.enums import CircuitState
+from syrin.model import Model
 
 
 @dataclass
@@ -52,7 +52,7 @@ class CircuitBreaker:
         failure_threshold: int = 5,
         recovery_timeout: int = 60,
         half_open_max: int = 1,
-        fallback: str | Any = None,
+        fallback: str | Model | None = None,
         on_trip: Callable[[CircuitBreakerState], None] | None = None,
     ) -> None:
         if failure_threshold < 1:
@@ -74,7 +74,7 @@ class CircuitBreaker:
         self._half_open_attempts = 0
 
     @property
-    def fallback(self) -> str | Any | None:
+    def fallback(self) -> str | Model | None:
         return self._fallback
 
     @property

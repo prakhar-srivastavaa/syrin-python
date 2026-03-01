@@ -676,6 +676,7 @@ Example: `Agent(..., budget_store=FileBudgetStore("/data/budget.json"), budget_s
 |--------|--------|--------------|
 | **Run limit** | `Budget(run=..., reserve=...)` | Max **USD** per request; effective limit is `run - reserve`. |
 | **Rate limits (spend)** | `Budget(per=RateLimit(...))` | Max **USD** per period: `hour`, `day`, `week`, `month`. |
+| **RateLimit.window** | `per.window` | Convenience: first configured window (`"hour"`, `"day"`, `"week"`, `"month"`), or None. |
 | **Token limits (Context)** | `Agent(..., context=Context(budget=TokenLimits(...)))` | Token caps live on Context. Use `TokenLimits(run=..., per=TokenRateLimit(...))` on Context. |
 | **month_days** | `RateLimit(month=..., month_days=N)` | Month = last N days (1–31). Default 30. |
 | **calendar_month** | `RateLimit(month=..., calendar_month=True)` | Month = current calendar month only (e.g. 1–30 Nov). |

@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Any
+from typing import cast
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -54,11 +54,11 @@ class CheckpointState(BaseModel):
     agent_name: str
     checkpoint_id: str
     created_at: datetime = Field(default_factory=datetime.now)
-    messages: list[Any] = Field(default_factory=list)
-    memory_data: dict[str, Any] = Field(default_factory=dict)
-    budget_state: dict[str, Any] | None = None
+    messages: list[object] = Field(default_factory=list)
+    memory_data: dict[str, object] = Field(default_factory=dict)
+    budget_state: dict[str, object] | None = None
     iteration: int = 0
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, object] = Field(default_factory=dict)
 
     model_config = {"arbitrary_types_allowed": True}
 
@@ -116,7 +116,7 @@ class CheckpointConfig(BaseModel):
     )
     compress: bool = Field(default=False, description="Compress stored state")
 
-    def __init__(self, **data: Any) -> None:
+    def __init__(self, **data: object) -> None:
         """Create checkpoint config from keyword arguments.
 
         Args:
@@ -325,7 +325,7 @@ class Checkpointer:
         self._counters[agent_name] += 1
         return f"{agent_name}_{self._counters[agent_name]}"
 
-    def save(self, agent_name: str, state: dict[str, Any]) -> str:
+    def save(self, agent_name: str, state: dict[str, object]) -> str:
         """Save checkpoint and return checkpoint ID.
 
         Args:
@@ -340,10 +340,12 @@ class Checkpointer:
             agent_name=agent_name,
             checkpoint_id=checkpoint_id,
             metadata=state,
-            iteration=state.get("iteration", 0),
-            messages=state.get("messages", []),
-            memory_data=state.get("memory_data", {}),
-            budget_state=state.get("budget_state"),
+            iteration=int(v)
+            if isinstance(v := state.get("iteration", 0), (int, float, str))
+            else 0,
+            messages=cast(list[object], state.get("messages", [])),
+            memory_data=cast(dict[str, object], state.get("memory_data", {})),
+            budget_state=cast(dict[str, object] | None, state.get("budget_state")),
         )
         self._backend.save(checkpoint_state)
         return checkpoint_id
@@ -400,7 +402,7 @@ BACKENDS: dict[str, type[CheckpointBackendProtocol]] = {
 }
 
 
-def get_checkpoint_backend(backend: str, **kwargs: Any) -> CheckpointBackendProtocol:
+def get_checkpoint_backend(backend: str, **kwargs: object) -> CheckpointBackendProtocol:
     """Get a checkpoint backend instance.
 
     Args:

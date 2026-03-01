@@ -99,10 +99,19 @@ Best for: Simple deployment, debugging
 ### Agent Methods
 
 ```python
-agent.save_checkpoint(name: str | None = None) -> str | None
+agent.save_checkpoint(name: str | None = None, reason: str | None = None) -> str | None
 agent.load_checkpoint(checkpoint_id: str) -> bool
 agent.list_checkpoints(name: str | None = None) -> list[str]
 agent.get_checkpoint_report() -> AgentReport
+```
+
+**agent.checkpointer:** When using `CheckpointConfig`, use `agent.checkpointer` for manual save/load:
+
+```python
+agent = Agent(..., checkpoint=CheckpointConfig(storage="memory"))
+cid = agent.checkpointer.save("my_agent", {"iteration": 5})
+state = agent.checkpointer.load(cid)
+checkpoints = agent.checkpointer.list_checkpoints("my_agent")
 ```
 
 ### Checkpointer Class

@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import contextlib
+import io
 import json
 import os
 import re
 import sys
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any
 
 from syrin.budget import BudgetTracker
 
@@ -24,7 +24,7 @@ except ImportError:
     msvcrt = None  # type: ignore[assignment]
 
 
-def _lock_file(f: Any) -> None:
+def _lock_file(f: io.BufferedIOBase | io.TextIOBase) -> None:
     """Acquire exclusive lock on file (fcntl on Unix, msvcrt on Windows)."""
     if sys.platform == "win32" and msvcrt is not None:
         try:
@@ -38,7 +38,7 @@ def _lock_file(f: Any) -> None:
             fcntl.flock(f.fileno(), fcntl.LOCK_EX)
 
 
-def _unlock_file(f: Any) -> None:
+def _unlock_file(f: io.BufferedIOBase | io.TextIOBase) -> None:
     """Release exclusive lock on file."""
     if sys.platform == "win32" and msvcrt is not None:
         try:
@@ -75,7 +75,7 @@ class InMemoryBudgetStore(BudgetStore):
     """In-memory store. State is lost when process exits. Use for testing."""
 
     def __init__(self) -> None:
-        self._store: dict[str, dict[str, Any]] = {}
+        self._store: dict[str, dict[str, object]] = {}
 
     def load(self, key: str) -> BudgetTracker | None:
         state = self._store.get(key)
@@ -133,7 +133,7 @@ class FileBudgetStore(BudgetStore):
         path = self._file_for(key)
         path.parent.mkdir(parents=True, exist_ok=True)
         if self._single_file:
-            all_data: dict[str, Any] = {}
+            all_data: dict[str, object] = {}
             with path.open("a") as _:
                 pass
             with path.open("r+") as f:

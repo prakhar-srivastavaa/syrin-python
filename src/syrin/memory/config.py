@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -145,7 +145,7 @@ class MemoryEntry(BaseModel):
     related_ids: list[str] = Field(default_factory=list)
     supersedes: str | None = None
 
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, object] = Field(default_factory=dict)
 
 
 class Memory(BaseModel):
@@ -253,7 +253,7 @@ class Memory(BaseModel):
         description="Max age in days. Older memories pruned. None = no limit.",
     )
 
-    def __init__(self, **data: Any) -> None:
+    def __init__(self, **data: object) -> None:
         """Initialize Memory and set up internal store."""
         super().__init__(**data)
         self._store: MemoryStore | None = None
@@ -300,7 +300,7 @@ class Memory(BaseModel):
         content: str,
         memory_type: MemoryType = MemoryType.EPISODIC,
         importance: float = 1.0,
-        metadata: dict[str, Any] | None = None,
+        metadata: dict[str, object] | None = None,
     ) -> bool:
         """Store a memory.
 

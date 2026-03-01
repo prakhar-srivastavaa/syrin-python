@@ -75,7 +75,10 @@ class HookObserver:
 
                 # Add relevant attributes based on event
                 if event_name == "start" and "input" in ctx:
-                    current.set_attribute("user.input", ctx.get("input", "")[:200])
+                    inp = ctx.get("input", "")
+                    current.set_attribute(
+                        "user.input", (inp if isinstance(inp, str) else str(inp))[:200]
+                    )
                 elif event_name == "response" and "cost" in ctx:
                     current.set_attribute(obs.SemanticAttributes.LLM_COST, ctx.get("cost", 0))
                 elif event_name == "response" and "tokens" in ctx:

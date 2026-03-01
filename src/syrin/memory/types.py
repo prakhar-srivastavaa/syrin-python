@@ -2,10 +2,26 @@
 
 from __future__ import annotations
 
-from typing import Any
+from datetime import datetime
+from typing import TypedDict, Unpack
 
 from syrin.enums import MemoryScope, MemoryType
 from syrin.memory.config import MemoryEntry
+
+
+class MemoryEntryKwargs(TypedDict, total=False):
+    """Optional kwargs for MemoryEntry subclasses."""
+
+    source: str | None
+    created_at: datetime
+    last_accessed: datetime | None
+    access_count: int
+    valid_from: datetime | None
+    valid_until: datetime | None
+    keywords: list[str]
+    related_ids: list[str]
+    supersedes: str | None
+    metadata: dict[str, object]
 
 
 class CoreMemory(MemoryEntry):
@@ -21,7 +37,7 @@ class CoreMemory(MemoryEntry):
         content: str,
         importance: float = 0.9,
         scope: MemoryScope = MemoryScope.USER,
-        **kwargs: Any,
+        **kwargs: Unpack[MemoryEntryKwargs],
     ) -> None:
         super().__init__(
             id=id,
@@ -46,7 +62,7 @@ class EpisodicMemory(MemoryEntry):
         content: str,
         importance: float = 0.7,
         scope: MemoryScope = MemoryScope.USER,
-        **kwargs: Any,
+        **kwargs: Unpack[MemoryEntryKwargs],
     ) -> None:
         super().__init__(
             id=id,
@@ -71,7 +87,7 @@ class SemanticMemory(MemoryEntry):
         content: str,
         importance: float = 0.8,
         scope: MemoryScope = MemoryScope.USER,
-        **kwargs: Any,
+        **kwargs: Unpack[MemoryEntryKwargs],
     ) -> None:
         super().__init__(
             id=id,
@@ -96,7 +112,7 @@ class ProceduralMemory(MemoryEntry):
         content: str,
         importance: float = 0.85,
         scope: MemoryScope = MemoryScope.USER,
-        **kwargs: Any,
+        **kwargs: Unpack[MemoryEntryKwargs],
     ) -> None:
         super().__init__(
             id=id,
@@ -113,7 +129,7 @@ def create_memory(
     id: str,
     content: str,
     importance: float | None = None,
-    **kwargs: Any,
+    **kwargs: Unpack[MemoryEntryKwargs],
 ) -> MemoryEntry:
     """Factory function to create memory entries by type.
 
@@ -155,7 +171,8 @@ def create_memory(
 __all__ = [
     "CoreMemory",
     "EpisodicMemory",
-    "SemanticMemory",
+    "MemoryEntryKwargs",
     "ProceduralMemory",
+    "SemanticMemory",
     "create_memory",
 ]

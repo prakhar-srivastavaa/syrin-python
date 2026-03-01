@@ -3,8 +3,23 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TypedDict
 
 from syrin.enums import ServeProtocol
+
+
+class ServeConfigKwargs(TypedDict, total=False):
+    """Keyword arguments for building ServeConfig."""
+
+    protocol: ServeProtocol
+    host: str
+    port: int
+    route_prefix: str
+    stream: bool
+    include_metadata: bool
+    debug: bool
+    enable_playground: bool
+    enable_discovery: bool | None
 
 
 @dataclass

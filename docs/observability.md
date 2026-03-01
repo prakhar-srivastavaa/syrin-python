@@ -801,15 +801,20 @@ agent = Agent(
 ### Global Configuration
 
 ```python
-from Syrin import configure
+from syrin import configure, get_config
 
 configure(
     trace=True,              # Enable tracing globally
+    debug=True,              # Enable debug mode (prints traces to console)
 )
 
 # Or set debug mode globally
-from Syrin.observability import set_debug
+from syrin.observability import set_debug
 set_debug(True)
+
+# Read current config
+assert get_config().trace is True
+assert get_config().debug is True
 ```
 
 ---
@@ -832,6 +837,8 @@ set_debug(True)
 
 | Function | Description |
 |---------|-------------|
+| `configure()` | Set global options: `trace`, `debug`, `default_model`, `default_api_key`. |
+| `get_config()` | Return `GlobalConfig` singleton; `.trace`, `.debug`, `.default_model`, `.default_api_key`. |
 | `span()` | Create a span context manager |
 | `session()` | Create a session context manager |
 | `current_span()` | Get the current span |

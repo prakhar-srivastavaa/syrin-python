@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
 
 
 @dataclass
@@ -22,7 +21,7 @@ class GuardrailCheckResult:
     """Whether the guardrail check passed."""
     reason: str | None = None
     """Human-readable reason if failed."""
-    metadata: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, object] = field(default_factory=dict)
     """Arbitrary metadata about the check."""
     guardrail_name: str | None = None
     """Name of the guardrail that produced this result."""

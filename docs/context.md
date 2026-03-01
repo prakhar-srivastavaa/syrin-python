@@ -274,6 +274,7 @@ ctx.parent.context.compact()
 |-----------------|------|-------------|
 | **run**         | `int \| None` | Max tokens per run (one request/response cycle, input + output). Same name as **Budget.run** (which is USD). |
 | **per**         | **TokenRateLimit \| None** | Token caps per hour/day/week/month. Same name as **Budget.per** (which is USD rate limits). |
+| **per_hour**    | `int \| None` | Convenience: `per.hour` when per is set; None otherwise. |
 | **on_exceeded** | `Callable[[BudgetExceededContext], None] \| None` | Called when a token limit is exceeded. Raise to stop the run; return to continue (e.g. warn). Same as **Budget.on_exceeded**. |
 
 ### TokenRateLimit fields

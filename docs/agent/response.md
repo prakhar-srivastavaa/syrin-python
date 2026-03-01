@@ -28,6 +28,7 @@ print(response.model)     # Model ID used
 | `tool_calls` | `list` | Tool calls made |
 | `stop_reason` | `StopReason` | Why the run stopped |
 | `structured` | `StructuredOutput \| None` | Parsed structured output |
+| `raw_response` | `Any` | Provider raw response; parsed Pydantic for structured output |
 | `iterations` | `int` | Loop iterations |
 | `report` | `AgentReport` | Run metrics and sub-reports |
 

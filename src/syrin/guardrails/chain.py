@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import time
 from collections.abc import Iterator
-from typing import Any
 
 from syrin.guardrails.base import Guardrail
 from syrin.guardrails.context import GuardrailContext
@@ -111,10 +110,10 @@ class GuardrailChain:
     def check(
         self,
         text: str,
-        stage: Any = None,
+        stage: object = None,
         *,
-        budget: Any = None,
-        agent: Any = None,
+        budget: object = None,
+        agent: object = None,
     ) -> GuardrailCheckResult:
         """Sync check method for running guardrails in sync context.
 
@@ -127,12 +126,13 @@ class GuardrailChain:
         Returns:
             GuardrailCheckResult with passed status.
         """
+        # Create context with proper stage
+        from typing import cast
+
         from syrin.guardrails.context import GuardrailContext
         from syrin.guardrails.enums import GuardrailStage
 
-        # Create context with proper stage
-        if stage is None:
-            stage = GuardrailStage.INPUT
+        stage = GuardrailStage.INPUT if stage is None else cast(GuardrailStage, stage)
         context = GuardrailContext(text=text, stage=stage, budget=budget, agent=agent)
 
         # Run async evaluate in sync context
@@ -144,7 +144,7 @@ class GuardrailChain:
             # We're inside a running loop - run in a separate thread
             import concurrent.futures
 
-            def run_in_thread() -> Any:
+            def run_in_thread() -> EvaluationResult:
                 new_loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(new_loop)
                 try:

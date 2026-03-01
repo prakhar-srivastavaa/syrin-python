@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from typing import Any, TypeVar, cast
+from typing import TypedDict, TypeVar, Unpack, cast
 
 from syrin.agent import Agent
 from syrin.audit import AuditHookHandler, AuditLog
@@ -14,12 +14,32 @@ from syrin.enums import DocFormat, Hook, StopReason
 from syrin.events import EventContext, Events
 from syrin.model import Model
 from syrin.response import Response
+from syrin.serve.config import ServeConfig, ServeConfigKwargs
 from syrin.serve.servable import Servable
 from syrin.types import TokenUsage
 
 _log = logging.getLogger(__name__)
 
 T = TypeVar("T")
+
+
+class AgentSpec(TypedDict, total=False):
+    """Parsed agent spec from LLM plan (type, task)."""
+
+    type: str
+    task: str
+
+
+class RunMetrics(TypedDict, total=False):
+    """Runtime metrics for dynamic pipeline."""
+
+    task: str
+    mode: str
+    agents_spawned: list[str]
+    total_cost: float
+    total_tokens: int
+    start_time: float
+    end_time: float
 
 
 class PipelineBuilder:
@@ -53,7 +73,7 @@ class PipelineBuilder:
         return self._pipeline.run_sequential(self._agents).cost
 
     @property
-    def budget(self) -> Any:
+    def budget(self) -> object:
         """Get budget from sequential execution."""
         return self._pipeline.run_sequential(self._agents).budget
 
@@ -523,7 +543,11 @@ class Pipeline(Servable):
         """Run agents in parallel with async support (traditional API)."""
         return await PipelineRun(self, agents).parallel_async()
 
-    def as_router(self, config: Any | None = None, **config_kwargs: Any) -> Any:
+    def as_router(
+        self,
+        config: ServeConfig | None = None,
+        **config_kwargs: Unpack[ServeConfigKwargs],
+    ) -> object:
         """Return a FastAPI APIRouter for this pipeline. Mount on your app."""
         from syrin.serve.config import ServeConfig
         from syrin.serve.http import build_router
@@ -742,7 +766,7 @@ class DynamicPipeline(Servable):
         self._max_parallel = max_parallel
         self._debug = debug
         self._output_format = output_format
-        self._run_metrics: dict[str, Any] = {}
+        self._run_metrics: RunMetrics = {}
 
         # Build agent name mapping (uses Agent.name; fallback to lowercase class name)
         self._agent_names: dict[str, type[Agent]] = {}
@@ -848,7 +872,7 @@ class DynamicPipeline(Servable):
             print(f"{indent}Model: {ctx['model']}")
 
         if "total_cost" in ctx and ctx["total_cost"] is not None:
-            cost_val = float(ctx["total_cost"])
+            cost_val = float(cast(float | int, ctx["total_cost"]))
             if cost_val > 0:
                 print(f"{indent}Total cost: ${cost_val:.6f}")
 
@@ -976,7 +1000,7 @@ agents:
             )
             raise
 
-    def _get_agent_plan(self, task: str) -> list[dict[str, Any]]:
+    def _get_agent_plan(self, task: str) -> list[AgentSpec]:
         """Step 1: Ask LLM to plan which agents to spawn.
 
         Returns a list of agent specs in JSON format.
@@ -986,7 +1010,7 @@ agents:
         agent_descriptions = [self._get_agent_description(a) for a in self._agents]
         agent_list_str = "\n".join(agent_descriptions) or "No agents available"
 
-        @tool(name="plan", description="Plan which agents to spawn for this task")  # type: ignore[untyped-decorator,operator]
+        @tool(name="plan", description="Plan which agents to spawn for this task")  # type: ignore
         def plan_agents(plan: str) -> str:
             """Return the agent plan as JSON."""
             return plan
@@ -1006,10 +1030,13 @@ Return your plan as JSON array:
 
 IMPORTANT: Return ONLY valid JSON, no other text."""
 
+        from syrin.tool import ToolSpec
+
+        plan_tool: ToolSpec = cast(ToolSpec, plan_agents)
         orchestrator = Agent(
             model=self._model,
             system_prompt=system_prompt,
-            tools=[plan_agents],
+            tools=[plan_tool],
             budget=self._budget,
         )
 
@@ -1019,7 +1046,7 @@ IMPORTANT: Return ONLY valid JSON, no other text."""
         # Parse the JSON from response
         return self._parse_plan(response.content)
 
-    def _parse_plan(self, content: str) -> list[dict[str, Any]]:
+    def _parse_plan(self, content: str) -> list[AgentSpec]:
         """Parse agent plan from LLM response."""
         import json
 
@@ -1039,9 +1066,9 @@ IMPORTANT: Return ONLY valid JSON, no other text."""
         try:
             plan = json.loads(content)
             if isinstance(plan, list):
-                return cast(list[dict[str, Any]], plan)
+                return cast(list[AgentSpec], plan)
             elif isinstance(plan, dict) and "agents" in plan:
-                agents = cast(list[dict[str, Any]], plan["agents"])
+                agents = cast(list[AgentSpec], plan["agents"])
                 return agents
         except json.JSONDecodeError:
             pass
@@ -1067,7 +1094,7 @@ IMPORTANT: Return ONLY valid JSON, no other text."""
         )
         return "\n".join(lines)
 
-    def _execute_plan(self, plan: list[dict[str, Any]], mode: str) -> Response[str]:
+    def _execute_plan(self, plan: list[AgentSpec], mode: str) -> Response[str]:
         """Step 2: Execute the planned agents."""
         if not plan:
             content = self._build_no_agents_message()
@@ -1095,12 +1122,12 @@ IMPORTANT: Return ONLY valid JSON, no other text."""
             tokens=tokens,
         )
 
-    def _parse_agents_spec(self, spec: str) -> list[dict[str, Any]]:
+    def _parse_agents_spec(self, spec: str) -> list[AgentSpec]:
         """Parse agent specification string."""
-        agents = []
+        agents: list[AgentSpec] = []
         lines = spec.strip().split("\n")
 
-        current = {}
+        current: AgentSpec = {}
         in_agents = False
 
         for line in lines:
@@ -1125,7 +1152,7 @@ IMPORTANT: Return ONLY valid JSON, no other text."""
 
         return agents
 
-    def _execute_parallel(self, agents_spec: list[dict[str, Any]]) -> tuple[str, float, TokenUsage]:
+    def _execute_parallel(self, agents_spec: list[AgentSpec]) -> tuple[str, float, TokenUsage]:
         """Execute agents in parallel."""
 
         async def run() -> list[Response[str]]:
@@ -1184,9 +1211,7 @@ IMPORTANT: Return ONLY valid JSON, no other text."""
 
         return self._consolidate_results(results), total_cost, TokenUsage(total_tokens=total_tokens)
 
-    def _execute_sequential(
-        self, agents_spec: list[dict[str, Any]]
-    ) -> tuple[str, float, TokenUsage]:
+    def _execute_sequential(self, agents_spec: list[AgentSpec]) -> tuple[str, float, TokenUsage]:
         """Execute agents sequentially, passing context to next."""
         results = []
         previous_output = ""
@@ -1275,7 +1300,11 @@ IMPORTANT: Return ONLY valid JSON, no other text."""
         parts = [r.content.strip() for r in results if r.content.strip()]
         return "\n\n".join(parts) if parts else "No results"
 
-    def as_router(self, config: Any | None = None, **config_kwargs: Any) -> Any:
+    def as_router(
+        self,
+        config: ServeConfig | None = None,
+        **config_kwargs: Unpack[ServeConfigKwargs],
+    ) -> object:
         """Return a FastAPI APIRouter for this dynamic pipeline. Mount on your app."""
         from syrin.serve.config import ServeConfig
         from syrin.serve.http import build_router

@@ -266,21 +266,21 @@ def _emit_domain_event_for_hook(hook: Hook, ctx: EventContext, bus: Any) -> None
     if hook == Hook.BUDGET_THRESHOLD:
         from syrin.domain_events import BudgetThresholdReached
 
-        pct = ctx.get("threshold_percent", 0)
-        current = ctx.get("current_value", 0.0)
-        limit = ctx.get("limit_value", 0.0)
-        metric = ctx.get("metric", "cost")
+        pct = cast(int, ctx.get("threshold_percent", 0))
+        current = cast(float, ctx.get("current_value", 0.0))
+        limit = cast(float, ctx.get("limit_value", 0.0))
+        metric = cast(str, ctx.get("metric", "cost"))
         bus.emit(BudgetThresholdReached(pct, current, limit, metric))
     elif hook == Hook.CONTEXT_COMPACT:
         from syrin.domain_events import ContextCompacted
 
         bus.emit(
             ContextCompacted(
-                method=ctx.get("method", "unknown"),
-                tokens_before=ctx.get("tokens_before", 0),
-                tokens_after=ctx.get("tokens_after", 0),
-                messages_before=ctx.get("messages_before", 0),
-                messages_after=ctx.get("messages_after", 0),
+                method=cast(str, ctx.get("method", "unknown")),
+                tokens_before=cast(int, ctx.get("tokens_before", 0)),
+                tokens_after=cast(int, ctx.get("tokens_after", 0)),
+                messages_before=cast(int, ctx.get("messages_before", 0)),
+                messages_after=cast(int, ctx.get("messages_after", 0)),
             )
         )
 
@@ -1110,7 +1110,7 @@ class Agent(Servable, metaclass=_AgentMeta):
 
         # Cost
         if "cost" in ctx and ctx["cost"] is not None:
-            cost_val = float(ctx["cost"])
+            cost_val = float(cast(float | int, ctx["cost"]))
             if cost_val > 0:
                 print(f"{indent}Cost: ${cost_val:.6f}")
 
@@ -1132,7 +1132,7 @@ class Agent(Servable, metaclass=_AgentMeta):
 
         # Duration
         if "duration" in ctx and ctx["duration"] is not None:
-            duration_ms = float(ctx["duration"]) * 1000
+            duration_ms = float(cast(float | int, ctx["duration"])) * 1000
             print(f"{indent}Duration: {duration_ms:.2f}ms")
 
         print()

@@ -22,13 +22,13 @@ Usage:
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from syrin.enums import Hook
 
 
-class EventContext(dict[str, Any]):
+class EventContext(dict[str, object]):
     """Context dictionary for events with dot notation access.
 
     Acts like a dict but allows accessing fields with dot notation.
@@ -44,13 +44,13 @@ class EventContext(dict[str, Any]):
         See hooks.py for field documentation.
     """
 
-    def __getattr__(self, key: str) -> Any:
+    def __getattr__(self, key: str) -> object:
         try:
             return self[key]
         except KeyError as err:
             raise AttributeError(f"'{type(self).__name__}' has no attribute '{key}'") from err
 
-    def __setattr__(self, key: str, value: Any) -> None:
+    def __setattr__(self, key: str, value: object) -> None:
         self[key] = value
 
     def __repr__(self) -> str:

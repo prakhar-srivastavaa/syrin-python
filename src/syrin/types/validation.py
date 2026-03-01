@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Protocol
+from typing import Protocol
 
 
 class ValidationAction(Enum):
@@ -30,7 +30,7 @@ class ValidationAttempt:
 
     attempt: int
     raw_output: str
-    parsed: Any = None
+    parsed: object | None = None
     error: str | None = None
     timestamp: float = field(default_factory=time.time)
 
@@ -48,13 +48,13 @@ class ValidationResult:
     """
 
     is_valid: bool
-    parsed: Any = None
+    parsed: object | None = None
     message: str = ""
     action: ValidationAction = ValidationAction.STOP
     hint: str = ""
 
     @classmethod
-    def valid(cls, parsed: Any) -> ValidationResult:
+    def valid(cls, parsed: object) -> ValidationResult:
         return cls(is_valid=True, parsed=parsed)
 
     @classmethod
@@ -87,8 +87,8 @@ class ValidationContext:
     raw_output: str
     attempt: int
     max_attempts: int
-    user_context: dict[str, Any] = field(default_factory=dict)
-    llm_messages: list[dict[str, Any]] = field(default_factory=list)
+    user_context: dict[str, object] = field(default_factory=dict)
+    llm_messages: list[dict[str, object]] = field(default_factory=list)
 
 
 class OutputValidator(Protocol):
@@ -100,7 +100,7 @@ class OutputValidator(Protocol):
         max_retries: int = 3
         backoff_factor: float = 1.0
 
-        def validate(self, output: Any, context: ValidationContext) -> ValidationResult:
+        def validate(self, output: object, context: ValidationContext) -> ValidationResult:
             # Custom validation logic
             if not meets_requirements(output):
                 return ValidationResult.invalid(
@@ -118,7 +118,7 @@ class OutputValidator(Protocol):
     max_retries: int = 3
     backoff_factor: float = 1.0
 
-    def validate(self, output: Any, context: ValidationContext) -> ValidationResult:
+    def validate(self, output: object, context: ValidationContext) -> ValidationResult:
         """Validate output. Return ValidationResult."""
         ...
 
@@ -146,7 +146,7 @@ class ToolOutput:
     max_retries: int | None = None
     strict: bool | None = None
 
-    def get_schema(self) -> dict[str, Any]:
+    def get_schema(self) -> dict[str, object]:
         """Get JSON schema for this output type."""
         if hasattr(self.output, "model_json_schema"):
             result = self.output.model_json_schema()

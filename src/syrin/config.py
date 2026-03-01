@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 import threading
-from typing import Any
 
 from syrin.types import ModelConfig
 
@@ -74,11 +73,11 @@ class GlobalConfig:
         with self._lock:
             self._default_api_key = value
 
-    def get(self, key: str, default: Any = None) -> Any:
+    def get(self, key: str, default: object = None) -> object:
         """Get a configuration value."""
         return getattr(self, key, default)
 
-    def set(self, **kwargs: Any) -> None:
+    def set(self, **kwargs: object) -> None:
         """Set multiple configuration values."""
         with self._lock:
             for key, value in kwargs.items():
@@ -98,7 +97,7 @@ def get_config() -> GlobalConfig:
     return _config
 
 
-def configure(**kwargs: Any) -> None:
+def configure(**kwargs: object) -> None:
     """Configure global Syrin settings.
 
     Args:

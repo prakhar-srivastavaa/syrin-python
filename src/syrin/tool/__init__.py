@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import inspect
 from collections.abc import Callable
-from typing import Any, Union, get_type_hints
+from typing import Union, get_type_hints
 
 from pydantic import BaseModel, Field
 
@@ -12,7 +12,7 @@ from syrin.enums import DocFormat
 from syrin.tool._schema import schema_to_toon as _schema_to_toon
 from syrin.tool._schema import tool_schema_to_format_dict
 
-_TYPE_TO_JSON: dict[type[Any], str] = {
+_TYPE_TO_JSON: dict[type[object], str] = {
     str: "string",
     int: "integer",
     float: "number",
@@ -39,11 +39,11 @@ class ToolSpec(BaseModel):
         default="",
         description="Description for the model. Shown in tool list.",
     )
-    parameters_schema: dict[str, Any] = Field(
+    parameters_schema: dict[str, object] = Field(
         default_factory=dict,
         description="JSON schema for parameters. Model uses this to generate args.",
     )
-    func: Callable[..., Any] = Field(
+    func: Callable[..., object] = Field(
         ...,
         description="Python function to run. Receives parsed arguments from model.",
     )
@@ -62,7 +62,7 @@ class ToolSpec(BaseModel):
         """Return this tool's parameters schema as TOON (token-efficient) string."""
         return _schema_to_toon(self.parameters_schema or {}, indent)
 
-    def to_format(self, format: DocFormat = DocFormat.TOON) -> dict[str, Any]:
+    def to_format(self, format: DocFormat = DocFormat.TOON) -> dict[str, object]:
         """Return this tool as a provider-ready schema dict (TOON, JSON, or YAML)."""
         return tool_schema_to_format_dict(
             self.name,
@@ -72,7 +72,7 @@ class ToolSpec(BaseModel):
         )
 
 
-def _annotation_to_json_schema(annotation: Any) -> dict[str, Any]:
+def _annotation_to_json_schema(annotation: type[object] | object) -> dict[str, object]:
     """Convert a type annotation to a JSON schema fragment."""
     origin = getattr(annotation, "__origin__", None)
     args = getattr(annotation, "__args__", ())
@@ -94,19 +94,19 @@ def _annotation_to_json_schema(annotation: Any) -> dict[str, Any]:
                 "type": "object",
                 "additionalProperties": _annotation_to_json_schema(value_ann),
             }
-    if annotation in _TYPE_TO_JSON:
+    if isinstance(annotation, type) and annotation in _TYPE_TO_JSON:
         return {"type": _TYPE_TO_JSON[annotation]}
     return {"type": "string"}
 
 
-def _parameters_schema_from_function(func: Callable[..., Any]) -> tuple[dict[str, Any], bool]:
+def _parameters_schema_from_function(func: Callable[..., object]) -> tuple[dict[str, object], bool]:
     """Build a JSON schema for the function's parameters from type hints.
 
     Excludes param named 'ctx' (RunContext for DI). Returns (schema, inject_run_context).
     """
     hints = get_type_hints(func) if hasattr(func, "__annotations__") else {}
     sig = inspect.signature(func)
-    properties: dict[str, Any] = {}
+    properties: dict[str, object] = {}
     required: list[str] = []
     inject_run_context = False
     for name, param in sig.parameters.items():
@@ -117,21 +117,21 @@ def _parameters_schema_from_function(func: Callable[..., Any]) -> tuple[dict[str
             continue
         ann = hints.get(name, param.annotation)
         if ann is inspect.Parameter.empty:
-            ann = Any
+            ann = object
         properties[name] = _annotation_to_json_schema(ann)
         if param.default is inspect.Parameter.empty:
             required.append(name)
-    schema = {"type": "object", "properties": properties, "required": required}
-    return schema, inject_run_context
+    schema: dict[str, object] = {"type": "object", "properties": properties, "required": required}
+    return (schema, inject_run_context)
 
 
 def tool(
-    func: Callable[..., Any] | None = None,
+    func: Callable[..., object] | None = None,
     *,
     name: str | None = None,
     description: str | None = None,
     requires_approval: bool = False,
-) -> Callable[..., Any] | ToolSpec:
+) -> Callable[..., object] | ToolSpec:
     """Decorator to register a function as a Syrin tool.
 
     Extracts name from function name (or override), description from first line of
@@ -153,7 +153,7 @@ def tool(
         ...     return f"Weather in {city}"
     """
 
-    def decorator(f: Callable[..., Any]) -> ToolSpec:
+    def decorator(f: Callable[..., object]) -> ToolSpec:
         tool_name = name or f.__name__
         desc = description or (inspect.getdoc(f) or "").strip().split("\n")[0] or ""
         params_schema, inject_run_context = _parameters_schema_from_function(f)

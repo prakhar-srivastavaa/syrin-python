@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any
 
-from syrin.types import TokenUsage
+from syrin.types import Message, TokenUsage
 
 # USD per 1M tokens (input, output). Keys: model_id or prefix pattern (first match wins).
 # Sources: Anthropic/OpenAI public pricing; update as needed.
@@ -152,7 +151,7 @@ def _estimate_tokens(text: str) -> int:
 
 def estimate_cost_for_call(
     model_id: str,
-    messages: list[Any],
+    messages: list[Message],
     max_output_tokens: int | None = 1024,
     pricing_override: Pricing | None = None,
     pricing_resolver: Callable[[str], tuple[float, float]] | None = None,

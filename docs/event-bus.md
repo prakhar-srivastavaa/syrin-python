@@ -50,7 +50,7 @@ from syrin.domain_events import EventBus, BudgetThresholdReached, ContextCompact
 
 bus = EventBus()
 
-# Subscribe to budget threshold events
+# Subscribe to budget threshold events (subscribe() or on() — alias)
 bus.subscribe(BudgetThresholdReached, lambda e: print(f"Budget at {e.percentage}%"))
 
 # Subscribe to context compaction events
@@ -177,7 +177,7 @@ bus.subscribe(DomainEvent, lambda e: print(type(e).__name__, e))
 ## Relationship to Hooks
 
 - **Hooks** (`agent.events`) are the default API. They use string event names and `EventContext` dicts.
-- **Event bus** is optional. It uses typed dataclasses and `bus.subscribe(event_type, handler)`.
+- **Event bus** is optional. It uses typed dataclasses and `bus.subscribe(event_type, handler)` or `bus.on(event_type, handler)` (alias).
 
 Both can be used together. When you pass `bus=bus`, the agent emits to the bus **in addition to** running hook handlers. Hooks remain for simple use cases and per-agent handlers.
 
