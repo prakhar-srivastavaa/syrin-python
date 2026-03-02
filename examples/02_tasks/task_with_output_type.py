@@ -26,8 +26,8 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 class TriageAgent(Agent):
     """Agent that triages items with structured output."""
 
-    name = "triage"
-    description = "Triage agent returning priority, category, summary"
+    _agent_name = "triage"
+    _agent_description = "Triage agent returning priority, category, summary"
     model = almock
     system_prompt = (
         "You are a triage assistant. For each item, return priority (high/medium/low), "

@@ -131,8 +131,8 @@ agent.response("Hello custom!")
 
 
 class ContextDemoAgent(Agent):
-    name = "context-demo"
-    description = "Agent with context management"
+    _agent_name = "context-demo"
+    _agent_description = "Agent with context management"
     model = almock
     system_prompt = "You are a helpful assistant."
     context = Context(max_tokens=1000)

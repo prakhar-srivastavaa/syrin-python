@@ -47,8 +47,8 @@ except BudgetExceededError as e:
 
 # 4. Class-level budget definition
 class CostAwareAgent(Agent):
-    name = "cost-aware"
-    description = "Agent with budget control"
+    _agent_name = "cost-aware"
+    _agent_description = "Agent with budget control"
     model = almock
     system_prompt = "You are a concise assistant."
     budget = Budget(run=1.00, on_exceeded=warn_on_exceeded)

@@ -27,16 +27,16 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 
 class Researcher(Agent):
-    name = "researcher"
-    description = "Researches topics and summarizes findings"
+    _agent_name = "researcher"
+    _agent_description = "Researches topics and summarizes findings"
     model = almock
     system_prompt = "You are a researcher. Be thorough but concise."
     budget = Budget(run=0.3)
 
 
 class Writer(Agent):
-    name = "writer"
-    description = "Writes content in a professional style"
+    _agent_name = "writer"
+    _agent_description = "Writes content in a professional style"
     model = gpt4_mini
     system_prompt = "You are a writer. Be clear and engaging."
     budget = Budget(run=0.3)

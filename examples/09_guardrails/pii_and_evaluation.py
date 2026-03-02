@@ -178,8 +178,8 @@ async def _run() -> None:
 
 
 class GuardrailDemoAgent(Agent):
-    name = "guardrail-demo"
-    description = "Agent with ContentFilter and PIIScanner guardrails"
+    _agent_name = "guardrail-demo"
+    _agent_description = "Agent with ContentFilter and PIIScanner guardrails"
     model = almock
     system_prompt = "You are a helpful assistant."
     guardrails = [ContentFilter(blocked_words=["password", "secret"]), PIIScanner()]

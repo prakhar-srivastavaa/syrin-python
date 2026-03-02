@@ -24,8 +24,8 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 
 class Assistant(Agent):
-    name = "assistant"
-    description = "Assistant with persistent memory (remember/recall/forget)"
+    _agent_name = "assistant"
+    _agent_description = "Assistant with persistent memory (remember/recall/forget)"
     model = almock
     system_prompt = "You are a helpful assistant that remembers user preferences."
 

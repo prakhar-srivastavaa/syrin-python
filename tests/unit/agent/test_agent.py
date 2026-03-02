@@ -624,8 +624,8 @@ def test_agent_explicit_name_and_description() -> None:
     """Agent with explicit name and description uses them."""
 
     class Assistant(Agent):
-        name = "product-agent"
-        description = "E-commerce product assistant"
+        _agent_name = "product-agent"
+        _agent_description = "E-commerce product assistant"
         model = Model("openai/gpt-4")
         system_prompt = "Help"
 
@@ -638,14 +638,14 @@ def test_agent_name_inheritance_override() -> None:
     """Child class name overrides parent; override pattern."""
 
     class BaseAgent(Agent):
-        name = "base"
-        description = "Base agent"
+        _agent_name = "base"
+        _agent_description = "Base agent"
         model = Model("openai/gpt-4")
         system_prompt = "Base"
 
     class ChildAgent(BaseAgent):
-        name = "child"
-        description = "Child agent"
+        _agent_name = "child"
+        _agent_description = "Child agent"
 
     agent = ChildAgent()
     assert agent.name == "child"
@@ -656,8 +656,8 @@ def test_agent_name_instance_override() -> None:
     """Constructor name overrides class default."""
 
     class Assistant(Agent):
-        name = "assistant"
-        description = "Help assistant"
+        _agent_name = "assistant"
+        _agent_description = "Help assistant"
         model = Model("openai/gpt-4")
         system_prompt = "Help"
 

@@ -58,8 +58,8 @@ result = agent.response("Hello with fallback!")
 
 # 5. Class-level model
 class MyAgent(Agent):
-    name = "custom-model"
-    description = "Agent with custom Model subclass"
+    _agent_name = "custom-model"
+    _agent_description = "Agent with custom Model subclass"
     model = almock
     system_prompt = "You are a specialized assistant."
 

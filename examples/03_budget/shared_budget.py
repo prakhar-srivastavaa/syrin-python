@@ -50,8 +50,8 @@ print(f"Budget after 3 children: {parent2.budget_state}")
 class SharedBudgetParent(Agent):
     """Parent agent with shared budget for spawning children."""
 
-    name = "shared-budget"
-    description = "Agent with shared budget (spawn children that borrow)"
+    _agent_name = "shared-budget"
+    _agent_description = "Agent with shared budget (spawn children that borrow)"
     model = almock
     budget = Budget(run=10.0, shared=True, on_exceeded=warn_on_exceeded)
 

@@ -85,8 +85,8 @@ print(f"Memory operations: {memory_ops}")
 
 
 class EventsDemoAgent(Agent):
-    name = "events-demo"
-    description = "Agent with events and hooks"
+    _agent_name = "events-demo"
+    _agent_description = "Agent with events and hooks"
     model = almock
     system_prompt = "You are a helpful assistant."
     budget = Budget(run=1.0, on_exceeded=warn_on_exceeded)

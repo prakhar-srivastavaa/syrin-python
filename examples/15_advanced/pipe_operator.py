@@ -52,8 +52,8 @@ print(f"| operator: '{result}'")
 
 # 4. Pipe with Agent
 class TransformAgent(Agent):
-    name = "transform-agent"
-    description = "Agent for pipe operator demo"
+    _agent_name = "transform-agent"
+    _agent_description = "Agent for pipe operator demo"
     model = almock
     system_prompt = "You are helpful."
 

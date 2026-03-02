@@ -81,8 +81,8 @@ for domain in ["Python", "JavaScript", "Rust"]:
 
 
 class PromptDemoAgent(Agent):
-    name = "prompt-demo"
-    description = "Agent with @prompt parameterized system prompts"
+    _agent_name = "prompt-demo"
+    _agent_description = "Agent with @prompt parameterized system prompts"
     model = almock
     system_prompt = expert_prompt(domain="general", tone="concise")
 

@@ -23,14 +23,14 @@ if str(_root) not in sys.path:
 from dotenv import load_dotenv
 
 from examples.models.models import almock
-from syrin import Agent, Budget, warn_on_exceeded
+from syrin import Agent, Budget, ServeProtocol, warn_on_exceeded
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 
 class Assistant(Agent):
-    name = "assistant"
-    description = "Assistant with budget control"
+    _agent_name = "assistant"
+    _agent_description = "Assistant with budget control"
     model = almock
     system_prompt = "You are a helpful assistant."
     budget = Budget(run=0.10, on_exceeded=warn_on_exceeded)
@@ -39,5 +39,5 @@ class Assistant(Agent):
 if __name__ == "__main__":
     assistant = Assistant()
     print("Serving at http://localhost:8000/playground")
-    assistant.serve(port=8000, enable_playground=True, debug=True)
-    # assistant.serve(protocol=ServeProtocol.CLI)
+    # assistant.serve(port=8000, enable_playground=True, debug=True)
+    assistant.serve(protocol=ServeProtocol.CLI)

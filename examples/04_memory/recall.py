@@ -23,8 +23,8 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 
 class Assistant(Agent):
-    name = "recall-assistant"
-    description = "Assistant with memory recall — demo"
+    _agent_name = "recall-assistant"
+    _agent_description = "Assistant with memory recall — demo"
     model = almock
     system_prompt = "You are a helpful assistant."
 

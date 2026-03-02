@@ -22,8 +22,8 @@ def test_mcp_route_mounted_when_mcp_in_tools() -> None:
 
     class ProductAgent(Agent):
         model = Model.Almock()
-        name = "product-agent"
-        description = "Product agent with MCP"
+        _agent_name = "product-agent"
+        _agent_description = "Product agent with MCP"
         tools = [ProductMCP()]
 
     agent = ProductAgent()
@@ -65,8 +65,8 @@ def test_no_mcp_route_when_no_mcp_in_tools() -> None:
 
     class PlainAgent(Agent):
         model = Model.Almock()
-        name = "plain"
-        description = "No MCP"
+        _agent_name = "plain"
+        _agent_description = "No MCP"
         tools = []
 
     agent = PlainAgent()

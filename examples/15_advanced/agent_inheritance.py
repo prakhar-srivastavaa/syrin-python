@@ -31,8 +31,8 @@ def repeat(text: str, count: int = 1) -> str:
 
 
 class BaseAgent(Agent):
-    name = "base-agent"
-    description = "Base agent with repeat tool"
+    _agent_name = "base-agent"
+    _agent_description = "Base agent with repeat tool"
     model = almock
     system_prompt = "You are a helpful assistant."
     tools = [repeat]

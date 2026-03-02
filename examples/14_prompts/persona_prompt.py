@@ -23,8 +23,8 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 
 class PersonaAgent(Agent):
-    name = "persona-agent"
-    description = "Agent with @system_prompt in-class"
+    _agent_name = "persona-agent"
+    _agent_description = "Agent with @system_prompt in-class"
     model = almock
 
     @system_prompt

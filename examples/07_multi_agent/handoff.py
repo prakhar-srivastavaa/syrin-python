@@ -33,15 +33,15 @@ def presenter_prompt() -> str:
 
 
 class Analyzer(Agent):
-    name = "analyzer"
-    description = "Analyzes information and provides key findings"
+    _agent_name = "analyzer"
+    _agent_description = "Analyzes information and provides key findings"
     model = almock
     system_prompt = analyzer_prompt()
 
 
 class Presenter(Agent):
-    name = "presenter"
-    description = "Presents information clearly and concisely"
+    _agent_name = "presenter"
+    _agent_description = "Presents information clearly and concisely"
     model = almock
     system_prompt = presenter_prompt()
 

@@ -164,8 +164,8 @@ if __name__ == "__main__":
     from syrin.guardrails import ContentFilter
 
     class AuthorityDemoAgent(Agent):
-        name = "authority-demo"
-        description = "Agent with authority layer guardrails demo"
+        _agent_name = "authority-demo"
+        _agent_description = "Agent with authority layer guardrails demo"
         model = almock
         system_prompt = "You are a helpful assistant."
         guardrails = [ContentFilter(blocked_words=["unauthorized"])]

@@ -127,8 +127,8 @@ def example_custom_loop() -> None:
 
 
 class LoopDemoAgent(Agent):
-    name = "loop-demo"
-    description = "Agent with ReactLoop (Think, Act, Observe)"
+    _agent_name = "loop-demo"
+    _agent_description = "Agent with ReactLoop (Think, Act, Observe)"
     model = almock
     system_prompt = "You are a helpful assistant. Use tools when needed."
     loop = ReactLoop(max_iterations=5)

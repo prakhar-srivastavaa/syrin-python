@@ -14,14 +14,14 @@ from syrin.serve import AgentRouter
 
 
 class _AgentA(Agent):
-    name = "agent-a"
-    description = "Agent A"
+    _agent_name = "agent-a"
+    _agent_description = "Agent A"
     model = Model.Almock()
 
 
 class _AgentB(Agent):
-    name = "agent-b"
-    description = "Agent B"
+    _agent_name = "agent-b"
+    _agent_description = "Agent B"
     model = Model.Almock()
 
 

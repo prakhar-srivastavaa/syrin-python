@@ -31,8 +31,8 @@ cb = CircuitBreaker(
 
 
 class CircuitBreakerAgent(Agent):
-    name = "circuit-breaker"
-    description = "Agent with circuit breaker for LLM failures"
+    _agent_name = "circuit-breaker"
+    _agent_description = "Agent with circuit breaker for LLM failures"
     model = almock
     system_prompt = "You are helpful."
     circuit_breaker = cb

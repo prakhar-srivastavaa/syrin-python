@@ -49,8 +49,8 @@ def get_weather(city: str, unit: str = "celsius") -> str:
 
 
 class MathAssistant(Agent):
-    name = "math-assistant"
-    description = "Assistant with calculator and weather tools"
+    _agent_name = "math-assistant"
+    _agent_description = "Assistant with calculator and weather tools"
     model = almock
     system_prompt = "You are a helpful assistant. Use tools for calculations."
     tools = [calculate, get_weather]

@@ -34,7 +34,7 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 
 class ResearcherAgent(Agent):
-    name = "researcher"
+    _agent_name = "researcher"
     model = gpt4_mini
     system_prompt = (
         "You research topics and gather information. Use for: finding facts, "
@@ -43,7 +43,7 @@ class ResearcherAgent(Agent):
 
 
 class AnalystAgent(Agent):
-    name = "analyst"
+    _agent_name = "analyst"
     model = gpt4_mini
     system_prompt = (
         "You analyze data and provide structured reasoning. Use for: comparing "
@@ -52,7 +52,7 @@ class AnalystAgent(Agent):
 
 
 class WriterAgent(Agent):
-    name = "writer"
+    _agent_name = "writer"
     model = gpt4_mini
     system_prompt = (
         "You write content in a clear, engaging style. Use for: drafting text, "
@@ -61,7 +61,7 @@ class WriterAgent(Agent):
 
 
 class FactCheckerAgent(Agent):
-    name = "fact_checker"
+    _agent_name = "fact_checker"
     model = gpt4_mini
     system_prompt = (
         "You fact-check and verify claims. Use for: validating accuracy, "
@@ -70,7 +70,7 @@ class FactCheckerAgent(Agent):
 
 
 class SummarizerAgent(Agent):
-    name = "summarizer"
+    _agent_name = "summarizer"
     model = gpt4_mini
     system_prompt = (
         "You synthesize and summarize content. Use for: executive summaries, "

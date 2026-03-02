@@ -29,8 +29,8 @@ chain = GuardrailChain(
 
 
 class IOGuardrailAgent(Agent):
-    name = "io-guardrail"
-    description = "Agent with ContentFilter guardrail chain"
+    _agent_name = "io-guardrail"
+    _agent_description = "Agent with ContentFilter guardrail chain"
     model = almock
     system_prompt = "You are helpful."
     guardrails = chain

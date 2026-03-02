@@ -21,8 +21,8 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 
 class AsyncStreamAgent(Agent):
-    name = "async-stream-agent"
-    description = "Async token-by-token streaming"
+    _agent_name = "async-stream-agent"
+    _agent_description = "Async token-by-token streaming"
     model = almock
     system_prompt = "You are a helpful assistant."
 

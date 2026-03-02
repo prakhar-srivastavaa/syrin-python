@@ -790,7 +790,7 @@ class TestDynamicPipeline:
         """Create a test researcher agent."""
 
         class ResearcherAgent(Agent):
-            name = "researcher"
+            _agent_name = "researcher"
             model = Model(provider="openai", model_id="gpt-4o-mini")
             system_prompt = "You research and gather information."
 
@@ -801,7 +801,7 @@ class TestDynamicPipeline:
         """Create a test writer agent."""
 
         class WriterAgent(Agent):
-            name = "writer"
+            _agent_name = "writer"
             model = Model(provider="openai", model_id="gpt-4o-mini")
             system_prompt = "You write reports."
 
@@ -878,7 +878,7 @@ class TestDynamicPipeline:
         from syrin.agent.multi_agent import DynamicPipeline
 
         class MyAgent(Agent):
-            name = "custom_name"
+            _agent_name = "custom_name"
             model = Model(provider="openai", model_id="gpt-4o-mini")
             system_prompt = "Test agent"
 

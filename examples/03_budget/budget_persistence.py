@@ -30,8 +30,8 @@ store_path.parent.mkdir(parents=True, exist_ok=True)
 
 
 class PersistentAgent(Agent):
-    name = "persistent-budget"
-    description = "Agent with FileBudgetStore (persists across restarts)"
+    _agent_name = "persistent-budget"
+    _agent_description = "Agent with FileBudgetStore (persists across restarts)"
     model = almock
     system_prompt = "You are concise."
     budget = Budget(

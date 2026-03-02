@@ -33,15 +33,15 @@ def writer_prompt(style: str) -> str:
 
 
 class Researcher(Agent):
-    name = "researcher"
-    description = "Researches topics and gathers information"
+    _agent_name = "researcher"
+    _agent_description = "Researches topics and gathers information"
     model = almock
     system_prompt = researcher_prompt(domain="technology")
 
 
 class Writer(Agent):
-    name = "writer"
-    description = "Writes content in professional style"
+    _agent_name = "writer"
+    _agent_description = "Writes content in professional style"
     model = almock
     system_prompt = writer_prompt(style="professional")
 

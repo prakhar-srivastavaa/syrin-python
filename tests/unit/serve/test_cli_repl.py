@@ -14,8 +14,8 @@ from syrin.serve.config import ServeConfig
 
 
 class _TestAgent(Agent):
-    name = "test-agent"
-    description = "Test agent"
+    _agent_name = "test-agent"
+    _agent_description = "Test agent"
     model = Model.Almock()
     system_prompt = "You are helpful."
 

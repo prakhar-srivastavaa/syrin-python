@@ -29,8 +29,8 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 class ResponseDemoAgent(Agent):
     """Agent to demo response attributes in playground."""
 
-    name = "response-demo"
-    description = "Agent for exploring response object (content, cost, tokens, etc.)"
+    _agent_name = "response-demo"
+    _agent_description = "Agent for exploring response object (content, cost, tokens, etc.)"
     model = almock
     system_prompt = "You are a helpful assistant. Be concise."
     budget = Budget(run=0.10)

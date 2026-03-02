@@ -56,8 +56,8 @@ class ProductMCP(MCP):
 
 # Agent with ALL tools (search + get)
 class FullProductAgent(Agent):
-    name = "full-agent"
-    description = "Search and get products"
+    _agent_name = "full-agent"
+    _agent_description = "Search and get products"
     model = almock
     system_prompt = "You help users find and look up products."
     tools = [ProductMCP()]
@@ -65,8 +65,8 @@ class FullProductAgent(Agent):
 
 # Agent with ONLY search (via .select)
 class SearchOnlyAgent(Agent):
-    name = "search-agent"
-    description = "Search products only"
+    _agent_name = "search-agent"
+    _agent_description = "Search products only"
     model = almock
     system_prompt = "You help users search products. Use search_products."
     tools = [ProductMCP().select("search_products")]

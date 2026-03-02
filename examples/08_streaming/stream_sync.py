@@ -21,8 +21,8 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 
 class StreamAgent(Agent):
-    name = "stream-agent"
-    description = "Streams token-by-token output"
+    _agent_name = "stream-agent"
+    _agent_description = "Streams token-by-token output"
     model = almock
     system_prompt = "You are a helpful assistant."
 

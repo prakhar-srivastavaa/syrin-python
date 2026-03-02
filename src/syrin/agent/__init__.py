@@ -6,7 +6,7 @@ import asyncio
 import logging
 from collections.abc import AsyncIterator, Callable, Iterator
 from contextlib import suppress
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 if TYPE_CHECKING:
     from syrin.serve.config import ServeConfig  # noqa: F401
@@ -307,6 +307,17 @@ class _AgentMeta(type):
                     else:
                         namespace[internal] = val if isinstance(val, str) else ""
                     del namespace[attr]
+        # Type-checker-friendly ClassVars: copy into internal so __init__ gets them
+        if "_agent_name" in namespace:
+            val = namespace["_agent_name"]
+            if not hasattr(val, "__get__") and isinstance(val, str):
+                namespace["_syrin_default_name"] = val
+            elif not hasattr(val, "__get__") and val is None:
+                namespace["_syrin_default_name"] = None
+        if "_agent_description" in namespace:
+            val = namespace["_agent_description"]
+            if not hasattr(val, "__get__") and isinstance(val, str):
+                namespace["_syrin_default_description"] = val
         return super().__new__(mcs, name, bases, namespace, **kwargs)
 
 
@@ -341,7 +352,9 @@ class Agent(Servable, metaclass=_AgentMeta):
         model: Model | None — LLM to use (Model.OpenAI, Model.Anthropic, etc.). Required.
         system_prompt: str — Instructions sent with every request. Default: "".
         name: str | None — Agent identifier for handoffs, discovery. Default: None.
-        description: str — Human-readable description. Default: "".
+        description: str — Human-readable description (metaclass moves to internal). Default: "".
+        _agent_name: ClassVar[str | None] — Same as name; use this to avoid type-checker override warnings.
+        _agent_description: ClassVar[str] — Same as description; use this to avoid type-checker override warnings.
         tools: list[ToolSpec] — Tools the agent can call. Merged with parent. Default: [].
         budget: Budget | None — Cost limits (run, per-period). Default: None (unlimited).
         memory: Memory | None — Persistent memory config. Default: None.
@@ -376,6 +389,8 @@ class Agent(Servable, metaclass=_AgentMeta):
     _syrin_default_guardrails: list[Guardrail] = []
     _syrin_default_name: str | None = None
     _syrin_default_description: str = ""
+    _agent_name: ClassVar[str | None] = None
+    _agent_description: ClassVar[str] = ""
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
@@ -386,8 +401,12 @@ class Agent(Servable, metaclass=_AgentMeta):
         default_budget = _merge_class_attrs(mro, "budget", merge=False)
         default_guardrails = _merge_class_attrs(mro, "guardrails", merge=True)
         default_memory = _merge_class_attrs(mro, "memory", merge=False)
-        default_name = _merge_class_attrs(mro, "name", merge=False)
-        default_description = _merge_class_attrs(mro, "description", merge=False)
+        default_name = _merge_class_attrs(mro, "_agent_name", merge=False)
+        if default_name is _UNSET:
+            default_name = _merge_class_attrs(mro, "name", merge=False)
+        default_description = _merge_class_attrs(mro, "_agent_description", merge=False)
+        if default_description is _UNSET:
+            default_description = _merge_class_attrs(mro, "description", merge=False)
         cls._syrin_default_model = default_model if default_model is not _UNSET else None
         cls._syrin_default_memory = default_memory if default_memory is not _UNSET else None
         method_names = _get_system_prompt_method_names(cls)

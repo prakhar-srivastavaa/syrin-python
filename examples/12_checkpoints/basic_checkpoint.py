@@ -73,8 +73,8 @@ print(f"Saves: {report.checkpoints.saves}, Loads: {report.checkpoints.loads}")
 
 
 class CheckpointDemoAgent(Agent):
-    name = "checkpoint-demo"
-    description = "Agent with checkpoint persistence"
+    _agent_name = "checkpoint-demo"
+    _agent_description = "Agent with checkpoint persistence"
     model = almock
     system_prompt = "You are a research assistant."
 

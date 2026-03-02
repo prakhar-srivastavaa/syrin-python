@@ -103,8 +103,8 @@ async def example_async_with_timeout() -> None:
 
 
 class AsyncDemoAgent(Agent):
-    name = "async-demo"
-    description = "Agent with async arun() execution"
+    _agent_name = "async-demo"
+    _agent_description = "Agent with async arun() execution"
     model = almock
     system_prompt = "You are a helpful assistant."
 

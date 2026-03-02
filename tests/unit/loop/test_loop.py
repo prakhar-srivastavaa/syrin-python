@@ -546,7 +546,7 @@ class TestCustomLoop:
         """Any class with run() works."""
 
         class MyLoop:
-            name = "mine"
+            _agent_name = "mine"
 
             async def run(self, _agent, _user_input):
                 return LoopResult(content="custom", stop_reason="done", iterations=1)
@@ -594,7 +594,7 @@ class TestAgentRunLoopResponse:
 
         # Create a custom loop that returns known values
         class TestLoop:
-            name = "test"
+            _agent_name = "test"
 
             async def run(self, _agent, _user_input):
                 return LoopResult(
@@ -621,7 +621,7 @@ class TestAgentRunLoopResponse:
         """Verifies Response gets tokens from LoopResult."""
 
         class TestLoop:
-            name = "test"
+            _agent_name = "test"
 
             async def run(self, _agent, _user_input):
                 return LoopResult(
@@ -650,7 +650,7 @@ class TestAgentRunLoopResponse:
         """Verifies Response gets tool_calls from LoopResult."""
 
         class TestLoop:
-            name = "test"
+            _agent_name = "test"
 
             async def run(self, _agent, _user_input):
                 return LoopResult(
@@ -679,7 +679,7 @@ class TestAgentRunLoopResponse:
         """Verifies Response gets stop_reason from LoopResult."""
 
         class TestLoop:
-            name = "test"
+            _agent_name = "test"
 
             async def run(self, _agent, _user_input):
                 return LoopResult(
@@ -706,7 +706,7 @@ class TestAgentRunLoopResponse:
         """Verifies Response gets duration from LoopResult."""
 
         class TestLoop:
-            name = "test"
+            _agent_name = "test"
 
             async def run(self, _agent, _user_input):
                 return LoopResult(

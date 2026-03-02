@@ -727,7 +727,7 @@ class DynamicPipeline(Servable):
 
     Or with custom agent names:
         class MyAgent(Agent):
-            name = "research"  # Custom name for routing and discovery
+            _agent_name = "research"  # Custom name for routing and discovery
     """
 
     def __init__(

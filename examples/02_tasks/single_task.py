@@ -26,8 +26,8 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 class Researcher(Agent):
     """Agent that researches topics. Uses @syrin.task for a named API."""
 
-    name = "researcher"
-    description = "Research assistant with research(topic) task"
+    _agent_name = "researcher"
+    _agent_description = "Research assistant with research(topic) task"
     model = almock
     system_prompt = "You are a research assistant. Provide concise, factual summaries."
 

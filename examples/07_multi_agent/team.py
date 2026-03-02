@@ -37,30 +37,30 @@ def writer_prompt(style: str) -> str:
 
 # 1. Basic team with shared budget
 class Researcher(Agent):
-    name = "researcher"
-    description = "Researches topics (technology)"
+    _agent_name = "researcher"
+    _agent_description = "Researches topics (technology)"
     model = almock
     system_prompt = researcher_prompt(domain="technology")
 
 
 class Writer(Agent):
-    name = "writer"
-    description = "Writes content in engaging style"
+    _agent_name = "writer"
+    _agent_description = "Writes content in engaging style"
     model = almock
     system_prompt = writer_prompt(style="engaging")
 
 
 # 2. Agent selection
 class GeneralResearcher(Agent):
-    name = "general-researcher"
-    description = "General researcher"
+    _agent_name = "general-researcher"
+    _agent_description = "General researcher"
     model = almock
     system_prompt = researcher_prompt(domain="general")
 
 
 class GeneralWriter(Agent):
-    name = "general-writer"
-    description = "General writer"
+    _agent_name = "general-writer"
+    _agent_description = "General writer"
     model = almock
     system_prompt = writer_prompt(style="general")
 

@@ -29,15 +29,15 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 
 class SourceAgent(Agent):
-    name = "source"
-    description = "Researcher that hands off to presenter"
+    _agent_name = "source"
+    _agent_description = "Researcher that hands off to presenter"
     model = almock
     system_prompt = "You are a researcher. Provide brief findings."
 
 
 class TargetAgent(Agent):
-    name = "target"
-    description = "Presents findings clearly"
+    _agent_name = "target"
+    _agent_description = "Presents findings clearly"
     model = almock
     system_prompt = "You present findings clearly."
 
@@ -69,14 +69,14 @@ def main_block() -> None:
     print("=== Block: before-handler raises HandoffBlockedError ===\n")
 
     class BlockSourceAgent(Agent):
-        name = "block-source"
-        description = "Source for block demo"
+        _agent_name = "block-source"
+        _agent_description = "Source for block demo"
         model = almock
         system_prompt = "You research."
 
     class BlockTargetAgent(Agent):
-        name = "block-target"
-        description = "Target for block demo"
+        _agent_name = "block-target"
+        _agent_description = "Target for block demo"
         model = almock
         system_prompt = "You present."
 
@@ -110,14 +110,14 @@ def main_retry() -> None:
     print("=== Retry: HandoffRetryRequested with format_hint ===\n")
 
     class RetrySourceAgent(Agent):
-        name = "retry-source"
-        description = "Source for retry demo"
+        _agent_name = "retry-source"
+        _agent_description = "Source for retry demo"
         model = almock
         system_prompt = "You format data."
 
     class RetryTargetAgent(Agent):
-        name = "retry-target"
-        description = "Target for retry demo"
+        _agent_name = "retry-target"
+        _agent_description = "Target for retry demo"
         model = almock
         system_prompt = "You expect JSON with 'title' and 'items'."
 

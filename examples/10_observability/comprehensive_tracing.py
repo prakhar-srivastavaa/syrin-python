@@ -62,8 +62,8 @@ syrin.configure(trace=False)
 
 
 class TracingDemoAgent(Agent):
-    name = "tracing-demo"
-    description = "Agent with comprehensive tracing"
+    _agent_name = "tracing-demo"
+    _agent_description = "Agent with comprehensive tracing"
     model = almock
     system_prompt = "You are a helpful assistant."
     debug = True

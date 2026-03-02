@@ -40,8 +40,8 @@ gate = ApprovalGate(callback=approve_cb)
 
 
 class HITLAgent(Agent):
-    name = "hitl-agent"
-    description = "Agent with human-in-the-loop approval"
+    _agent_name = "hitl-agent"
+    _agent_description = "Agent with human-in-the-loop approval"
     model = almock
     system_prompt = "Use delete_record to delete, search to find."
     tools = [delete_record, search]

@@ -79,8 +79,8 @@ print(f"Thresholds triggered: {levels}")
 
 # 3. Class-level thresholds
 class MonitoredAgent(Agent):
-    name = "monitored"
-    description = "Agent with budget thresholds (warn at 80%)"
+    _agent_name = "monitored"
+    _agent_description = "Agent with budget thresholds (warn at 80%)"
     model = almock
     budget = Budget(
         run=1.00,

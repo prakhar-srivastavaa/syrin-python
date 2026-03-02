@@ -100,8 +100,8 @@ agent = Agent(
 class RateLimitedAgent(Agent):
     """Agent with rate limits (hour/day/month)."""
 
-    name = "rate-limited"
-    description = "Agent with rate limits (hour, day, month)"
+    _agent_name = "rate-limited"
+    _agent_description = "Agent with rate limits (hour, day, month)"
     model = almock
     budget = Budget(
         run=0.05,

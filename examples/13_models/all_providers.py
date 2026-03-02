@@ -81,8 +81,8 @@ if __name__ == "__main__":
     from syrin import Agent
 
     class ProvidersDemoAgent(Agent):
-        name = "providers-demo"
-        description = "Agent with Almock (model providers demo)"
+        _agent_name = "providers-demo"
+        _agent_description = "Agent with Almock (model providers demo)"
         model = Model.Almock(latency_seconds=0.01, lorem_length=50)
         system_prompt = "You are a helpful assistant."
 

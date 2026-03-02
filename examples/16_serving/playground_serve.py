@@ -28,8 +28,8 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 
 class Assistant(Agent):
-    name = "assistant"
-    description = "Helpful assistant — playground demo"
+    _agent_name = "assistant"
+    _agent_description = "Helpful assistant — playground demo"
     model = gpt4_mini
     system_prompt = "You are a helpful assistant. Be concise."
     budget = Budget(run=0.5, per=RateLimit(hour=10, day=100, week=700))

@@ -13,8 +13,8 @@ from syrin.serve.stdio import run_stdio_protocol
 
 
 class _TestAgent(Agent):
-    name = "test-agent"
-    description = "Test agent"
+    _agent_name = "test-agent"
+    _agent_description = "Test agent"
     model = Model.Almock()
     system_prompt = "You are helpful."
 

@@ -55,8 +55,8 @@ def main() -> None:
 
 
 class AuditDemoAgent(syrin.Agent):
-    name = "audit-agent"
-    description = "Agent with audit logging"
+    _agent_name = "audit-agent"
+    _agent_description = "Agent with audit logging"
     model = syrin.Model.Almock()
     system_prompt = "You are helpful."
 

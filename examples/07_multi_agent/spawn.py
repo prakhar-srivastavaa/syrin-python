@@ -23,15 +23,15 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 
 class Parent(Agent):
-    name = "parent"
-    description = "Coordinator that spawns specialist agents"
+    _agent_name = "parent"
+    _agent_description = "Coordinator that spawns specialist agents"
     model = almock
     system_prompt = "You are a coordinator."
 
 
 class Child(Agent):
-    name = "child"
-    description = "Specialist agent spawned by parent"
+    _agent_name = "child"
+    _agent_description = "Specialist agent spawned by parent"
     model = almock
     system_prompt = "You are a specialist."
 

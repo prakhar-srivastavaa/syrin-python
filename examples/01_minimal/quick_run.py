@@ -28,8 +28,8 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 class QuickRunAgent(Agent):
     """Agent equivalent to syrin.run() with system prompt and budget."""
 
-    name = "quick-run"
-    description = "Quick run demo agent"
+    _agent_name = "quick-run"
+    _agent_description = "Quick run demo agent"
     model = almock
     system_prompt = "Explain like I'm five years old."
     budget = syrin.Budget(run=0.10, on_exceeded=syrin.warn_on_exceeded)

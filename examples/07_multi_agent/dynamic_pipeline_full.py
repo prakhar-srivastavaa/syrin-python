@@ -70,32 +70,32 @@ def export_report(title: str, content: str) -> str:
 
 
 class TechResearchAgent(Agent):
-    name = "tech_researcher"
-    description = "Researches technology trends"
+    _agent_name = "tech_researcher"
+    _agent_description = "Researches technology trends"
     model = MODEL
     system_prompt = "You research technology trends."
     tools = [search_web, analyze_data]
 
 
 class FinanceResearchAgent(Agent):
-    name = "finance_researcher"
-    description = "Researches financial markets"
+    _agent_name = "finance_researcher"
+    _agent_description = "Researches financial markets"
     model = MODEL
     system_prompt = "You research financial markets."
     tools = [fetch_financial, analyze_data]
 
 
 class HealthcareResearchAgent(Agent):
-    name = "healthcare_researcher"
-    description = "Researches healthcare industry"
+    _agent_name = "healthcare_researcher"
+    _agent_description = "Researches healthcare industry"
     model = MODEL
     system_prompt = "You research healthcare industry."
     tools = [search_web, analyze_data]
 
 
 class SummarizerAgent(Agent):
-    name = "summarizer"
-    description = "Synthesizes research into clear reports"
+    _agent_name = "summarizer"
+    _agent_description = "Synthesizes research into clear reports"
     model = MODEL
     system_prompt = "You synthesize research into a clear report."
     tools = [generate_chart, export_report]

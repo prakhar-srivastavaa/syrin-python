@@ -67,8 +67,8 @@ print(f"Budget state: {agent.budget_state}")
 class TokenLimitedAgent(Agent):
     """Agent with Budget + TokenLimits + TokenRateLimit."""
 
-    name = "token-limited"
-    description = "Agent with token limits (per-run, hourly, daily)"
+    _agent_name = "token-limited"
+    _agent_description = "Agent with token limits (per-run, hourly, daily)"
     model = almock
     system_prompt = "You are concise."
     budget = Budget(run=0.05, on_exceeded=warn_on_exceeded)

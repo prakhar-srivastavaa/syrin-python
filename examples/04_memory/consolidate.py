@@ -26,8 +26,8 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 class ConsolidateAgent(Agent):
     """Agent with memory — use remember/recall in playground; consolidation runs on backend."""
 
-    name = "consolidate"
-    description = "Agent with memory consolidation (deduplicate by content)"
+    _agent_name = "consolidate"
+    _agent_description = "Agent with memory consolidation (deduplicate by content)"
     model = almock
     system_prompt = "You are a helpful assistant. Use memory to remember user preferences."
 

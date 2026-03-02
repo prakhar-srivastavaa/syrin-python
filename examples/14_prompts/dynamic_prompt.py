@@ -32,8 +32,8 @@ def persona_prompt(
 
 
 class PersonaAgent(Agent):
-    name = "persona-agent"
-    description = "Agent with dynamic prompt_vars"
+    _agent_name = "persona-agent"
+    _agent_description = "Agent with dynamic prompt_vars"
     model = almock
     system_prompt = persona_prompt
     prompt_vars = {"tone": "friendly"}

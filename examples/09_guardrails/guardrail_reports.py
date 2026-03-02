@@ -29,8 +29,8 @@ guardrail = ContentFilter(blocked_words=["hack", "steal", "password"])
 
 
 class Assistant(Agent):
-    name = "guardrail-assistant"
-    description = "Assistant with ContentFilter guardrail"
+    _agent_name = "guardrail-assistant"
+    _agent_description = "Assistant with ContentFilter guardrail"
     model = almock
     system_prompt = "You are a helpful assistant."
     guardrails = [guardrail]

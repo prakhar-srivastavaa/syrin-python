@@ -86,8 +86,8 @@ print(f"3 tools: JSON {total_json}ch, TOON {total_toon}ch, savings {total_sv:.1f
 
 
 class ToolDemoAgent(Agent):
-    name = "tool-demo"
-    description = "Agent with TOON-format tools (calculate, search_web, send_email)"
+    _agent_name = "tool-demo"
+    _agent_description = "Agent with TOON-format tools (calculate, search_web, send_email)"
     model = almock
     system_prompt = "You are a helpful assistant. Use tools when needed."
     tools = [calculate, search_web, send_email]

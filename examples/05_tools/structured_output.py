@@ -169,8 +169,8 @@ print(f"is_valid: {result.structured.is_valid}")
 
 
 class StructuredOutputAgent(Agent):
-    name = "structured-output"
-    description = "Agent with structured output (UserInfo extraction)"
+    _agent_name = "structured-output"
+    _agent_description = "Agent with structured output (UserInfo extraction)"
     model = almock
     system_prompt = "You extract user information from text. Return valid UserInfo."
     output = Output(UserInfo, validation_retries=3)
