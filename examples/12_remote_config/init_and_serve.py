@@ -10,10 +10,18 @@ Then:
 
 from __future__ import annotations
 
+import logging
 import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 import syrin
 from syrin import Agent, Budget, Model
+
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 # Optional: enable cloud so agents register with Syrin Cloud and receive overrides via SSE.
 # Without this, agents run with local config only; config routes still work when serving.

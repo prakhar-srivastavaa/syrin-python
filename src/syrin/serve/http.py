@@ -174,7 +174,41 @@ def build_router(
             tokens_val: dict[str, Any] | None = None
             progressive = collect_debug
 
-            if collect_debug:
+            # When agent has tools, run the full REACT loop so tool calls are executed and
+            # the user gets the real reply instead of the "model chose to use a tool" fallback.
+            agent_tools = getattr(agent, "tools", None)
+            if agent_tools and len(agent_tools) > 0:
+                if progressive:
+                    yield _emit({"type": "status", "message": "Thinking…"})
+                from syrin.serve.playground import _collect_events
+
+                with _collect_events() as evts:
+                    result = await agent.arun(msg)
+                events_list = list(evts)
+                accumulated = result.content or ""
+                if accumulated:
+                    if progressive:
+                        yield _emit(
+                            {"type": "text", "text": accumulated, "accumulated": accumulated}
+                        )
+                    else:
+                        yield _emit({"text": accumulated, "accumulated": accumulated})
+                    if (b := _emit_budget()) is not None:
+                        yield b
+                if hasattr(agent, "record_conversation_turn") and accumulated:
+                    agent.record_conversation_turn(msg, accumulated)
+                if config.include_metadata and getattr(result, "tokens", None):
+                    t = result.tokens
+                    tokens_val = (
+                        {
+                            "input_tokens": t.input_tokens,
+                            "output_tokens": t.output_tokens,
+                            "total_tokens": t.total_tokens,
+                        }
+                        if t
+                        else None
+                    )
+            elif collect_debug:
                 from syrin.serve.playground import _collect_events
 
                 with _collect_events() as evts:
@@ -210,6 +244,8 @@ def build_router(
                         last_event_idx += 1
                         if progressive:
                             yield _emit({"type": "hook", "hook": h, "ctx": c})
+                    if hasattr(agent, "record_conversation_turn") and accumulated:
+                        agent.record_conversation_turn(msg, accumulated)
                     events_list = list(evts)
                     for _h, c in reversed(evts):
                         if isinstance(c, dict) and "tokens" in c:
@@ -233,6 +269,9 @@ def build_router(
                     yield _emit({"text": text, "accumulated": accumulated})
                     if (b := _emit_budget()) is not None:
                         yield b
+
+            if hasattr(agent, "record_conversation_turn") and accumulated:
+                agent.record_conversation_turn(msg, accumulated)
 
             done: dict[str, Any] = {"done": True}
             if progressive:
@@ -322,27 +361,70 @@ def build_router(
             out["setup_type"] = "dynamic_pipeline"
         return out
 
-    # Remote config: GET/PATCH /config, GET /config/stream
+    # Remote config: GET/PATCH /config, GET /config/stream (override store + baseline for scale/revert)
     from syrin.remote._registry import get_registry
     from syrin.remote._resolver import ConfigResolver
     from syrin.remote._schema import extract_agent_schema
-    from syrin.remote._types import OverridePayload
+    from syrin.remote._types import ConfigOverride, OverridePayload
 
     _config_stream_queue: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+    _config_last_version: list[int] = [0]  # Mutable so stream can read; updated on PATCH
     _resolver = ConfigResolver()
+
+    def _get_baseline_overrides_current(
+        a: Any,
+    ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+        """Return (baseline, overrides, current) from agent override store. Freeze baseline on first use."""
+        reg = get_registry()
+        baseline = getattr(a, "_remote_baseline_values", None)
+        overrides = getattr(a, "_remote_overrides", None) or {}
+        if baseline is None:
+            schema = reg.get_schema(reg.make_agent_id(a)) or extract_agent_schema(a)
+            object.__setattr__(a, "_remote_baseline_values", dict(schema.current_values))
+            baseline = a._remote_baseline_values
+        current = {**baseline, **overrides}
+        return baseline, overrides, current
+
+    def _enrich_sections_with_values(
+        sections: dict[str, Any],
+        baseline: dict[str, Any],
+        overrides: dict[str, Any],
+        current: dict[str, Any],
+    ) -> None:
+        """Mutate section fields in-place to add baseline_value, current_value, overridden."""
+        for sec in sections.values():
+            for field in sec.get("fields") or []:
+                path = field.get("path", "")
+                field["baseline_value"] = baseline.get(path)
+                field["current_value"] = current.get(path)
+                field["overridden"] = path in overrides
+                for child in field.get("children") or []:
+                    p = child.get("path", "")
+                    child["baseline_value"] = baseline.get(p)
+                    child["current_value"] = current.get(p)
+                    child["overridden"] = p in overrides
 
     @router.get(_route("/config"))
     async def get_config_route() -> Any:
-        """Return agent config schema and current values (for remote config dashboard)."""
+        """Return agent config schema, baseline (code) values, overrides, and current (baseline+overrides). Per-field baseline_value, current_value, overridden for dashboard."""
         reg = get_registry()
         agent_id = reg.make_agent_id(agent)
         schema = reg.get_schema(agent_id) or extract_agent_schema(agent)
-        schema = schema.model_copy(update={"agent_id": agent_id})
-        return schema.model_dump(mode="json")
+        baseline, overrides, current = _get_baseline_overrides_current(agent)
+        out = schema.model_copy(
+            update={
+                "agent_id": agent_id,
+                "baseline_values": baseline,
+                "overrides": overrides,
+                "current_values": current,
+            }
+        ).model_dump(mode="json")
+        _enrich_sections_with_values(out["sections"], baseline, overrides, current)
+        return out
 
     @router.patch(_route("/config"))
     async def patch_config_route(body: dict[str, Any] | None = Body(default=None)) -> Any:  # noqa: B008
-        """Apply config overrides. Body: OverridePayload (agent_id, version, overrides)."""
+        """Apply config overrides. Body: OverridePayload (agent_id, version, overrides). value=null means revert to baseline."""
         if not body:
             return JSONResponse(status_code=400, content={"error": "Missing body"})
         try:
@@ -356,8 +438,49 @@ def build_router(
                 status_code=400,
                 content={"error": f"agent_id mismatch: expected {agent_id}"},
             )
-        result = _resolver.apply_overrides(agent, payload)
-        # Notify stream subscribers
+        # Ensure baseline exists (e.g. PATCH before first GET)
+        _get_baseline_overrides_current(agent)
+        overrides_store = agent._remote_overrides
+        # Update store: value is None -> revert (remove from overrides); else set override
+        for ov in payload.overrides:
+            if ov.value is None:
+                overrides_store.pop(ov.path, None)
+            else:
+                overrides_store[ov.path] = ov.value
+        # Sync agent state to baseline + overrides
+        schema = reg.get_schema(agent_id) or extract_agent_schema(agent)
+        baseline = agent._remote_baseline_values or {}
+        current = {**baseline, **overrides_store}
+        # Build sync payload: skip None and normalize invalid enum values so resolver never false-rejects
+        from syrin.remote._resolver import _field_for_path
+        from syrin.remote._resolver_helpers import _normalize_enum_value
+
+        overrides_list: list[Any] = []
+        for p, v in current.items():
+            if v is None:
+                continue
+            field = _field_for_path(schema, p)
+            if (
+                field
+                and field.enum_values is not None
+                and isinstance(v, str)
+                and v not in field.enum_values
+            ):
+                v = _normalize_enum_value(p, v, field)
+                if v is None:
+                    continue
+            overrides_list.append(ConfigOverride(path=p, value=v))
+        sync_payload = OverridePayload(
+            agent_id=agent_id,
+            version=payload.version,
+            overrides=overrides_list,
+        )
+        result = _resolver.apply_overrides(agent, sync_payload, schema=schema)
+        # Roll back rejected paths from the store so GET reflects actual agent state
+        for path, _ in result.rejected:
+            overrides_store.pop(path, None)
+        # Notify stream subscribers and track version for heartbeat
+        _config_last_version[0] = payload.version
         with suppress(asyncio.QueueFull):
             _config_stream_queue.put_nowait(
                 {
@@ -378,7 +501,7 @@ def build_router(
 
         async def stream_events() -> Any:
             # Send initial heartbeat so clients (and tests) get a first chunk immediately
-            yield "event: heartbeat\ndata: {}\n\n"
+            yield f'event: heartbeat\ndata: {{"version": {_config_last_version[0]}}}\n\n'
             while True:
                 try:
                     msg = await asyncio.wait_for(_config_stream_queue.get(), timeout=30.0)
@@ -386,7 +509,7 @@ def build_router(
                         break
                     yield f"event: override\ndata: {json.dumps(msg)}\n\n"
                 except asyncio.TimeoutError:
-                    yield "event: heartbeat\ndata: {}\n\n"
+                    yield f'event: heartbeat\ndata: {{"version": {_config_last_version[0]}}}\n\n'
 
         return StreamingResponse(
             stream_events(),

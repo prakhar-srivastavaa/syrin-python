@@ -52,6 +52,7 @@ from syrin.enums import (
     LoopStrategy,
     MemoryBackend,
     MemoryType,
+    MessageRole,
 )
 from syrin.events import EventContext, Events
 from syrin.exceptions import (
@@ -527,6 +528,7 @@ class Agent(Servable, metaclass=_AgentMeta):
         budget_store: BudgetStore | None = None,
         budget_store_key: str = "default",
         memory: ConversationMemory | Memory | bool | None = None,
+        conversation_memory: ConversationMemory | None = _UNSET,
         loop_strategy: LoopStrategy = LoopStrategy.REACT,
         loop: Loop | type[Loop] | None = None,
         guardrails: list[Guardrail] | GuardrailChain | None = _UNSET,
@@ -566,6 +568,8 @@ class Agent(Servable, metaclass=_AgentMeta):
                 Why: Isolate budgets per user/session when using budget_store.
             memory: Conversation memory (BufferMemory) or persistent Memory.
                 Why: Enables remember/recall/forget or session history.
+            conversation_memory: Optional session chat history (e.g. WindowMemory(10)).
+                Why: When set with memory=Memory(...), keeps last N turns for multi-turn context.
             loop_strategy: Execution strategy (REACT, SINGLE_SHOT, etc.).
                 Why: REACT = tool loop; SINGLE_SHOT = one LLM call, no tools.
             loop: Custom Loop instance. Overrides loop_strategy if set.
@@ -640,6 +644,8 @@ class Agent(Servable, metaclass=_AgentMeta):
             guardrails = getattr(cls, "_syrin_default_guardrails", None) or []
         if memory is None:
             memory = getattr(cls, "_syrin_default_memory", None)
+        if conversation_memory is _UNSET:
+            conversation_memory = getattr(cls, "_syrin_default_conversation_memory", None)
         if name is _UNSET:
             name = getattr(cls, "_syrin_default_name", None)
         if description is _UNSET:
@@ -737,6 +743,9 @@ class Agent(Servable, metaclass=_AgentMeta):
         self._guardrails_disabled: set[str] = set()
         self._tools_disabled: set[str] = set()
         self._mcp_disabled: set[int] = set()
+        # Override store for scale-friendly remote config: baseline = code values, overrides = user changes, current = baseline + overrides
+        self._remote_baseline_values: dict[str, object] | None = None
+        self._remote_overrides: dict[str, object] = {}
         self._mcp_tool_indices: dict[str, int] = {}
         for i, x in enumerate(tools_list):
             if _is_mcp(x) and hasattr(x, "tools") and callable(x.tools):
@@ -791,6 +800,8 @@ class Agent(Servable, metaclass=_AgentMeta):
             self._memory_backend = get_backend(memory.backend, **memory._backend_kwargs())
         else:
             self._conversation_memory = memory
+        if conversation_memory is not None:
+            self._conversation_memory = conversation_memory
         if (budget is not None or self._token_limits is not None) and budget_store and budget:
             loaded = budget_store.load(budget_store_key)
             self._budget_tracker = loaded if loaded is not None else BudgetTracker()
@@ -1315,8 +1326,7 @@ class Agent(Servable, metaclass=_AgentMeta):
         return [
             t
             for t in raw
-            if t.name not in tools_disabled
-            and (mcp_indices.get(t.name) not in mcp_disabled)
+            if t.name not in tools_disabled and (mcp_indices.get(t.name) not in mcp_disabled)
         ]
 
     @property
@@ -2640,11 +2650,22 @@ class Agent(Servable, metaclass=_AgentMeta):
         )
         return r
 
+    def record_conversation_turn(self, user_input: str, assistant_content: str) -> None:
+        """Append a user/assistant turn to conversation_memory so the next request has context."""
+        if self._conversation_memory is None:
+            return
+        self._conversation_memory.add(Message(role=MessageRole.USER, content=user_input))
+        self._conversation_memory.add(
+            Message(role=MessageRole.ASSISTANT, content=assistant_content or "")
+        )
+
     async def _run_loop_response_async(self, user_input: str) -> Response[str]:
         """Run using the configured loop strategy with full observability (async)."""
         from syrin.agent._run import run_agent_loop_async
 
-        return await run_agent_loop_async(self, user_input)
+        result = await run_agent_loop_async(self, user_input)
+        self.record_conversation_turn(user_input, result.content or "")
+        return result
 
     def _run_loop_response(self, user_input: str) -> Response[str]:
         """Run using the configured loop strategy (sync wrapper)."""
@@ -3140,7 +3161,7 @@ def _apply_guardrails_overrides(agent: Any, pairs: list[tuple[str, object]]) -> 
     for path, value in pairs:
         if not path.startswith("guardrails.") or not path.endswith(".enabled"):
             continue
-        name = path[:-len(".enabled")].split(".", 1)[1]
+        name = path[: -len(".enabled")].split(".", 1)[1]
         if name and (value is True or value is False):
             if value:
                 disabled.discard(name)
@@ -3171,7 +3192,7 @@ def _apply_tools_overrides(agent: Any, pairs: list[tuple[str, object]]) -> None:
     for path, value in pairs:
         if not path.startswith("tools.") or not path.endswith(".enabled"):
             continue
-        name = path[:-len(".enabled")].split(".", 1)[1]
+        name = path[: -len(".enabled")].split(".", 1)[1]
         if name and (value is True or value is False):
             if value:
                 disabled.discard(name)

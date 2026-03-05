@@ -14,6 +14,59 @@ from pydantic import BaseModel
 from syrin.remote._types import ConfigSchema, FieldSchema
 
 
+def _normalize_enum_value(path: str, value: str, field: FieldSchema | None) -> str | None:
+    """If path is a known enum, try to resolve value by enum name or display format. Returns canonical value or None."""
+    if not isinstance(value, str) or not value:
+        return None
+
+    # Normalize display-style input: "Plan execute" / "Single Shot" -> "plan_execute" / "single_shot"
+    def normalized(s: str) -> str:
+        return s.strip().lower().replace(" ", "_")
+
+    if path == "agent.loop_strategy":
+        from syrin.enums import LoopStrategy
+
+        if value in (m.value for m in LoopStrategy):
+            return value
+        try:
+            return LoopStrategy[value].value
+        except KeyError:
+            pass
+        # Try display format: "plan execute", "single shot"
+        norm = normalized(value)
+        if norm in (m.value for m in LoopStrategy):
+            return norm
+        return None
+    if path.startswith("memory.decay.") and field and field.name == "strategy":
+        from syrin.enums import DecayStrategy
+
+        if value in (m.value for m in DecayStrategy):
+            return value
+        try:
+            return DecayStrategy[value].value
+        except KeyError:
+            pass
+        norm = normalized(value)
+        if norm in (m.value for m in DecayStrategy):
+            return norm
+        return None
+    if path.startswith("checkpoint.") and field and field.name == "trigger":
+        from syrin.checkpoint import CheckpointTrigger
+
+        vals = [e.value for e in CheckpointTrigger]
+        if value in vals:
+            return value
+        try:
+            return CheckpointTrigger[value].value
+        except KeyError:
+            pass
+        norm = normalized(value)
+        if norm in vals:
+            return norm
+        return None
+    return None
+
+
 def _coerce_enum(value: object, field: FieldSchema | None) -> object:
     """If field has enum_values, coerce string to enum; else return value."""
     if field is None or field.enum_values is None or not isinstance(value, str):

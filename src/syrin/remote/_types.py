@@ -50,6 +50,12 @@ class FieldSchema(BaseModel):
         default=False,
         description="If True, not writable via remote overrides (e.g. callables)",
     )
+    # Populated in GET /config response for dashboard UX (per-field baseline, current, overridden)
+    baseline_value: object | None = Field(default=None, description="Value from code (baseline)")
+    current_value: object | None = Field(
+        default=None, description="Effective value (baseline + overrides)"
+    )
+    overridden: bool = Field(default=False, description="True if this path has a remote override")
 
 
 class ConfigSchema(BaseModel):
@@ -72,16 +78,20 @@ class ConfigSchema(BaseModel):
 
 
 class AgentSchema(BaseModel):
-    """Full schema for a registered agent: all config sections and current values.
+    """Full schema for a registered agent: sections, baseline (code) values, overrides, and current values.
 
-    Sent to the backend on registration. Backend uses it to know what can be overridden.
+    Sent to the backend on registration. GET /config returns this with baseline_values (frozen at
+    first read), overrides (path → value for user-applied changes), and current_values = baseline + overrides.
+    Revert = remove path from overrides; current falls back to baseline.
 
     Attributes:
         agent_id: Unique agent identifier (e.g. "my_agent:MyAgent").
         agent_name: Human-readable name (e.g. "my_agent").
         class_name: Python class name (e.g. "MyAgent").
-        sections: Map of section key to ConfigSchema.
-        current_values: Map of dotted path to current value (e.g. {"budget.run": 0.5}).
+        sections: Map of section key to ConfigSchema (fields may include baseline_value, current_value, overridden in response).
+        baseline_values: Values from code (frozen at first GET). Used for revert.
+        overrides: User-applied overrides (path → value). Only overridden paths; revert = remove path.
+        current_values: Effective values (baseline + overrides). Same as baseline until overrides applied.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -93,9 +103,17 @@ class AgentSchema(BaseModel):
         default_factory=dict,
         description="Map of section key to config schema",
     )
+    baseline_values: dict[str, object] = Field(
+        default_factory=dict,
+        description="Values from code (frozen at first GET); used for revert",
+    )
+    overrides: dict[str, object] = Field(
+        default_factory=dict,
+        description="User-applied overrides (path → value); revert = remove path",
+    )
     current_values: dict[str, object] = Field(
         default_factory=dict,
-        description="Map of dotted path to current value",
+        description="Effective values (baseline + overrides)",
     )
 
 
@@ -103,12 +121,16 @@ class ConfigOverride(BaseModel):
     """Single override: path and value.
 
     Applied by ConfigResolver to the live agent. Value is validated against FieldSchema.
+    Use value=null to revert that path to baseline (remove from override store).
     """
 
     model_config = ConfigDict(extra="forbid")
 
     path: str = Field(..., min_length=1, description="Dotted path (e.g. budget.run)")
-    value: object = Field(..., description="New value; type must match schema")
+    value: object | None = Field(
+        ...,
+        description="New value; type must match schema. Use null to revert path to baseline.",
+    )
 
 
 class OverridePayload(BaseModel):

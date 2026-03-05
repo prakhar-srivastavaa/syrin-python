@@ -8,7 +8,7 @@
   <b>The most developer-friendly Python library for AI agents</b>
 </p>
 <p align="center">
-  <i>Budget control · MCP servers · Lifecycle hooks · Declarative thresholds · Type-safe APIs</i>
+  <i>Build Claude Code–style multi-agent systems: handoff, sub-agent spawning, DynamicPipeline — with budget control, threading, and observability built in.</i>
 </p>
 
 <p align="center">
@@ -28,6 +28,30 @@
   <a href="https://discord.gg/p4jnKxYKpB">Discord</a> ·
   <a href="https://x.com/syrin_dev">Twitter (X)</a>
 </p>
+
+---
+
+## Multi-agent orchestration in 30 seconds
+
+```python
+from syrin import Agent, Model, DynamicPipeline
+
+class Researcher(Agent):
+    _agent_name = "researcher"
+    model = Model.Almock()  # No API key needed
+    system_prompt = "You research topics."
+class Writer(Agent):
+    _agent_name = "writer"
+    model = Model.Almock()
+    system_prompt = "You write reports."
+
+pipeline = DynamicPipeline(agents=[Researcher, Writer], model=Model.Almock(), max_parallel=5)
+result = pipeline.run("Research AI trends and write a summary")
+# → LLM plans, spawns agents in parallel. You get cost + traces per agent.
+print(result.content, f"${result.cost:.4f}")
+```
+
+**More power:** `agent.handoff(SpecialistAgent, "task")` — route to specialists. `agent.spawn(ChildAgent, task="...")` — sub-agents with shared budget. `spawn_parallel()` — run multiple children. All with 72+ hooks for observability.
 
 ---
 
@@ -71,17 +95,11 @@ Web playground + built-in observability — chat with your agent in the browser,
 
 | Capability | Syrin | LangChain | LangGraph | AutoGen |
 |------------|:-----:|:---------:|:---------:|:-------:|
-| **Built-in budget per run** | ✅ First-class | ❌ Missing | ❌ Missing | ❌ Missing |
-| **Budget thresholds → auto actions** (warn, switch model, stop) | ✅ Declarative | ❌ You build it | ❌ You build it | ❌ You build it |
-| **Rate-limited budgets** (per hour/day/month) | ✅ Built-in | ❌ Missing | ❌ Missing | ❌ Missing |
-| **72+ lifecycle hooks, single event path** | ✅ Every step visible | Callbacks + LangSmith | Graph nodes only | Limited |
-| **First-party cost/tokens per response** | ✅ Every response | Add-on / LangSmith | Add-on | Manual |
-| **Context window control + compaction** | ✅ Config + thresholds | DIY | DIY | DIY |
-| **Memory (remember/recall/forget)** | ✅ Built-in, multiple backends | Patterns only | Patterns only | Limited |
-| **Guardrails in pipeline** | ✅ Input/output, reports | DIY | DIY | DIY |
-| **Checkpoints (save/restore state)** | ✅ Triggers + API | DIY | DIY | DIY |
-| **StrEnum everywhere, mypy strict** | ✅ Type-safe | Partial | Partial | Partial |
-| **Lightweight core** | ✅ Minimal deps | Heavy | Heavy | Moderate |
+| **Multi-agent** (handoff, spawn, DynamicPipeline) | ✅ Built-in | ❌ DIY | Limited | Limited |
+| **Budget** (per-run, thresholds, rate limits) | ✅ First-class | ❌ Missing | ❌ Missing | ❌ Missing |
+| **Observability** (hooks, cost/tokens per response) | ✅ Built-in | Add-on | Graph only | Limited |
+| **Memory, guardrails, checkpoints** | ✅ Built-in | Patterns/DIY | DIY | Limited |
+| **Type-safe, lightweight** | ✅ StrEnum, minimal deps | Partial, heavy | Partial, heavy | Partial |
 
 Use Syrin when you need **production-grade control and observability in one place**, without gluing together multiple products or building it yourself.
 
@@ -374,6 +392,32 @@ print(result.cost, result.tool_calls)
 
 ---
 
+## Multi-agent: handoff & spawn
+
+**When to use:** Route to specialists (`handoff`), create sub-agents for subtasks (`spawn`), or let the LLM orchestrate (`DynamicPipeline`). All with shared budget, context transfer, and hooks.
+
+```python
+from syrin import Agent, Model
+
+class Researcher(Agent):
+    model = Model.Almock()
+    system_prompt = "You research topics."
+class Writer(Agent):
+    model = Model.Almock()
+    system_prompt = "You write reports."
+
+researcher = Researcher()
+# Handoff: pass work to another agent (optionally transfer context + budget)
+result = researcher.handoff(Writer, "Write an article from your research", transfer_context=True)
+
+# Or spawn sub-agents: parent.spawn(ChildAgent, task="..."), spawn_parallel([(A, t1), (B, t2)])
+# Or DynamicPipeline: LLM decides which agents to spawn (see hero snippet above)
+```
+
+See [Handoff & Spawn](docs/agent/handoff-spawn.md), [DynamicPipeline](docs/dynamic-pipeline.md), [examples/07_multi_agent](examples/07_multi_agent).
+
+---
+
 ## MCP servers — create and co-locate
 
 **When to use:** You want to expose your agent's tools via the Model Context Protocol (MCP) so external clients (Cursor, Claude Desktop, etc.) can use them. Or you want your agent and MCP server on the same process — one deploy, one port.
@@ -509,14 +553,23 @@ result.report.ratelimits.exceeded
 
 ## Why Syrin: one stack, full control
 
+### Full control, not a black box
+
+- **Extensible** — Inherit `Model`, implement `complete()`, plug any provider. New LLM? One class.
+- **Hooks everywhere** — 72+ lifecycle hooks; every LLM call, tool call, handoff, spawn emits an event. No hidden magic.
+- **Protocol-based** — Memory, tools, backends are protocols; swap implementations without changing your agent code.
+- **Type-safe** — StrEnum everywhere, mypy strict. Fewer runtime surprises, better IDE support.
+- **No magic** — Every LLM call is explicit. No hidden prompt rewrites, no implicit behavior.
+
+### Production-ready out of the box
+
 - **Budget and thresholds** — Per-run and per-period limits with declarative actions. Other libs don’t ship this; you’d build it yourself.
-- **Hooks and observability** — One event path, 72+ hooks. You see every LLM call, tool call, threshold, and guardrail. No black box.
+- **Hooks and observability** — One event path, 72+ hooks. You see every LLM call, tool call, threshold, and guardrail.
 - **Context, memory, guardrails, checkpoints** — All in the same library. Control context size, remember/recall/forget, validate input/output, save/restore state. No scattered integrations.
 - **Reports per response** — Cost, tokens, budget, guardrail, memory, checkpoints on every `Response`. First-party, no extra product.
 - **Lightweight** — Minimal dependencies. One coherent API instead of a patchwork of callbacks and third-party dashboards.
-- **Type-safe** — StrEnum everywhere, mypy strict. Fewer runtime surprises and better IDE support.
 
-For deep dives: [Budget & thresholds](docs/budget-control.md), [Memory](docs/memory.md), [Observability](docs/observability.md), [Guardrails](docs/guardrails.md), [Context](docs/context.md), [Checkpoints](docs/checkpoint.md), [Architecture](docs/ARCHITECTURE.md). Full [docs index](docs/README.md).
+For deep dives: [Handoff & Spawn](docs/agent/handoff-spawn.md), [DynamicPipeline](docs/dynamic-pipeline.md), [Budget & thresholds](docs/budget-control.md), [Memory](docs/memory.md), [Observability](docs/observability.md), [Guardrails](docs/guardrails.md), [Context](docs/context.md), [Checkpoints](docs/checkpoint.md), [Architecture](docs/ARCHITECTURE.md). Full [docs index](docs/README.md).
 
 ---
 
@@ -558,7 +611,7 @@ MIT License — see [LICENSE](LICENSE) for details.
 ---
 
 <p align="center">
-  <b>Declare agents. Control costs. See every step. Ship to production.</b>
+  <b>Multi-agent orchestration. Budget control. Full observability. Ship to production.</b>
 </p>
 
 <p align="center">

@@ -91,3 +91,81 @@ export async function fetchDescribe(
   if (!res.ok) return null;
   return res.json();
 }
+
+/** Remote config: field schema with optional response-only values (baseline_value, current_value, overridden) */
+export interface ConfigFieldSchema {
+  name: string;
+  path: string;
+  type: string;
+  default: unknown;
+  description: string | null;
+  constraints: Record<string, number | string>;
+  enum_values: string[] | null;
+  children: ConfigFieldSchema[] | null;
+  remote_excluded: boolean;
+  baseline_value?: unknown;
+  current_value?: unknown;
+  overridden?: boolean;
+}
+
+export interface ConfigSectionSchema {
+  section: string;
+  class_name: string;
+  fields: ConfigFieldSchema[];
+}
+
+/** Full agent config from GET /config (schema + baseline, overrides, current) */
+export interface AgentConfigResponse {
+  agent_id: string;
+  agent_name: string;
+  class_name: string;
+  sections: Record<string, ConfigSectionSchema>;
+  baseline_values: Record<string, unknown>;
+  overrides: Record<string, unknown>;
+  current_values: Record<string, unknown>;
+}
+
+export interface ConfigOverrideItem {
+  path: string;
+  value: unknown;
+}
+
+export interface PatchConfigPayload {
+  agent_id: string;
+  version: number;
+  overrides: ConfigOverrideItem[];
+}
+
+export interface PatchConfigResult {
+  accepted: string[];
+  rejected: Array<[string, string]>;
+  pending_restart: string[];
+}
+
+export async function fetchAgentConfig(
+  apiBase: string,
+  agentName?: string
+): Promise<AgentConfigResponse | null> {
+  const path = agentName ? `${agentName}/config` : "config";
+  const url = `${apiBase.replace(/\/$/, "")}/${path}`;
+  const res = await fetch(url);
+  if (!res.ok) return null;
+  return res.json();
+}
+
+export async function patchAgentConfig(
+  apiBase: string,
+  agentId: string,
+  overrides: ConfigOverrideItem[],
+  agentName?: string
+): Promise<PatchConfigResult | null> {
+  const path = agentName ? `${agentName}/config` : "config";
+  const url = `${apiBase.replace(/\/$/, "")}/${path}`;
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ agent_id: agentId, version: Date.now(), overrides }),
+  });
+  if (!res.ok) return null;
+  return res.json();
+}

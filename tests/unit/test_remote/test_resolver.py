@@ -4,14 +4,12 @@ from __future__ import annotations
 
 from syrin import Agent, Budget, Model
 from syrin.budget import RateLimit
-from syrin.enums import DecayStrategy, LoopStrategy
+from syrin.enums import DecayStrategy
 from syrin.memory import Memory
 from syrin.memory.config import Decay
 from syrin.remote._registry import get_registry
-from syrin.remote._schema import extract_agent_schema
-from syrin.remote._types import ConfigOverride, OverridePayload
-
 from syrin.remote._resolver import ConfigResolver, ResolveResult
+from syrin.remote._types import ConfigOverride, OverridePayload
 
 
 def _make_agent(
@@ -146,7 +144,6 @@ class TestValidOverrides:
         payload = _payload(agent_id, ("agent.loop_strategy", "single_shot"))
         result = ConfigResolver().apply_overrides(agent, payload, schema=schema)
         assert "agent.loop_strategy" in result.accepted
-        from syrin.loop import SingleShotLoop
         assert type(agent._loop).__name__ == "SingleShotLoop"
         reg.unregister(agent_id)
 
@@ -363,6 +360,7 @@ class TestHotSwapBlocklist:
     def test_checkpoint_storage_in_pending_restart(self) -> None:
         """checkpoint.storage override -> applied and in pending_restart (when checkpoint present)."""
         from syrin.checkpoint import CheckpointConfig
+
         agent = Agent(
             model=Model.Almock(),
             name="cp_agent",

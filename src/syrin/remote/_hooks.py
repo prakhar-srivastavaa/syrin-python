@@ -41,6 +41,13 @@ def on_agent_init(agent: Agent) -> None:
     response = transport.register(schema)
     resolver = ConfigResolver()
 
+    if not response.ok:
+        _log.warning(
+            "Remote config registration failed (agent=%s). %s Check SYRIN_API_KEY if using Syrin Cloud.",
+            agent_id,
+            response.error or "Unknown error.",
+        )
+
     if response.ok and response.initial_overrides:
         payload = OverridePayload(
             agent_id=agent_id,

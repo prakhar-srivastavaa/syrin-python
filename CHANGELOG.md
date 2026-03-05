@@ -15,20 +15,14 @@ Nothing yet.
 
 ### Added
 
-- **Remote config** — Real-time agent configuration from Syrin Cloud or a self-hosted backend without code deploys. Call `syrin.init(api_key="sk-...")` or set `SYRIN_API_KEY` to enable; agents register and receive overrides (temperature, budget limits, memory settings, etc.) via SSE. All gating is server-side; no feature flags in OSS.
-- **`syrin.init()`** — `init(api_key=..., base_url=..., transport=...)`. With `api_key` or env: default `SSETransport` (POST register, GET stream). With `transport=`: use custom `ConfigTransport` (e.g. `ServeTransport`, `PollingTransport`). Zero overhead when not called.
-- **Config routes on serve** — When serving an agent (`agent.serve()` or `AgentRouter`), routes are added automatically: `GET /config` (schema + current values), `PATCH /config` (apply overrides; body: `OverridePayload`), `GET /config/stream` (SSE for live updates). Work with or without `syrin.init()`.
-- **Config types** — `syrin.remote`: `FieldSchema`, `ConfigSchema`, `AgentSchema`, `ConfigOverride`, `OverridePayload`, `SyncRequest`, `SyncResponse`. Schema extraction from Pydantic, dataclass, and plain classes; `extract_schema()`, `extract_agent_schema()`.
-- **ConfigRegistry** — Singleton `get_registry()`; `register(agent)`, `unregister(agent_id)`, `get_agent`, `get_schema`, `all_schemas`, `make_agent_id`. Agents held by weak reference.
-- **ConfigResolver** — `apply_overrides(agent, payload)` with Pydantic validation; returns `ResolveResult` (accepted, rejected, pending_restart). Rejects unknown paths, `remote_excluded` fields, invalid values. Hot-swap blocklist for paths requiring restart (e.g. `memory.backend`, `checkpoint.storage`).
-- **Transports** — `ConfigTransport` protocol; `SSETransport` (SaaS, auto-reconnect with backoff), `ServeTransport` (in-memory for serve routes), `PollingTransport` (HTTP polling fallback).
-- **Hooks** — `Hook.REMOTE_CONFIG_UPDATE` (on successful override), `Hook.REMOTE_CONFIG_ERROR` (on validation failure).
-- **GlobalConfig** — `cloud_enabled`, `cloud_api_key`, `cloud_base_url`, `cloud_transport`. `_load_from_env()` reads `SYRIN_API_KEY`.
-- **Docs** — `docs/remote-config.md` (types, registry, resolver, transports, `syrin.init()`, config routes). Example: `examples/12_remote_config/`.
+- **Remote config** — `syrin.init(api_key=...)` or `SYRIN_API_KEY` enables real-time config overrides from Syrin Cloud or self-hosted backend. Overrides (budget, memory, temperature, etc.) via SSE; zero overhead when not enabled.
+- **Config routes** — `GET /config`, `PATCH /config`, `GET /config/stream` added to `agent.serve()`. Baseline + overrides + revert; works with or without `syrin.init()`.
+- **`syrin.remote`** — Types: `AgentSchema`, `ConfigOverride`, `OverridePayload`, `SyncRequest`/`SyncResponse`. `ConfigRegistry`, `ConfigResolver`, `extract_schema()`. Transports: `SSETransport`, `ServeTransport`, `PollingTransport`.
+- **Hooks** — `Hook.REMOTE_CONFIG_UPDATE`, `Hook.REMOTE_CONFIG_ERROR`.
 
 ### Changed
 
-- **Agent** — At end of `Agent.__init__`, calls remote init hook; when `syrin.init()` was used, agent registers with registry and transport and starts receiving overrides.
+- Agent registers with remote config on init when `syrin.init()` was called.
 
 ---
 

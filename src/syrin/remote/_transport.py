@@ -26,6 +26,25 @@ from syrin.remote._types import (
 _log = logging.getLogger(__name__)
 
 _DEFAULT_BASE_URL = "https://api.syrin.ai/v1"
+
+
+def _short_error(status_code: int, text: str | None) -> str:
+    """Return a short, log-friendly error string; avoid dumping HTML bodies."""
+    if not text or not text.strip():
+        return f"HTTP {status_code}"
+    s = text.strip()
+    if s.upper().startswith("<!DOCTYPE") or s.lower().startswith("<html"):
+        # Extract <pre> content if present (e.g. "Cannot POST /path")
+        if "<pre>" in s.lower():
+            start = s.lower().index("<pre>") + 5
+            end = s.lower().index("</pre>", start) if "</pre>" in s.lower() else len(s)
+            pre = s[start:end].strip()
+            if pre:
+                return f"HTTP {status_code}: {pre[:200]}"
+        return f"HTTP {status_code}"
+    return f"HTTP {status_code}: {(s[:200] + '...') if len(s) > 200 else s}"
+
+
 _BACKOFF_INITIAL = 1.0
 _BACKOFF_MAX = 60.0
 
@@ -190,7 +209,7 @@ class SSETransport:
                 return SyncResponse(
                     ok=False,
                     initial_overrides=None,
-                    error=response.text or f"HTTP {response.status_code}",
+                    error=_short_error(response.status_code, response.text),
                 )
             data = response.json()
             return SyncResponse.model_validate(data)

@@ -13,7 +13,7 @@ from pydantic import ValidationError
 
 from syrin.agent import Agent
 from syrin.remote._protocol import RemoteConfigurable
-from syrin.remote._resolver_helpers import _coerce_enum
+from syrin.remote._resolver_helpers import _coerce_enum, _normalize_enum_value
 from syrin.remote._schema import _get_configurable, extract_agent_schema
 from syrin.remote._types import (
     AgentSchema,
@@ -132,15 +132,20 @@ class ConfigResolver:
             if field and field.remote_excluded:
                 rejected.append((path, "remote_excluded"))
                 continue
+            val = ov.value
             if (
                 field
                 and field.enum_values is not None
-                and isinstance(ov.value, str)
-                and ov.value not in field.enum_values
+                and isinstance(val, str)
+                and val not in field.enum_values
             ):
-                rejected.append((path, "invalid_enum_value"))
-                continue
-            by_section.setdefault(section, []).append((path, ov.value))
+                normalized = _normalize_enum_value(path, val, field)
+                if normalized is not None:
+                    val = normalized
+                else:
+                    rejected.append((path, "invalid_enum_value"))
+                    continue
+            by_section.setdefault(section, []).append((path, val))
 
         # Coerce enums for each override
         for section, pairs in list(by_section.items()):

@@ -131,6 +131,21 @@ class LiteLLMProvider(Provider):
                     arguments=args,
                 )
             )
+        # When the model returns tool_calls with no text, /stream only did one completion and
+        # did not run the tool loop, so the user would see nothing. Coerce to a short message.
+        if (not content or not content.strip()) and tool_calls_list:
+            if not tools or len(tools) == 0:
+                names = ", ".join(tc.name for tc in tool_calls_list[:3])
+                content = (
+                    "Tools are currently disabled. The model attempted to use tool(s): "
+                    f"{names}. Re-enable tools in the agent config to use them."
+                )
+            else:
+                content = (
+                    "The model chose to use a tool; this stream endpoint does not run tools. "
+                    "Use POST /chat for full tool execution and a final reply."
+                )
+
         usage = getattr(response, "usage", None)
         return ProviderResponse(
             content=content,

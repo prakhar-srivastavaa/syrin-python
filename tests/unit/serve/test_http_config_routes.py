@@ -22,7 +22,7 @@ class _TestAgentWithBudget(Agent):
 
 
 def test_get_config_returns_schema_and_values() -> None:
-    """GET /config returns schema and current_values."""
+    """GET /config returns schema, baseline_values, overrides, current_values, and per-field values."""
     agent = _TestAgentWithBudget(budget=Budget(run=1.0))
     config = ServeConfig()
     router = build_router(agent, config)
@@ -34,17 +34,33 @@ def test_get_config_returns_schema_and_values() -> None:
     r = client.get("/config")
     assert r.status_code == 200
     data = r.json()
-    assert "schema" in data or "sections" in data or "agent_id" in data
-    # Response should have agent schema shape (agent_id, sections, current_values)
-    if "agent_id" in data:
-        assert (
-            data["agent_id"] == "config-test-agent:Agent" or "config-test-agent" in data["agent_id"]
-        )
-    if "current_values" in data:
-        assert (
-            "budget.run" in data["current_values"]
-            or data["current_values"].get("budget.run") == 1.0
-        )
+    assert "sections" in data and "agent_id" in data
+    assert "baseline_values" in data
+    assert "overrides" in data
+    assert "current_values" in data
+    assert data["agent_id"] == "config-test-agent:Agent" or "config-test-agent" in data["agent_id"]
+    assert data["current_values"].get("budget.run") == 1.0
+    assert data["baseline_values"].get("budget.run") == 1.0
+    assert data["overrides"] == {}
+    budget_section = data["sections"].get("budget", {})
+    run_field = next(
+        (f for f in budget_section.get("fields", []) if f.get("path") == "budget.run"),
+        None,
+    )
+    assert run_field is not None
+    assert run_field.get("baseline_value") == 1.0
+    assert run_field.get("current_value") == 1.0
+    assert run_field.get("overridden") is False
+    # Agent section must expose loop_strategy with enum_values for UI dropdown
+    agent_section = data["sections"].get("agent", {})
+    loop_field = next(
+        (f for f in agent_section.get("fields", []) if f.get("path") == "agent.loop_strategy"),
+        None,
+    )
+    assert loop_field is not None, "agent.loop_strategy field must be present"
+    assert loop_field.get("enum_values") is not None, "agent.loop_strategy must have enum_values"
+    assert "react" in (loop_field.get("enum_values") or [])
+    assert "single_shot" in (loop_field.get("enum_values") or [])
 
 
 def test_get_config_with_route_prefix() -> None:
@@ -87,6 +103,32 @@ def test_patch_config_applies_overrides() -> None:
     assert agent._budget.run == 2.0
 
 
+def test_patch_agent_loop_strategy_accepts_display_format() -> None:
+    """PATCH agent.loop_strategy with display-style value ('plan execute') is normalized and accepted."""
+    agent = _TestAgentWithBudget(budget=Budget(run=1.0))
+    config = ServeConfig()
+    router = build_router(agent, config)
+    from fastapi import FastAPI
+
+    app = FastAPI()
+    app.include_router(router)
+    client = TestClient(app)
+    get_r = client.get("/config")
+    assert get_r.status_code == 200
+    agent_id = get_r.json().get("agent_id", "config-test-agent:Agent")
+    payload = {
+        "agent_id": agent_id,
+        "version": 1,
+        "overrides": [{"path": "agent.loop_strategy", "value": "plan execute"}],
+    }
+    r = client.patch("/config", json=payload)
+    assert r.status_code == 200
+    data = r.json()
+    assert "agent.loop_strategy" not in [p for p, _ in data.get("rejected", [])]
+
+    assert type(agent._loop).__name__ == "PlanExecuteLoop"
+
+
 def test_patch_config_invalid_path_rejected() -> None:
     """PATCH /config with unknown path returns 4xx or success with rejected in body."""
     agent = _TestAgentWithBudget(budget=Budget(run=0.5))
@@ -115,7 +157,7 @@ def test_patch_config_invalid_path_rejected() -> None:
 
 
 def test_patch_config_invalid_value_rejected() -> None:
-    """PATCH /config with value that fails validation leaves agent unchanged."""
+    """PATCH /config with value that fails validation leaves agent unchanged and rolls back store."""
     agent = _TestAgentWithBudget(budget=Budget(run=0.5))
     config = ServeConfig()
     router = build_router(agent, config)
@@ -135,6 +177,10 @@ def test_patch_config_invalid_value_rejected() -> None:
     r = client.patch("/config", json=payload)
     assert r.status_code in (200, 400, 422)
     assert agent._budget.run == 0.5  # unchanged
+    # Rejected path rolled back from store; GET reflects baseline
+    get_after = client.get("/config").json()
+    assert get_after["current_values"].get("budget.run") == 0.5
+    assert "budget.run" not in get_after.get("overrides", {})
 
 
 @pytest.mark.skip(
@@ -170,6 +216,62 @@ def test_patch_config_empty_overrides_succeeds() -> None:
     r = client.patch("/config", json={"agent_id": agent_id, "version": 1, "overrides": []})
     assert r.status_code == 200
     assert agent._budget.run == 0.5
+
+
+def test_patch_then_revert_restores_baseline() -> None:
+    """PATCH with value then PATCH with value=null (revert) restores baseline; GET reflects it."""
+    agent = _TestAgentWithBudget(budget=Budget(run=1.0))
+    config = ServeConfig()
+    router = build_router(agent, config)
+    from fastapi import FastAPI
+
+    app = FastAPI()
+    app.include_router(router)
+    client = TestClient(app)
+    get_r = client.get("/config")
+    assert get_r.status_code == 200
+    data = get_r.json()
+    agent_id = data["agent_id"]
+    assert data["baseline_values"].get("budget.run") == 1.0
+    # Override budget.run to 2.0
+    patch_r = client.patch(
+        "/config",
+        json={
+            "agent_id": agent_id,
+            "version": 1,
+            "overrides": [{"path": "budget.run", "value": 2.0}],
+        },
+    )
+    assert patch_r.status_code == 200
+    assert agent._budget.run == 2.0
+    get2 = client.get("/config").json()
+    assert get2["current_values"].get("budget.run") == 2.0
+    assert get2["overrides"].get("budget.run") == 2.0
+    run_field = next(
+        (f for f in get2["sections"]["budget"]["fields"] if f["path"] == "budget.run"),
+        None,
+    )
+    assert run_field is not None and run_field["overridden"] is True
+    # Revert: value=null removes override
+    patch2 = client.patch(
+        "/config",
+        json={
+            "agent_id": agent_id,
+            "version": 2,
+            "overrides": [{"path": "budget.run", "value": None}],
+        },
+    )
+    assert patch2.status_code == 200
+    assert agent._budget.run == 1.0
+    get3 = client.get("/config").json()
+    assert get3["current_values"].get("budget.run") == 1.0
+    assert "budget.run" not in get3["overrides"]
+    run_field3 = next(
+        (f for f in get3["sections"]["budget"]["fields"] if f["path"] == "budget.run"),
+        None,
+    )
+    assert run_field3 is not None and run_field3["overridden"] is False
+    assert run_field3["current_value"] == run_field3["baseline_value"] == 1.0
 
 
 class TestRemoteConfigE2EFullFeatures:

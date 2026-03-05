@@ -68,7 +68,7 @@ class Decay(BaseModel):
     def _apply_half_life(self) -> Decay:
         if self.half_life_hours is not None and self.strategy == DecayStrategy.EXPONENTIAL:
             # importance halves every half_life_hours: 0.5 = rate^half_life => rate = 0.5^(1/half_life_hours)
-            return self.model_copy(update={"rate": 0.5 ** (1.0 / self.half_life_hours)})
+            object.__setattr__(self, "rate", 0.5 ** (1.0 / self.half_life_hours))
         return self
 
     def apply(self, entry: MemoryEntry) -> None:

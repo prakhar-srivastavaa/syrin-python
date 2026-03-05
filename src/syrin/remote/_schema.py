@@ -381,10 +381,19 @@ def get_agent_section_schema_and_values(agent: Any) -> tuple[ConfigSchema, dict[
         elif attr == "hitl_timeout":
             v = getattr(agent, "_hitl_timeout", None)
         elif attr == "loop_strategy":
+            from syrin.enums import LoopStrategy as LS
+
             loop = getattr(agent, "_loop", None)
             v = getattr(loop, "strategy", None)
             if v is not None and hasattr(v, "value"):
                 v = v.value
+            elif loop is not None:
+                # Loop instances don't have .strategy; infer from class .name (e.g. ReactLoop.name = "react")
+                name = getattr(type(loop), "name", None)
+                v = name.lower().replace(" ", "_") if isinstance(name, str) else None
+            valid = [m.value for m in LS]
+            if v is None or (isinstance(v, str) and v not in valid):
+                v = LS.REACT.value
         else:
             v = getattr(agent, f"_{attr}", getattr(agent, attr, None))
         if v is not None or f.default is not None:
@@ -488,5 +497,7 @@ def extract_agent_schema(agent: Any) -> AgentSchema:
         agent_name=agent_name,
         class_name=class_name,
         sections=sections,
+        baseline_values={},
+        overrides={},
         current_values=current_values,
     )

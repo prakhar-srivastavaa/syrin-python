@@ -42,8 +42,11 @@ def init(
 
     Args:
         api_key: Syrin Cloud API key. If None, SYRIN_API_KEY env is used.
+            When transport is provided, api_key is stored for reference but not passed
+            to the transport (custom transports manage their own auth).
         base_url: Config API base URL. Default https://api.syrin.ai/v1.
-        transport: Custom transport. When set, api_key/base_url are not used for transport.
+        transport: Custom transport. When set, this transport is used; api_key and
+            base_url are stored on config for reference but not used by the transport.
     """
     cfg = get_config()
     if transport is not None:

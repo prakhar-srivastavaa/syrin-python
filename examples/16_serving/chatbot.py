@@ -41,6 +41,7 @@ from syrin import (
 from syrin.context import Context
 from syrin.enums import DecayStrategy, MemoryBackend, MemoryType, WriteMode
 from syrin.guardrails import ContentFilter, LengthGuardrail
+from syrin.memory import WindowMemory
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
@@ -85,6 +86,22 @@ def _make_remember_tool(mem: Memory) -> object:
     return remember_fact
 
 
+@tool
+def get_current_time() -> str:
+    """Return the current date and time. Use when the user asks what time or date it is."""
+    from datetime import datetime, timezone
+
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+
+@tool
+def repeat_back(phrase: str) -> str:
+    """Echo back a short phrase. Use only when the user explicitly asks you to repeat or echo something.
+    phrase: The exact phrase to repeat back.
+    """
+    return f"You said: {phrase}"
+
+
 context = Context(max_tokens=16000)
 
 checkpoint = CheckpointConfig(
@@ -98,6 +115,7 @@ class Chatbot(Agent):
     """Full-featured chatbot with persistent memory, remember tool, guardrails, and checkpoints."""
 
     _agent_name = "chatbot"
+    _syrin_default_conversation_memory = WindowMemory(10)
     _agent_description = (
         "Conversational chatbot with persistent memory, guardrails, and checkpoints"
     )
@@ -106,10 +124,12 @@ class Chatbot(Agent):
     system_prompt = (
         "You are a helpful, friendly chatbot with persistent memory. "
         "You recall past turns automatically. When the user asks you to remember something, "
-        "use the remember_fact tool. Keep responses concise. Be respectful and safe."
+        "use the remember_fact tool. Use get_current_time when asked the time or date. "
+        "Use repeat_back only when the user explicitly asks you to repeat or echo. "
+        "Keep responses concise. Be respectful and safe."
     )
     memory = memory
-    tools = [_make_remember_tool(memory)]
+    tools = [_make_remember_tool(memory), get_current_time, repeat_back]
     context = context
     guardrails = guardrails
     checkpoint = checkpoint

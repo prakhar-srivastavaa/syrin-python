@@ -3,25 +3,22 @@
 from __future__ import annotations
 
 import json
-import threading
 import time
-from collections.abc import Callable
 
 import httpx
-
-from syrin.remote._types import (
-    AgentSchema,
-    ConfigSchema,
-    ConfigOverride,
-    OverridePayload,
-    SyncResponse,
-)
 
 from syrin.remote._transport import (
     ConfigTransport,
     PollingTransport,
     ServeTransport,
     SSETransport,
+)
+from syrin.remote._types import (
+    AgentSchema,
+    ConfigOverride,
+    ConfigSchema,
+    OverridePayload,
+    SyncResponse,
 )
 
 
@@ -61,7 +58,7 @@ class TestConfigTransportProtocol:
         resp = t.register(schema)
         assert resp is not None
         assert hasattr(resp, "ok")
-        t.on_override("id", lambda p: None)
+        t.on_override("id", lambda _: None)
         t.stop()
 
     def test_protocol_register_returns_sync_response(self) -> None:
@@ -110,14 +107,14 @@ class TestServeTransport:
     def test_get_callback_unknown_agent_returns_none(self) -> None:
         """get_callback(unknown agent_id) returns None."""
         t = ServeTransport()
-        t.on_override("a:A", lambda p: None)
+        t.on_override("a:A", lambda _: None)
         assert t.get_callback("other:Agent") is None
         t.stop()
 
     def test_stop_clears_callbacks(self) -> None:
         """After stop(), get_callback(agent_id) returns None."""
         t = ServeTransport()
-        t.on_override("x:X", lambda p: None)
+        t.on_override("x:X", lambda _: None)
         t.stop()
         assert t.get_callback("x:X") is None
 
@@ -126,8 +123,8 @@ class TestServeTransport:
         t = ServeTransport()
         first: list[int] = []
         second: list[int] = []
-        t.on_override("id:A", lambda p: first.append(1))
-        t.on_override("id:A", lambda p: second.append(1))
+        t.on_override("id:A", lambda _: first.append(1))
+        t.on_override("id:A", lambda _: second.append(1))
         payload = _override_payload("id:A")
         t.get_callback("id:A")(payload)
         assert len(first) == 0
@@ -373,6 +370,6 @@ class TestTransportStopIdempotent:
         t.stop()
 
     def test_sse_transport_stop_before_register_no_error(self) -> None:
-        client = httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(404)))
+        client = httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(404)))
         t = SSETransport(base_url="https://x.invalid/v1", client=client)
         t.stop()

@@ -6,14 +6,12 @@ import threading
 
 from syrin import Agent, Budget, Model
 from syrin.budget import RateLimit
-from syrin.enums import DecayStrategy, LoopStrategy
+from syrin.enums import DecayStrategy
 from syrin.memory import Memory
 from syrin.memory.config import Decay
 from syrin.remote._registry import get_registry
-from syrin.remote._schema import extract_agent_schema
-from syrin.remote._types import ConfigOverride, OverridePayload
-
 from syrin.remote._resolver import ConfigResolver, ResolveResult
+from syrin.remote._types import ConfigOverride, OverridePayload
 
 
 def _make_agent(
@@ -148,9 +146,23 @@ class TestValidOverrides:
         payload = _payload(agent_id, ("agent.loop_strategy", "single_shot"))
         result = ConfigResolver().apply_overrides(agent, payload, schema=schema)
         assert "agent.loop_strategy" in result.accepted
-        from syrin.loop import SingleShotLoop
 
         assert type(agent._loop).__name__ == "SingleShotLoop"
+        reg.unregister(agent_id)
+
+    def test_apply_agent_loop_strategy_accepts_enum_name(self) -> None:
+        """agent.loop_strategy with enum name (e.g. REACT) is normalized and accepted."""
+        agent = _make_agent()
+        reg = get_registry()
+        reg.register(agent)
+        agent_id = reg.make_agent_id(agent)
+        schema = reg.get_schema(agent_id)
+        assert schema is not None
+        payload = _payload(agent_id, ("agent.loop_strategy", "REACT"))
+        result = ConfigResolver().apply_overrides(agent, payload, schema=schema)
+        assert "agent.loop_strategy" in result.accepted
+
+        assert type(agent._loop).__name__ == "ReactLoop"
         reg.unregister(agent_id)
 
     def test_empty_overrides(self) -> None:

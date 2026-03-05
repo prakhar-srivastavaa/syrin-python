@@ -292,6 +292,7 @@ from syrin.prompt import (
     system_prompt,
     validated,
 )
+from syrin.remote import init
 from syrin.response import (
     AgentReport,
     BudgetStatus,
@@ -304,7 +305,6 @@ from syrin.response import (
     Response,
     TokenReport,
 )
-from syrin.remote import init
 from syrin.run_context import RunContext
 from syrin.serve import (
     AgentCard,

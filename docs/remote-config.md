@@ -29,6 +29,16 @@ Remote config lets a backend (Syrin Cloud or your own server) push configuration
 
 So: **Budget, Rate limit, Memory, Context, Circuit breaker, Checkpoint, Output, agent top-level (including system prompt), guardrails (enable/disable), prompt_vars (realtime), tools (enable/disable by name), and mcp (enable/disable by index)** are all covered.
 
+## Override store, baseline, and revert (scale-friendly)
+
+The API uses an **override store** so dashboards can revert to code values and stay consistent at scale:
+
+- **Baseline** — Values from code (frozen on first GET /config). Stored per agent as `_remote_baseline_values`.
+- **Overrides** — User-applied path → value (only overridden paths). Stored as `_remote_overrides`. PATCH adds or updates; **`value: null` removes that path** (revert to baseline).
+- **Current** — Effective values = baseline + overrides (overrides win). Returned as `current_values` and used to sync agent state after each PATCH.
+
+GET /config returns `baseline_values`, `overrides`, and `current_values`, and enriches each **field** in `sections` with `baseline_value`, `current_value`, and `overridden` so the dashboard can render one row per field without merging. Revert one path: PATCH with `{"path": "budget.run", "value": null}`.
+
 ## Dashboard: what to expose, what to skip
 
 **Expose in the dashboard (already in schema):**
@@ -52,6 +62,13 @@ So: **Budget, Rate limit, Memory, Context, Circuit breaker, Checkpoint, Output, 
 - **Observability** — No section yet. If you add one (e.g. enable/disable tracing, sampling), expose only simple toggles or sampling rates, not exporters/credentials.
 
 **Optional future sections:** `model` (model name only, keys in env), or observability toggles—add when product needs them.
+
+### Not configurable remotely
+
+The following are intentionally not exposed in the schema and cannot be changed via remote overrides:
+
+- **Model** — Identity and API credentials; override via code or env.
+- **Observability** — Tracer/audit are set at init; no structured observability section yet.
 
 ## Testing remote config
 
@@ -77,7 +94,7 @@ All types live in `syrin.remote` and are used by schema extraction, registry, re
 
 ### FieldSchema
 
-One configurable field: name, dotted path, type, default, constraints, enum values, and nested children.
+One configurable field: name, dotted path, type, default, constraints, enum values, and nested children. In GET /config responses, each field is enriched with `baseline_value`, `current_value`, and `overridden` for dashboard UX.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -90,6 +107,9 @@ One configurable field: name, dotted path, type, default, constraints, enum valu
 | `enum_values` | list[str] \| None | For StrEnum fields, allowed string values |
 | `children` | list[FieldSchema] \| None | Nested fields when this field is an object |
 | `remote_excluded` | bool | If True, not writable via remote overrides (e.g. callables) |
+| `baseline_value` | object \| None | (Response only.) Value from code; used for revert. |
+| `current_value` | object \| None | (Response only.) Effective value (baseline + overrides). |
+| `overridden` | bool | (Response only.) True if this path has a remote override. |
 
 ### ConfigSchema
 
@@ -103,24 +123,26 @@ All fields for one config object (e.g. Budget, Memory).
 
 ### AgentSchema
 
-Full schema for a registered agent: all config sections and current values. Sent to the backend on registration.
+Full schema for a registered agent: sections, baseline (code) values, overrides, and current values. GET /config returns this with baseline frozen at first read; overrides = user-applied path→value; current = baseline + overrides. Revert = remove path from overrides.
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `agent_id` | str | Unique agent identifier |
 | `agent_name` | str | Human-readable name |
 | `class_name` | str | Python class name |
-| `sections` | dict[str, ConfigSchema] | Map of section key to config schema |
-| `current_values` | dict[str, object] | Map of dotted path to current value |
+| `sections` | dict[str, ConfigSchema] | Map of section key to config schema (fields enriched with baseline_value, current_value, overridden in response) |
+| `baseline_values` | dict[str, object] | Values from code (frozen at first GET); used for revert. |
+| `overrides` | dict[str, object] | User-applied overrides (path → value). Only overridden paths. Revert = remove path. |
+| `current_values` | dict[str, object] | Effective values (baseline + overrides). |
 
 ### ConfigOverride
 
-Single override: path and value. Applied by the resolver to the live agent.
+Single override: path and value. Applied by the resolver. **`value: null` in PATCH = revert that path to baseline** (remove from override store).
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `path` | str | Dotted path (e.g. `budget.run`) |
-| `value` | object | New value; type must match schema |
+| `value` | object \| null | New value; type must match schema. Use `null` to revert path to baseline. |
 
 ### OverridePayload
 
@@ -249,8 +271,8 @@ When you serve an agent (e.g. `agent.serve()` or `AgentRouter`), the following r
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/config` | Schema and current values (for dashboards). |
-| PATCH | `/config` | Apply overrides. Body: `OverridePayload` (agent_id, version, overrides). Returns `{accepted, rejected, pending_restart}`. |
-| GET | `/config/stream` | SSE stream: initial heartbeat, then `event: override` when PATCH is applied. |
+| PATCH | `/config` | Apply overrides. Body: `OverridePayload` (agent_id, version, overrides). Returns `{accepted, rejected, pending_restart}`. Rejected paths are rolled back from the override store. |
+| GET | `/config/stream` | SSE stream: `event: heartbeat` (data: `{version}`), then `event: override` when PATCH is applied. |
 
 No `syrin.init()` is required for these routes; they work with the in-process resolver. When you use a self-hosted dashboard, you can `curl` or `PATCH` to apply overrides without Syrin Cloud.
 
