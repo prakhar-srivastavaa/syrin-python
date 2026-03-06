@@ -105,6 +105,8 @@ agent.list_checkpoints(name: str | None = None) -> list[str]
 agent.get_checkpoint_report() -> AgentReport
 ```
 
+**What save_checkpoint stores:** messages (from conversation memory), iteration, budget_state, context_snapshot (from last prepare), checkpoint_reason. **What load_checkpoint restores:** messages → conversation memory, iteration, budget_state. See [Agent: Checkpointing - Long-running sessions](agent/checkpointing.md).
+
 **agent.checkpointer:** When using `CheckpointConfig`, use `agent.checkpointer` for manual save/load:
 
 ```python

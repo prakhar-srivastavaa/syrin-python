@@ -20,18 +20,18 @@ check_command() {
     fi
 }
 
-# Run ruff check (linting)
+# Run ruff check (linting) — --fix auto-fixes what it can
 run_ruff_check() {
     echo -e "${YELLOW}Running ruff (linting)...${NC}"
-    ruff check src/ tests/ examples/ --output-format=concise
+    ruff check --fix src/ tests/ examples/ --output-format=concise
     echo -e "${GREEN}✓ Ruff check passed${NC}"
 }
 
-# Run ruff format (formatting)
+# Run ruff format (formatting) — formats in place (no --check)
 run_ruff_format() {
-    echo -e "${YELLOW}Running ruff (formatting check)...${NC}"
-    ruff format --check src/ tests/ examples/
-    echo -e "${GREEN}✓ Ruff format check passed${NC}"
+    echo -e "${YELLOW}Running ruff (formatting)...${NC}"
+    ruff format src/ tests/ examples/
+    echo -e "${GREEN}✓ Ruff format passed${NC}"
 }
 
 # Run mypy (type checking) — src/ only; tests/examples have relaxed typing in pyproject.toml

@@ -631,6 +631,7 @@ You can replace the compactor in a custom manager or extend **DefaultContextMana
 
 - **Memory:** Persistent memory (**Memory**) is recalled and formatted as **memory_context**. The default context manager injects it as a system message (**[Memory]\n...**) when **memory_context** is non-empty. So context stats and compaction apply to the full message list including memory.
 - **Budget:** Cost limits are **Budget** (USD). Token usage caps are **Context.token_limits** (**TokenLimits**). You can use both: **Agent(budget=Budget(...), context=Context(token_limits=TokenLimits(...)))**.
+- **Long-running sessions:** For agents that run across restarts, combine **checkpoint** (saves messages + context snapshot), **BufferMemory** (restored on load), and **auto_compact_at** (e.g. 0.6). See [Agent: Checkpointing - Long-running sessions](agent/checkpointing.md) and `examples/12_checkpoints/long_running_agent.py`.
 
 ---
 

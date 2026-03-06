@@ -3,8 +3,16 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import Any
 
 from syrin.types import Message
+
+
+def _to_message(m: Message | dict[str, Any]) -> Message:
+    """Convert Message or dict to Message."""
+    if isinstance(m, Message):
+        return m
+    return Message.model_validate(m)
 
 
 class ConversationMemory(ABC):
@@ -29,6 +37,17 @@ class ConversationMemory(ABC):
     def clear(self) -> None:
         """Remove all messages from memory."""
         ...
+
+    def load_messages(self, messages: list[Message] | list[dict[str, Any]]) -> None:
+        """Replace all messages with the given list. For restore from checkpoint.
+
+        Accepts Message objects or dicts (from serialized checkpoint). Default
+        implementation: clear then add each message. Subclasses may override
+        for efficiency.
+        """
+        self.clear()
+        for m in messages:
+            self.add(_to_message(m))
 
 
 class BufferMemory(ConversationMemory):

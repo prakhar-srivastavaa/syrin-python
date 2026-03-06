@@ -74,11 +74,44 @@ report = agent.get_checkpoint_report()
 
 State includes:
 
-- `iteration` (token count / progress)
-- `messages`
+- `iteration` — Loop iteration count (restored on load)
+- `messages` — Conversation history from `agent.messages` (restored to conversation memory)
 - `memory_data`
 - `budget_state`
 - `checkpoint_reason`
+- `context_snapshot` — Point-in-time context view (breakdown, utilization, provenance; for debug/viz)
+
+On **load_checkpoint**, the agent restores: `messages` → conversation memory via `load_messages()`, `iteration` → `_last_iteration`, and `budget_state` (when budget is configured).
+
+## Long-running sessions
+
+For agents that run across multiple sessions (restarts, long runs):
+
+1. **Checkpoint** — Save and restore conversation + iteration
+2. **Memory** — Use `BufferMemory` or `WindowMemory` for session history (restored from checkpoint)
+3. **auto_compact_at** — Proactive compaction (e.g. 60%) to reduce context rot
+
+Example: `examples/12_checkpoints/long_running_agent.py`
+
+```python
+from syrin import Agent, CheckpointConfig, CheckpointTrigger, Context
+from syrin.memory.conversation import BufferMemory
+
+mem = BufferMemory()
+agent = Agent(
+    model=model,
+    memory=mem,
+    context=Context(auto_compact_at=0.6),
+    checkpoint=CheckpointConfig(storage="sqlite", path="/tmp/agent.db", trigger=CheckpointTrigger.STEP),
+)
+# ... run conversation ...
+cid = agent.save_checkpoint()
+# On restart:
+agent2 = Agent(..., memory=BufferMemory(), checkpoint=...)
+agent2.load_checkpoint(cid)  # Restores messages + iteration
+```
+
+For multi-thread or multi-user setups, use `save_checkpoint(name=f"{agent_name}_{thread_id}")` to scope checkpoints per thread.
 
 ## Automatic Checkpoints
 

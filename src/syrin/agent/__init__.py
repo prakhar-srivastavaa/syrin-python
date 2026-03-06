@@ -1018,9 +1018,18 @@ class Agent(Servable, metaclass=_AgentMeta):
             return None
 
         agent_name = cast(str, name or self._agent_name)
+        messages_serialized: list[dict[str, Any]] = []
+        if self._conversation_memory is not None:
+            for msg in self._conversation_memory.get_messages():
+                messages_serialized.append(msg.model_dump())
+        context_snapshot: dict[str, Any] | None = None
+        if hasattr(self, "_context") and hasattr(self._context, "snapshot"):
+            snap = self._context.snapshot()
+            if snap is not None:
+                context_snapshot = snap.to_dict(include_raw_messages=False)
         state = {
             "iteration": self.iteration,
-            "messages": [],  # Could include conversation history
+            "messages": messages_serialized,
             "memory_data": {},
             "budget_state": (
                 {
@@ -1032,6 +1041,7 @@ class Agent(Servable, metaclass=_AgentMeta):
                 else None
             ),
             "checkpoint_reason": reason,
+            "context_snapshot": context_snapshot,
         }
 
         checkpoint_id = self._checkpointer.save(agent_name, state)
@@ -1080,6 +1090,14 @@ class Agent(Servable, metaclass=_AgentMeta):
         state = self._checkpointer.load(checkpoint_id)
         if state is None:
             return False
+
+        if self._conversation_memory is not None and state.messages:
+            self._conversation_memory.load_messages(
+                cast(list[dict[str, Any]], list(state.messages))
+            )
+        iter_val = getattr(state, "iteration", None)
+        if iter_val is not None and isinstance(iter_val, (int, float)):
+            object.__setattr__(self, "_last_iteration", int(iter_val))
 
         budget_state = getattr(state, "budget_state", None)
         if budget_state is not None and self._budget is not None:
