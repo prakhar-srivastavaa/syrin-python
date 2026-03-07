@@ -273,7 +273,7 @@ class TestExtractAgentSchema:
             system_prompt="Hi",
             max_tool_iterations=5,
             debug=True,
-            hitl_timeout=60,
+            human_approval_timeout=60,
         )
         schema = extract_agent_schema(agent)
         assert "agent" in schema.sections
@@ -283,7 +283,7 @@ class TestExtractAgentSchema:
         assert "max_tool_iterations" in names
         assert "debug" in names
         assert "system_prompt" in names
-        assert "hitl_timeout" in names
+        assert "human_approval_timeout" in names
         assert "loop_strategy" in names
 
     def test_agent_schema_budget_section_when_budget_set(self) -> None:

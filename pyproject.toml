@@ -1,6 +1,6 @@
 [project]
 name = "syrin"
-version = "0.6.0"
+version = "0.7.0"
 description = "Python library for building AI agents with budget management, declarative definitions, and production-ready observability."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -22,10 +22,10 @@ dependencies = [
     "pydantic>=2.0",
     "httpx",
     "tiktoken",
-    "python-dotenv>=1.2.1",
+    "python-dotenv>=1.2.2",
     "jsonschema>=4.0",
     "uvicorn>=0.41.0",
-    "fastapi>=0.133.1",
+    "fastapi>=0.134.0",
     "python-multipart>=0.0.22",
 ]
 

@@ -95,9 +95,9 @@ class _PipelineAdapter:
         self,
         user_input: str,
         context: Any = None,
-        prompt_vars: dict[str, Any] | None = None,
+        template_variables: dict[str, Any] | None = None,
     ) -> Response[str]:
-        del context, prompt_vars
+        del context, template_variables
         agents = getattr(self._pipeline, "_agents", None)
         if not agents:
             return Response(content="Pipeline has no default agents", cost=0, tokens=TokenUsage())
@@ -127,9 +127,9 @@ class _PipelineAdapter:
         self,
         user_input: str,
         context: Any = None,
-        prompt_vars: dict[str, Any] | None = None,
+        template_variables: dict[str, Any] | None = None,
     ) -> Any:
-        result = await self.arun(user_input, context, prompt_vars)
+        result = await self.arun(user_input, context, template_variables)
         yield StreamChunk(
             index=0,
             text=result.content,
@@ -171,9 +171,9 @@ class _DynamicPipelineAdapter:
         self,
         user_input: str,
         context: Any = None,
-        prompt_vars: dict[str, Any] | None = None,
+        template_variables: dict[str, Any] | None = None,
     ) -> Response[str]:
-        del context, prompt_vars
+        del context, template_variables
         return await asyncio.to_thread(self._pipeline.run, user_input, "parallel")
 
     def response(self, user_input: str) -> Response[str]:
@@ -184,9 +184,9 @@ class _DynamicPipelineAdapter:
         self,
         user_input: str,
         context: Any = None,
-        prompt_vars: dict[str, Any] | None = None,
+        template_variables: dict[str, Any] | None = None,
     ) -> Any:
-        del context, prompt_vars
+        del context, template_variables
 
         # Queue for hooks emitted during pipeline run (enables real-time streaming)
         hook_queue: asyncio.Queue[tuple[str, dict[str, Any]]] = asyncio.Queue()

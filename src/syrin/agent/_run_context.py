@@ -41,7 +41,7 @@ class AgentRunContext(Protocol):
     Properties:
         model_id, tools, max_output_tokens: For cost and completion.
         has_budget, has_rate_limit: Whether limits apply.
-        pricing_override, approval_gate, hitl_timeout, tracer: Optional.
+        pricing_override, approval_gate, human_approval_timeout, tracer: Optional.
     """
 
     # ---- Message and completion ----
@@ -122,8 +122,8 @@ class AgentRunContext(Protocol):
         ...
 
     @property
-    def hitl_timeout(self) -> int:
-        """Timeout in seconds for HITL approval. Default 300."""
+    def human_approval_timeout(self) -> int:
+        """Timeout in seconds for human-in-the-loop approval. Default 300."""
         ...
 
     @property
@@ -208,8 +208,8 @@ class DefaultAgentRunContext:
         return getattr(self._agent, "_approval_gate", None)
 
     @property
-    def hitl_timeout(self) -> int:
-        return getattr(self._agent, "_hitl_timeout", 300)
+    def human_approval_timeout(self) -> int:
+        return getattr(self._agent, "_human_approval_timeout", 300)
 
     @property
     def tracer(self) -> Any:

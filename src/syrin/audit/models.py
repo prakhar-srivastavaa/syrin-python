@@ -71,7 +71,7 @@ class AuditFilters(BaseModel):
 class AuditLog(BaseModel):
     """Audit configuration for Agent, Pipeline, or DynamicPipeline.
 
-    Pass to Agent(audit=AuditLog(...)) or Pipeline(audit=...). Events are
+    Pass to Agent(config=AgentConfig(audit=AuditLog(...))) or Pipeline(audit=...). Events are
     written to the backend (JSONL by default).
 
     Attributes:

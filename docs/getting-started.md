@@ -70,6 +70,25 @@ print(response.content)  # Output: "4" or "The answer is 4"
 
 That's it! Prefer `Agent.builder()` when adding tools, budget, or memory.
 
+### Quick copy-paste examples
+
+```python
+from syrin import Agent, Budget
+from syrin.memory import Memory
+
+# Minimal agent (no API key: Model.Almock())
+agent = Agent.builder(Model.Almock()).with_system_prompt("You are helpful.").build()
+
+# Agent with tools
+agent = Agent.builder(Model.Almock()).with_system_prompt("You search and calculate.").with_tools([search, calculate]).build()
+
+# Agent with budget ($0.50 per run)
+agent = Agent.builder(Model.Almock()).with_system_prompt("You are concise.").with_budget(Budget(run=0.50)).build()
+
+# Agent with memory (multi-turn)
+agent = Agent.builder(Model.Almock()).with_system_prompt("You remember context.").with_memory(Memory()).build()
+```
+
 **Tip:** You can tweak model properties: `temperature`, `max_tokens`, `context_window`, etc. See the [Models Guide](models.md) for the full list.
 
 ## Serving is easy — HTTP, CLI, or playground

@@ -5,13 +5,14 @@ domain events are typed dataclasses that observability and other consumers
 can subscribe to without parsing strings.
 
 Usage:
+    >>> from syrin import Agent, AgentConfig
     >>> from syrin.domain_events import BudgetThresholdReached, ContextCompacted, EventBus
     >>>
     >>> bus = EventBus()
     >>> bus.subscribe(BudgetThresholdReached, lambda e: print(f"Budget at {e.percentage}%"))
     >>> bus.subscribe(ContextCompacted, lambda e: print(f"Compacted: {e.method}"))
     >>>
-    >>> agent = Agent(model=..., bus=bus)
+    >>> agent = Agent(model=..., config=AgentConfig(event_bus=bus))
 """
 
 from __future__ import annotations
@@ -34,7 +35,7 @@ T = TypeVar("T", bound="DomainEvent")
 class DomainEvent:
     """Base for domain events. All domain events are immutable dataclasses.
 
-    Use EventBus to subscribe and emit. Pass bus=EventBus() to Agent.
+    Use EventBus to subscribe and emit. Pass event_bus=EventBus() to Agent.
     """
 
 

@@ -94,6 +94,7 @@ _auto_trace_check()
 del _auto_trace_check
 
 from syrin.agent import Agent
+from syrin.agent.config import AgentConfig
 from syrin.agent.multi_agent import (
     AgentTeam,
     DynamicPipeline,
@@ -143,6 +144,7 @@ from syrin.cli import (
 from syrin.config import configure, get_config
 from syrin.context import (
     Context,
+    ContextConfig,
     ContextManager,
     ContextStats,
     DefaultContextManager,
@@ -334,7 +336,7 @@ def run(
     system_prompt: str | None = None,
     tools: list[ToolSpec] | None = None,
     budget: Budget | None = None,
-    prompt_vars: dict[str, Any] | None = None,
+    template_variables: dict[str, Any] | None = None,
     **kwargs: Any,  # pyright: ignore[reportAny]
 ) -> Response[str]:
     """Run a one-shot completion with an agent.
@@ -397,7 +399,7 @@ def run(
         budget=budget,
         **kwargs,  # pyright: ignore[reportAny]
     )
-    return agent.response(input, prompt_vars=prompt_vars)
+    return agent.response(input, template_variables=template_variables)
 
 
 __all__ = [
@@ -406,6 +408,7 @@ __all__ = [
     # =============================================================================
     "__version__",
     "Agent",
+    "AgentConfig",
     "run",
     "configure",
     "get_config",
@@ -467,6 +470,7 @@ __all__ = [
     # Context
     # =============================================================================
     "Context",
+    "ContextConfig",
     "ContextStats",
     "ContextManager",
     "DefaultContextManager",

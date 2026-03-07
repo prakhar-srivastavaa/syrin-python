@@ -271,23 +271,31 @@ class TestAgentWithTokenLimits:
     """Token-based budget limits (separate from USD budget)."""
 
     def test_token_limits_run_exceeded(self) -> None:
+        from syrin.agent.config import AgentConfig
+
         agent = Agent(
             model=_almock(),
             budget=Budget(run=100.0, on_exceeded=raise_on_exceeded),
-            context=Context(token_limits=TokenLimits(run=1, on_exceeded=raise_on_exceeded)),
+            config=AgentConfig(
+                context=Context(token_limits=TokenLimits(run=1, on_exceeded=raise_on_exceeded))
+            ),
         )
         with pytest.raises(BudgetExceededError) as exc:
             agent.response("Hello")
         assert exc.value.budget_type == "run_tokens"
 
     def test_token_limits_per_hour(self) -> None:
+        from syrin.agent.config import AgentConfig
+
         agent = Agent(
             model=_almock(),
             budget=Budget(run=100.0, on_exceeded=raise_on_exceeded),
-            context=Context(
-                token_limits=TokenLimits(
-                    per=TokenRateLimit(hour=1),
-                    on_exceeded=raise_on_exceeded,
+            config=AgentConfig(
+                context=Context(
+                    token_limits=TokenLimits(
+                        per=TokenRateLimit(hour=1),
+                        on_exceeded=raise_on_exceeded,
+                    )
                 )
             ),
         )
@@ -358,20 +366,20 @@ class TestAgentWithMemory:
         assert deleted == 0
 
     def test_memory_disabled_with_false(self) -> None:
-        agent = Agent(model=_almock(), memory=False)
+        agent = Agent(model=_almock(), memory=None)
         r = agent.response("Hello")
         assert r.content is not None
         assert agent._persistent_memory is None
 
     def test_no_memory_raises_on_remember(self) -> None:
         """Agent with memory=False raises on remember()."""
-        agent = Agent(model=_almock(), memory=False)
+        agent = Agent(model=_almock(), memory=None)
         with pytest.raises(RuntimeError, match="No persistent memory"):
             agent.remember("test")
 
     def test_no_memory_raises_on_recall(self) -> None:
         """Agent with memory=False raises on recall()."""
-        agent = Agent(model=_almock(), memory=False)
+        agent = Agent(model=_almock(), memory=None)
         with pytest.raises(RuntimeError, match="No persistent memory"):
             agent.recall()
 
@@ -488,13 +496,17 @@ class TestAgentWithContext:
     """Context management and token tracking."""
 
     def test_agent_with_context_config(self) -> None:
+        from syrin.agent.config import AgentConfig
+
         ctx = Context(max_tokens=4000)
-        agent = Agent(model=_almock(), context=ctx)
+        agent = Agent(model=_almock(), config=AgentConfig(context=ctx))
         r = agent.response("Hello")
         assert r.content is not None
 
     def test_context_stats_populated(self) -> None:
-        agent = Agent(model=_almock(), context=Context(max_tokens=4000))
+        from syrin.agent.config import AgentConfig
+
+        agent = Agent(model=_almock(), config=AgentConfig(context=Context(max_tokens=4000)))
         agent.response("Hello")
         stats = agent.context_stats
         assert stats is not None
@@ -539,14 +551,16 @@ class TestAgentWithEverything:
 
         chain = GuardrailChain([ContentFilter(blocked_words=["forbidden"])])
 
+        from syrin.agent.config import AgentConfig
+
         agent = Agent(
             model=_almock(),
             system_prompt="You are a helpful assistant with full capabilities.",
             tools=[lookup],
             memory=Memory(),
             budget=Budget(run=10.0, per=RateLimit(hour=100.0)),
-            context=Context(max_tokens=8000),
             guardrails=chain,
+            config=AgentConfig(context=Context(max_tokens=8000)),
         )
         agent.events.on(Hook.AGENT_RUN_START, lambda _: events_log.append("start"))
         agent.events.on(Hook.AGENT_RUN_END, lambda _: events_log.append("end"))
@@ -638,12 +652,12 @@ class TestLoopStrategies:
     """Different loop strategies work correctly."""
 
     def test_single_shot_loop(self) -> None:
-        agent = Agent(model=_almock(), loop=SingleShotLoop())
+        agent = Agent(model=_almock(), custom_loop=SingleShotLoop())
         r = agent.response("Hello")
         assert r.content is not None
 
     def test_react_loop_default(self) -> None:
-        agent = Agent(model=_almock(), loop=ReactLoop(max_iterations=5))
+        agent = Agent(model=_almock(), custom_loop=ReactLoop(max_iterations=5))
         r = agent.response("Hello")
         assert r.content is not None
 
@@ -653,7 +667,7 @@ class TestLoopStrategies:
 
     def test_react_loop_min_iterations(self) -> None:
         loop = ReactLoop(max_iterations=1)
-        agent = Agent(model=_almock(), loop=loop)
+        agent = Agent(model=_almock(), custom_loop=loop)
         r = agent.response("Hello")
         assert r.content is not None
 

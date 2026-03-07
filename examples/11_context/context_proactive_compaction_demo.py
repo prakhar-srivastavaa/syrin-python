@@ -17,7 +17,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from examples.models.models import almock, gpt4_mini
-from syrin import Agent
+from syrin import Agent, AgentConfig
 from syrin.context import Context
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
@@ -36,10 +36,12 @@ def main() -> None:
     agent = Agent(
         model=_model,
         system_prompt="You are a helpful assistant. Be very brief.",
-        context=Context(
-            max_tokens=200,
-            reserve=20,
-            auto_compact_at=0.6,  # Compact when utilization >= 60%
+        config=AgentConfig(
+            context=Context(
+                max_tokens=200,
+                reserve=20,
+                auto_compact_at=0.6,  # Compact when utilization >= 60%
+            )
         ),
     )
 

@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from syrin import Agent, Budget, CheckpointConfig, Model
+from syrin.agent.config import AgentConfig
 from syrin.checkpoint import CheckpointTrigger
 
 
@@ -24,7 +25,7 @@ class TestCheckpointTriggerStep:
         agent = Agent(
             model=_almock_model(),
             system_prompt="Test.",
-            checkpoint=config,
+            config=AgentConfig(checkpoint=config),
         )
         agent.response("Hi")
         assert agent._run_report.checkpoints.saves >= 1
@@ -35,7 +36,7 @@ class TestCheckpointTriggerStep:
         agent = Agent(
             model=_almock_model(),
             system_prompt="Test.",
-            checkpoint=config,
+            config=AgentConfig(checkpoint=config),
         )
         agent.response("Hi")
         assert agent._run_report.checkpoints.saves == 0
@@ -50,7 +51,7 @@ class TestCheckpointResume:
         agent = Agent(
             model=_almock_model(),
             system_prompt="Test.",
-            checkpoint=config,
+            config=AgentConfig(checkpoint=config),
         )
         cid = agent.save_checkpoint()
         assert cid is not None
@@ -75,7 +76,7 @@ class TestCheckpointTriggerTool:
         agent = Agent(
             model=_almock_model(),
             system_prompt="Test.",
-            checkpoint=config,
+            config=AgentConfig(checkpoint=config),
         )
         assert agent._checkpoint_config is not None
         assert agent._checkpoint_config.trigger == CheckpointTrigger.TOOL
@@ -90,7 +91,7 @@ class TestCheckpointTriggerError:
         agent = Agent(
             model=_almock_model(),
             system_prompt="Test.",
-            checkpoint=config,
+            config=AgentConfig(checkpoint=config),
         )
         with (
             patch.object(
@@ -110,7 +111,7 @@ class TestCheckpointTriggerError:
         agent = Agent(
             model=_almock_model(),
             system_prompt="Test.",
-            checkpoint=config,
+            config=AgentConfig(checkpoint=config),
         )
         assert agent._checkpoint_config.trigger == CheckpointTrigger.ERROR
 
@@ -126,8 +127,8 @@ class TestCheckpointTriggerBudget:
         agent = Agent(
             model=_almock_model(),
             system_prompt="Test.",
-            checkpoint=config,
             budget=Budget(run=0.0001),  # very low so one call exceeds
+            config=AgentConfig(checkpoint=config),
         )
         with pytest.raises(BudgetExceededError):
             agent.response("Hi")
@@ -139,6 +140,6 @@ class TestCheckpointTriggerBudget:
         agent = Agent(
             model=_almock_model(),
             system_prompt="Test.",
-            checkpoint=config,
+            config=AgentConfig(checkpoint=config),
         )
         assert agent._checkpoint_config.trigger == CheckpointTrigger.BUDGET

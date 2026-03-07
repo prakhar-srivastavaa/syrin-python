@@ -273,7 +273,7 @@ class TestExtractAgentSchema:
             system_prompt="Hi",
             max_tool_iterations=5,
             debug=True,
-            hitl_timeout=60,
+            human_approval_timeout=60,
         )
         schema = extract_agent_schema(agent)
         assert "agent" in schema.sections
@@ -283,7 +283,7 @@ class TestExtractAgentSchema:
         assert "max_tool_iterations" in names
         assert "debug" in names
         assert "system_prompt" in names
-        assert "hitl_timeout" in names
+        assert "human_approval_timeout" in names
         assert "loop_strategy" in names
 
     def test_agent_schema_budget_section_when_budget_set(self) -> None:
@@ -352,22 +352,22 @@ class TestExtractAgentSchema:
         assert any("guardrails." in p and ".enabled" in p for p in paths)
         assert any(schema.current_values.get(p) is True for p in paths)
 
-    def test_agent_schema_prompt_vars_section_when_prompt_vars_set(self) -> None:
-        """When agent has prompt_vars, prompt_vars section has one field per key."""
+    def test_agent_schema_template_vars_section_when_template_vars_set(self) -> None:
+        """When agent has template_variables, template_variables section has one field per key."""
         from syrin import Agent, Model
 
         agent = Agent(
             model=Model.Almock(),
-            prompt_vars={"tenant": "acme", "env": "prod"},
+            template_variables={"tenant": "acme", "env": "prod"},
         )
         schema = extract_agent_schema(agent)
-        assert "prompt_vars" in schema.sections
-        pv = schema.sections["prompt_vars"]
-        assert pv.section == "prompt_vars"
+        assert "template_variables" in schema.sections
+        pv = schema.sections["template_variables"]
+        assert pv.section == "template_variables"
         paths = [f.path for f in pv.fields]
-        assert "prompt_vars.tenant" in paths
-        assert "prompt_vars.env" in paths
-        assert schema.current_values.get("prompt_vars.tenant") == "acme"
+        assert "template_variables.tenant" in paths
+        assert "template_variables.env" in paths
+        assert schema.current_values.get("template_variables.tenant") == "acme"
 
     def test_agent_schema_tools_section_when_tools_set(self) -> None:
         """When agent has tools, tools section has one field per tool (name.enabled)."""

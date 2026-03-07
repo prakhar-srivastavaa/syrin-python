@@ -176,6 +176,7 @@ def test_agent_budget_exceeded_raises() -> None:
 
 def test_agent_budget_exceeded_run_tokens_raises_with_correct_message_and_type() -> None:
     """When context.token_limits run limit exceeded, BudgetExceededError has budget_type 'run_tokens' and message."""
+    from syrin.agent.config import AgentConfig
     from syrin.budget import Budget, TokenLimits, raise_on_exceeded
     from syrin.context import Context
     from syrin.exceptions import BudgetExceededError
@@ -184,7 +185,9 @@ def test_agent_budget_exceeded_run_tokens_raises_with_correct_message_and_type()
     agent = Agent(
         model=model,
         budget=Budget(run=10.0, on_exceeded=raise_on_exceeded),
-        context=Context(token_limits=TokenLimits(run=50, on_exceeded=raise_on_exceeded)),
+        config=AgentConfig(
+            context=Context(token_limits=TokenLimits(run=50, on_exceeded=raise_on_exceeded))
+        ),
     )
     with patch.object(
         agent._provider,
@@ -321,6 +324,8 @@ def test_agent_budget_exceeded_hour_tokens_raises_with_correct_type_and_message(
     from syrin.exceptions import BudgetExceededError
 
     model = Model("openai/gpt-4")
+    from syrin.agent.config import AgentConfig
+
     agent = Agent(
         model=model,
         budget=Budget(
@@ -328,10 +333,12 @@ def test_agent_budget_exceeded_hour_tokens_raises_with_correct_type_and_message(
             per=RateLimit(hour=100.0),
             on_exceeded=raise_on_exceeded,
         ),
-        context=Context(
-            token_limits=TokenLimits(
-                per=TokenRateLimit(hour=50),
-                on_exceeded=raise_on_exceeded,
+        config=AgentConfig(
+            context=Context(
+                token_limits=TokenLimits(
+                    per=TokenRateLimit(hour=50),
+                    on_exceeded=raise_on_exceeded,
+                )
             )
         ),
     )

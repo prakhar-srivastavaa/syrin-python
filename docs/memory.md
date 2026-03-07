@@ -43,7 +43,7 @@ print([m.content for m in memories])
 agent = Agent(
     # model=Model("openai/gpt-4o-mini"),
     model=Model.Almock(),  # No API Key needed
-    memory=False,  # Disable memory
+    memory=None,  # Disable memory
 )
 ```
 
@@ -441,6 +441,8 @@ print(f"Imported {count} memories")
 ---
 
 ## Storage Backends
+
+**Primary backends (90% of use cases):** **In-memory** (default; ephemeral, no setup), **SQLite** (persistent file, single machine), **PostgreSQL** (production, multi-process). Other backends (Qdrant, Chroma, Redis) are available for semantic search or specific infra.
 
 Syrin supports multiple storage backends:
 

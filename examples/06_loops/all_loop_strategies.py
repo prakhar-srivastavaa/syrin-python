@@ -38,7 +38,7 @@ def example_single_shot() -> None:
     print("\n--- SingleShotLoop ---")
     print("Use case: Simple Q&A without tools")
 
-    agent = Agent(model=almock, loop=SingleShotLoop())
+    agent = Agent(model=almock, custom_loop=SingleShotLoop())
     result = agent.response("What is the capital of France?")
     print("Q: What is the capital of France?")
     print(f"A: {result.content[:80]}...")
@@ -49,7 +49,7 @@ def example_react() -> None:
     print("\n--- ReactLoop ---")
     print("Use case: Multi-step tasks with tools")
 
-    agent = Agent(model=almock, loop=ReactLoop(max_iterations=5))
+    agent = Agent(model=almock, custom_loop=ReactLoop(max_iterations=5))
     result = agent.response("What is 5 + 3?")
     print("Q: What is 5 + 3?")
     print(f"A: {result.content[:80]}...")
@@ -68,7 +68,7 @@ def example_human_in_the_loop() -> None:
         print(f"  Tool '{tool_name}' requested — auto-approved")
         return True
 
-    agent = Agent(model=almock, loop=HumanInTheLoop(approve=approve, max_iterations=5))
+    agent = Agent(model=almock, custom_loop=HumanInTheLoop(approve=approve, max_iterations=5))
     result = agent.response("What is the square root of 144?")
     print(f"A: {result.content[:80]}...")
     print(f"Tools evaluated: {approved_count}")
@@ -81,7 +81,7 @@ def example_plan_execute() -> None:
 
     agent = Agent(
         model=almock,
-        loop=PlanExecuteLoop(max_plan_iterations=3, max_execution_iterations=10),
+        custom_loop=PlanExecuteLoop(max_plan_iterations=3, max_execution_iterations=10),
     )
     result = agent.response("Research programming languages and summarize pros/cons")
     print(f"A: {result.content[:100]}...")
@@ -93,7 +93,7 @@ def example_code_action() -> None:
     print("\n--- CodeActionLoop ---")
     print("Use case: Math, data processing, code execution")
 
-    agent = Agent(model=almock, loop=CodeActionLoop(max_iterations=5, timeout_seconds=30))
+    agent = Agent(model=almock, custom_loop=CodeActionLoop(max_iterations=5, timeout_seconds=30))
     result = agent.response("What is the sum of even numbers from 1 to 100?")
     print(f"A: {result.content[:80]}...")
     print(f"Iterations: {result.iterations}")
@@ -121,7 +121,7 @@ def example_custom_loop() -> None:
                 iterations=1,
             )
 
-    agent = Agent(model=almock, loop=MyLoop())
+    agent = Agent(model=almock, custom_loop=MyLoop())
     result = agent.response("Hello!")
     print(f"A: {result.content[:80]}...")
 

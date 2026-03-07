@@ -367,12 +367,12 @@ class TestLoopEdgeCases:
     """Loop strategy boundary conditions."""
 
     def test_react_loop_max_iterations_1(self) -> None:
-        agent = Agent(model=_almock(), loop=ReactLoop(max_iterations=1))
+        agent = Agent(model=_almock(), custom_loop=ReactLoop(max_iterations=1))
         r = agent.response("Hello")
         assert r.content is not None
 
     def test_react_loop_large_max_iterations(self) -> None:
-        agent = Agent(model=_almock(), loop=ReactLoop(max_iterations=1000))
+        agent = Agent(model=_almock(), custom_loop=ReactLoop(max_iterations=1000))
         r = agent.response("Hello")
         assert r.content is not None
 
@@ -385,7 +385,7 @@ class TestLoopEdgeCases:
             ReactLoop(max_iterations="abc")  # type: ignore
 
     def test_single_shot_no_tools(self) -> None:
-        agent = Agent(model=_almock(), loop=SingleShotLoop())
+        agent = Agent(model=_almock(), custom_loop=SingleShotLoop())
         r = agent.response("Simple question")
         assert r.content is not None
 

@@ -156,7 +156,7 @@ class TestSpawn:
         # Spawn up to max
         for _ in range(10):  # default max_children=10
             parent.spawn(Child)
-        with pytest.raises(RuntimeError, match="max children"):
+        with pytest.raises(RuntimeError, match="max child agents"):
             parent.spawn(Child)
 
     def test_spawn_with_shared_budget(self) -> None:

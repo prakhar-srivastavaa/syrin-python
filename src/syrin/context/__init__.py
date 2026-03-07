@@ -35,6 +35,7 @@ from syrin.context.compactors import (
 )
 from syrin.context.config import (
     Context,
+    ContextConfig,
     ContextStats,
     ContextWindowCapacity,
 )
@@ -65,6 +66,7 @@ from syrin.threshold import BudgetThreshold, ContextThreshold
 __all__ = [
     # Config
     "Context",
+    "ContextConfig",
     "ContextStats",
     "ContextWindowCapacity",
     "TokenLimits",

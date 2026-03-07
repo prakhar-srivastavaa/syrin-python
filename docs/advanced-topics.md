@@ -723,10 +723,10 @@ print(response)
 Prevent cascading failures when the LLM provider is down. After N consecutive failures, the circuit trips and uses a fallback model or raises `CircuitBreakerOpenError`.
 
 ```python
-from syrin import Agent, CircuitBreaker, Model
+from syrin import Agent, AgentConfig, CircuitBreaker, Model
 
 cb = CircuitBreaker(failure_threshold=5, recovery_timeout=60, fallback=Model.Ollama("llama3.1"))
-agent = Agent(model=model, circuit_breaker=cb)
+agent = Agent(model=model, config=AgentConfig(circuit_breaker=cb))
 ```
 
 📚 **Full Documentation**: [Circuit Breaker](circuit-breaker.md)
@@ -736,13 +736,18 @@ agent = Agent(model=model, circuit_breaker=cb)
 Gate tool execution behind human approval. Use `@syrin.tool(requires_approval=True)` for per-tool approval, or `HumanInTheLoop(approve=fn)` for all-tools approval.
 
 ```python
-from syrin import Agent, ApprovalGate, tool
+from syrin import Agent, AgentConfig, ApprovalGate, tool
 
 @tool(requires_approval=True)
 def delete_record(id: str) -> str: ...
 
 gate = ApprovalGate(callback=lambda msg, t, ctx: input("Approve? [y/n]: ") == "y")
-agent = Agent(model=model, tools=[delete_record], approval_gate=gate, hitl_timeout=300)
+agent = Agent(
+    model=model,
+    tools=[delete_record],
+    config=AgentConfig(approval_gate=gate),
+    human_approval_timeout=300,
+)
 ```
 
 📚 **Full Documentation**: [HITL](hitl.md)

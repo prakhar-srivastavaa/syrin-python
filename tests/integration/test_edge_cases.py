@@ -56,7 +56,7 @@ class TestNoBudget:
 
 
 class TestNoPersistentMemory:
-    """Agent with memory=False or only conversation memory: recall/remember handled."""
+    """Agent with memory=None or only conversation memory: recall/remember handled."""
 
     def test_agent_memory_none_recall_raises_runtime_error(self) -> None:
         """memory=None: recall() raises RuntimeError (not generic Exception)."""
@@ -94,7 +94,9 @@ class TestNoMemoryBackendConfigured:
         from syrin.enums import MemoryType
 
         model = Model("anthropic/claude-3-5-sonnet")
-        agent = Agent(model=model, system_prompt="Test.", memory=True)
+        from syrin.enums import MemoryPreset
+
+        agent = Agent(model=model, system_prompt="Test.", memory=MemoryPreset.DEFAULT)
         agent.remember("Fact", memory_type=MemoryType.EPISODIC)
         entries = agent.recall(limit=5)
         assert isinstance(entries, list)

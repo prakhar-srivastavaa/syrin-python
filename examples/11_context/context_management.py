@@ -29,7 +29,7 @@ from typing import Any
 from dotenv import load_dotenv
 
 from examples.models.models import almock, gpt4_mini
-from syrin import Agent
+from syrin import Agent, AgentConfig
 from syrin.model import Model
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
@@ -63,7 +63,7 @@ def run_tour() -> None:
     agent = Agent(
         model=_model,
         system_prompt="You are a helpful assistant.",
-        context=Context(max_tokens=80_000),
+        config=AgentConfig(context=Context(max_tokens=80_000)),
     )
     agent.response("What is 2+2? Answer in one sentence.")
 
@@ -127,13 +127,15 @@ def run_tour() -> None:
     agent2 = Agent(
         model=_model,
         system_prompt="You are helpful.",
-        context=Context(
-            max_tokens=5000,
-            thresholds=[
-                ContextThreshold(at=50, action=lambda _: fired.append(50)),
-                ContextThreshold(at=70, action=lambda _: fired.append(70)),
-                ContextThreshold(at=100, action=lambda _: fired.append(100)),
-            ],
+        config=AgentConfig(
+            context=Context(
+                max_tokens=5000,
+                thresholds=[
+                    ContextThreshold(at=50, action=lambda _: fired.append(50)),
+                    ContextThreshold(at=70, action=lambda _: fired.append(70)),
+                    ContextThreshold(at=100, action=lambda _: fired.append(100)),
+                ],
+            )
         ),
     )
     agent2.response("Hello!")
@@ -171,7 +173,10 @@ def run_tour() -> None:
         def on_compact(self, _event: Any) -> None:
             pass
 
-    agent3 = Agent(model=_model, context=PassThroughContextManager())
+    agent3 = Agent(
+        model=_model,
+        config=AgentConfig(context=PassThroughContextManager()),
+    )
     agent3.response("Hi, custom manager!")
     print(
         "  Pass-through manager used; no compaction. Stats:",
@@ -193,16 +198,13 @@ def run_tour() -> None:
 
 def main() -> None:
     if "--serve" in sys.argv:
-        from syrin import Agent, Context
-
-        class ContextDemoAgent(Agent):
-            _agent_name = "context-demo"
-            _agent_description = "Agent with context management"
-            model = _model
-            system_prompt = "You are a helpful assistant."
-            context = Context(max_tokens=1000)
-
-        agent = ContextDemoAgent()
+        agent = Agent(
+            model=_model,
+            system_prompt="You are a helpful assistant.",
+            name="context-demo",
+            description="Agent with context management",
+            config=AgentConfig(context=Context(max_tokens=1000)),
+        )
         print("Serving at http://localhost:8000/playground")
         agent.serve(port=8000, enable_playground=True, debug=True)
     else:

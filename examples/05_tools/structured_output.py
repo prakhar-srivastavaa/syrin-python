@@ -2,7 +2,7 @@
 
 Demonstrates:
 - @structured decorator for output schemas
-- Output(type, validation_retries) config
+- Output(output_type, validation_retries) config (use Output(MyModel) or Output(MyModel, ...))
 - Custom OutputValidator with ValidationResult
 - Accessing result.data, result.structured.parsed
 - Validation hooks (OUTPUT_VALIDATION_START, etc.)
@@ -133,7 +133,7 @@ class RatingValidator(OutputValidator):
 
 agent = Agent(
     model=almock,
-    output=Output(type=ReviewResult, validator=RatingValidator(), validation_retries=3),
+    output=Output(ReviewResult, validator=RatingValidator(), validation_retries=3),
 )
 result = agent.response("Review: 'Terrible product.' rating 1, negative")
 print(f"is_valid: {result.structured.is_valid}")
@@ -159,7 +159,7 @@ class RestrictedUser(BaseModel):
 agent = Agent(
     model=almock,
     output=Output(
-        type=RestrictedUser,
+        RestrictedUser,
         validation_retries=3,
         context={"allowed_domains": ["company.com"]},
     ),

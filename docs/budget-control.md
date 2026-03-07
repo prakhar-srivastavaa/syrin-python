@@ -12,7 +12,7 @@ How to **keep your AI costs under control**. Perfect for:
 
 AI API calls cost money. Syrin helps you manage and monitor every dollar.
 
-**Budget = real money (USD).** All limits and thresholds here are about **spend**. Token usage caps live on **Context**: use **TokenLimits** (run, per, on_exceeded) and pass `context=Context(token_limits=TokenLimits(...))` on the agent, so Budget stays strictly about dollars.
+**Budget** = cost limits ($). **Context** = token limits and formation policy (what goes in the window, compaction, mode). All limits and thresholds in this guide are about **spend**. Token usage caps live on **Context**: use **TokenLimits** (run, per, on_exceeded) and pass `config=AgentConfig(context=Context(token_limits=TokenLimits(...)))` on the agent, so Budget stays strictly about dollars.
 
 ## The Idea
 
@@ -677,7 +677,7 @@ Example: `Agent(..., budget_store=FileBudgetStore("/data/budget.json"), budget_s
 | **Run limit** | `Budget(run=..., reserve=...)` | Max **USD** per request; effective limit is `run - reserve`. |
 | **Rate limits (spend)** | `Budget(per=RateLimit(...))` | Max **USD** per period: `hour`, `day`, `week`, `month`. |
 | **RateLimit.window** | `per.window` | Convenience: first configured window (`"hour"`, `"day"`, `"week"`, `"month"`), or None. |
-| **Token limits (Context)** | `Agent(..., context=Context(token_limits=TokenLimits(...)))` | Token caps live on Context. Use `TokenLimits(run=..., per=TokenRateLimit(...))` on Context. |
+| **Token limits (Context)** | `Agent(..., config=AgentConfig(context=Context(token_limits=TokenLimits(...))))` | Token caps live on Context. Use `TokenLimits(run=..., per=TokenRateLimit(...))` on Context. |
 | **month_days** | `RateLimit(month=..., month_days=N)` | Month = last N days (1–31). Default 30. |
 | **calendar_month** | `RateLimit(month=..., calendar_month=True)` | Month = current calendar month only (e.g. 1–30 Nov). |
 | **on_exceeded** | `Budget(on_exceeded=...)` | Callback when a limit is exceeded; receives `BudgetExceededContext` with `budget_type` (`BudgetLimitType`). |

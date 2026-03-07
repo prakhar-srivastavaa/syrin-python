@@ -18,7 +18,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from examples.models.models import almock, gpt4_mini
-from syrin import Agent, tool
+from syrin import Agent, AgentConfig, tool
 from syrin.context import Context
 from syrin.context.snapshot import ContextSegmentSource
 from syrin.model import Model
@@ -53,7 +53,7 @@ def main() -> None:
     agent = Agent(
         model=_model,
         system_prompt="You are a concise assistant. Use tools when asked to compute.",
-        context=Context(max_tokens=8_000),
+        config=AgentConfig(context=Context(max_tokens=8_000)),
         tools=[add_numbers, get_word_count],
     )
 

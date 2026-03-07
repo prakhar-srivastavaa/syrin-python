@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import threading
 
-from syrin import Agent, Budget, Model
+from syrin import Agent, AgentConfig, Budget, Model
 from syrin.budget import RateLimit
 from syrin.enums import DecayStrategy
 from syrin.memory import Memory
@@ -298,7 +298,7 @@ class TestHotSwapBlocklist:
             model=Model.Almock(),
             name="cp_agent",
             budget=Budget(run=1.0),
-            checkpoint=CheckpointConfig(storage="memory", path=None),
+            config=AgentConfig(checkpoint=CheckpointConfig(storage="memory", path=None)),
         )
         reg = get_registry()
         reg.register(agent)

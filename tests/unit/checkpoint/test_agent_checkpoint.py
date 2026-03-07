@@ -1,6 +1,7 @@
 """Tests for checkpoint integration with Agent."""
 
 from syrin import Agent, CheckpointConfig, Checkpointer, Model
+from syrin.agent.config import AgentConfig
 
 
 class TestAgentCheckpointIntegration:
@@ -10,7 +11,7 @@ class TestAgentCheckpointIntegration:
         """Test Agent accepts CheckpointConfig."""
         agent = Agent(
             model=Model(provider="openai", model_id="gpt-4o-mini"),
-            checkpoint=CheckpointConfig(storage="memory"),
+            config=AgentConfig(checkpoint=CheckpointConfig(storage="memory")),
         )
         assert agent._checkpointer is not None
 
@@ -27,7 +28,7 @@ class TestAgentCheckpointIntegration:
         checkpointer = Checkpointer()
         agent = Agent(
             model=Model(provider="openai", model_id="gpt-4o-mini"),
-            checkpoint=checkpointer,
+            config=AgentConfig(checkpoint=checkpointer),
         )
         assert agent._checkpointer is checkpointer
         assert agent._checkpoint_config is None
@@ -36,7 +37,7 @@ class TestAgentCheckpointIntegration:
         """Test Agent with disabled checkpoint."""
         agent = Agent(
             model=Model(provider="openai", model_id="gpt-4o-mini"),
-            checkpoint=CheckpointConfig(enabled=False),
+            config=AgentConfig(checkpoint=CheckpointConfig(enabled=False)),
         )
         assert agent._checkpointer is None
 
@@ -44,7 +45,7 @@ class TestAgentCheckpointIntegration:
         """Test save_checkpoint method."""
         agent = Agent(
             model=Model(provider="openai", model_id="gpt-4o-mini"),
-            checkpoint=CheckpointConfig(storage="memory"),
+            config=AgentConfig(checkpoint=CheckpointConfig(storage="memory")),
         )
         checkpoint_id = agent.save_checkpoint()
         assert checkpoint_id is not None
@@ -53,7 +54,7 @@ class TestAgentCheckpointIntegration:
         """Test save_checkpoint with custom name."""
         agent = Agent(
             model=Model(provider="openai", model_id="gpt-4o-mini"),
-            checkpoint=CheckpointConfig(storage="memory"),
+            config=AgentConfig(checkpoint=CheckpointConfig(storage="memory")),
         )
         checkpoint_id = agent.save_checkpoint("my_agent")
         assert checkpoint_id == "my_agent_1"
@@ -62,7 +63,7 @@ class TestAgentCheckpointIntegration:
         """Test list_checkpoints method."""
         agent = Agent(
             model=Model(provider="openai", model_id="gpt-4o-mini"),
-            checkpoint=CheckpointConfig(storage="memory"),
+            config=AgentConfig(checkpoint=CheckpointConfig(storage="memory")),
         )
         agent.save_checkpoint("agent1")
         agent.save_checkpoint("agent1")
@@ -74,7 +75,7 @@ class TestAgentCheckpointIntegration:
         """Test list_checkpoints uses agent class name by default."""
         agent = Agent(
             model=Model(provider="openai", model_id="gpt-4o-mini"),
-            checkpoint=CheckpointConfig(storage="memory"),
+            config=AgentConfig(checkpoint=CheckpointConfig(storage="memory")),
         )
         agent.save_checkpoint()
 
@@ -85,7 +86,7 @@ class TestAgentCheckpointIntegration:
         """Test load_checkpoint method."""
         agent = Agent(
             model=Model(provider="openai", model_id="gpt-4o-mini"),
-            checkpoint=CheckpointConfig(storage="memory"),
+            config=AgentConfig(checkpoint=CheckpointConfig(storage="memory")),
         )
         checkpoint_id = agent.save_checkpoint()
         result = agent.load_checkpoint(checkpoint_id)
@@ -99,7 +100,7 @@ class TestAgentCheckpointIntegration:
         agent = Agent(
             model=Model(provider="openai", model_id="gpt-4o-mini"),
             budget=Budget(run=10.0),
-            checkpoint=CheckpointConfig(storage="memory"),
+            config=AgentConfig(checkpoint=CheckpointConfig(storage="memory")),
         )
         agent._budget_tracker.record(
             CostInfo(cost_usd=2.5, model_name="gpt-4o-mini", token_usage=TokenUsage())
@@ -126,7 +127,7 @@ class TestAgentCheckpointIntegration:
         """Test loading nonexistent checkpoint returns False."""
         agent = Agent(
             model=Model(provider="openai", model_id="gpt-4o-mini"),
-            checkpoint=CheckpointConfig(storage="memory"),
+            config=AgentConfig(checkpoint=CheckpointConfig(storage="memory")),
         )
         result = agent.load_checkpoint("nonexistent")
         assert result is False
@@ -159,7 +160,7 @@ class TestAgentCheckpointIntegration:
         """Test get_checkpoint_report method."""
         agent = Agent(
             model=Model(provider="openai", model_id="gpt-4o-mini"),
-            checkpoint=CheckpointConfig(storage="memory"),
+            config=AgentConfig(checkpoint=CheckpointConfig(storage="memory")),
         )
         agent.save_checkpoint()
         agent.save_checkpoint()
@@ -176,9 +177,11 @@ class TestAgentCheckpointIntegration:
             db_path = os.path.join(tmpdir, "test.db")
             agent = Agent(
                 model=Model(provider="openai", model_id="gpt-4o-mini"),
-                checkpoint=CheckpointConfig(
-                    storage="sqlite",
-                    path=db_path,
+                config=AgentConfig(
+                    checkpoint=CheckpointConfig(
+                        storage="sqlite",
+                        path=db_path,
+                    ),
                 ),
             )
             assert agent._checkpointer is not None
@@ -195,9 +198,11 @@ class TestAgentCheckpointIntegration:
         with tempfile.TemporaryDirectory() as tmpdir:
             agent = Agent(
                 model=Model(provider="openai", model_id="gpt-4o-mini"),
-                checkpoint=CheckpointConfig(
-                    storage="filesystem",
-                    path=tmpdir,
+                config=AgentConfig(
+                    checkpoint=CheckpointConfig(
+                        storage="filesystem",
+                        path=tmpdir,
+                    ),
                 ),
             )
             assert agent._checkpointer is not None

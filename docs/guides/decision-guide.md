@@ -33,12 +33,14 @@ agent = Agent(model=m, system_prompt="...", memory=Memory(top_k=15))
 
 ## Budget vs Context.token_limits (TokenLimits)
 
+**Budget** = cost limits ($). **Context** = token limits and formation policy (what goes in the window, compaction, mode).
+
 **Why both have `run`, `per`, `on_exceeded`:** Same mental model—limit per run or per period, with an `on_exceeded` callback. Different units:
 
 | Concern | Use | Units | Config |
 |---------|-----|-------|--------|
 | **Cost (USD)** | Budget | Dollars | `Agent(budget=Budget(run=1.0, per=RateLimit(day=50)))` |
-| **Tokens** | Context.token_limits (TokenLimits) | Token count | `Agent(context=Context(token_limits=TokenLimits(run=100_000)))` |
+| **Tokens** | Context.token_limits (TokenLimits) | Token count | `Agent(config=AgentConfig(context=Context(token_limits=TokenLimits(run=100_000))))` or `context=ContextConfig(token_limits=...)` for the simple case |
 
 - **Budget** = how much money the agent can spend (input + output cost).
 - **TokenLimits** = how many tokens can be used (run or per hour/day/week/month).

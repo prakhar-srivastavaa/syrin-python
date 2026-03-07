@@ -23,7 +23,7 @@ from syrin.budget import (
 )
 from syrin.budget_store import BudgetStore
 from syrin.checkpoint import CheckpointConfig, Checkpointer, CheckpointTrigger
-from syrin.context import Context, DefaultContextManager
+from syrin.context import Context, ContextConfig, DefaultContextManager
 from syrin.context.config import ContextStats
 from syrin.context.snapshot import ContextSnapshot
 
@@ -68,10 +68,20 @@ class _AgentRuntime:
 
 
 from syrin._sentinel import NOT_PROVIDED
+from syrin.agent._components import (
+    AgentBudgetComponent,
+    AgentContextComponent,
+    AgentGuardrailsComponent,
+    AgentMemoryComponent,
+    AgentObservabilityComponent,
+)
 from syrin.agent._context_builder import build_messages as build_messages_for_llm
 from syrin.agent._run_context import DefaultAgentRunContext
+from syrin.agent.config import AgentConfig
 from syrin.audit import AuditHookHandler, AuditLog
+from syrin.circuit import CircuitBreaker
 from syrin.cost import calculate_cost, estimate_cost_for_call
+from syrin.domain_events import EventBus
 from syrin.enums import (
     CircuitState,
     GuardrailStage,
@@ -92,6 +102,7 @@ from syrin.exceptions import (
     ValidationError,
 )
 from syrin.guardrails import Guardrail, GuardrailChain, GuardrailResult
+from syrin.hitl import ApprovalGate
 from syrin.loop import Loop, LoopStrategyMapping, ReactLoop
 from syrin.memory import Memory
 from syrin.memory.backends import InMemoryBackend, get_backend
@@ -102,6 +113,7 @@ from syrin.observability import (
     SemanticAttributes,
     SpanKind,
     SpanStatus,
+    Tracer,
     get_tracer,
 )
 from syrin.output import Output
@@ -288,6 +300,87 @@ def _resolve_provider(model: Model | None, model_config: ModelConfig) -> Provide
     return get_provider(model_config.provider, strict=True)
 
 
+def _normalize_tools(tools_list: list[Any], instance: Any) -> tuple[list[ToolSpec], list[Any]]:
+    """Expand, validate, and bind tools to agent instance. Single place for ToolSpec/list coercion.
+
+    Expands MCP and list sources to ToolSpecs, validates no None/non-ToolSpec, binds methods
+    to instance. Returns (bound ToolSpec list, MCP instances for co-location tracking).
+
+    Raises:
+        TypeError: If any item is None or not ToolSpec after expansion.
+    """
+    mcp_instances = [x for x in tools_list if _is_mcp(x)]
+    expanded = _expand_tool_sources(tools_list)
+    out: list[ToolSpec] = []
+    for i, t in enumerate(expanded):
+        if t is None:
+            raise TypeError(
+                "tools must not contain None. "
+                "Use list of ToolSpec (from @syrin.tool or syrin.tool())."
+            )
+        if not isinstance(t, ToolSpec):
+            raise TypeError(
+                f"tools[{i}] must be ToolSpec, got {type(t).__name__}. "
+                "Use @syrin.tool or syrin.tool() to create tools."
+            )
+        out.append(_bind_tool_to_instance(t, instance))
+    return (out, mcp_instances)
+
+
+def _validate_budget(budget: Any) -> Budget | None:
+    """Validate budget is Budget or None. Single place for budget type checks.
+
+    Returns:
+        budget if valid; None if budget is None.
+
+    Raises:
+        TypeError: If budget is not None and not a Budget instance.
+    """
+    if budget is None:
+        return None
+    if not isinstance(budget, Budget):
+        raise TypeError(
+            f"budget must be Budget, got {type(budget).__name__}. "
+            "Use Budget(run=1.0, per=...) for cost limits."
+        )
+    return budget
+
+
+def _resolve_memory(
+    memory: Memory | MemoryPreset | None,
+) -> tuple[Memory | None, InMemoryBackend | None]:
+    """Normalize memory argument to (persistent_memory, backend).
+
+    None or MemoryPreset.DISABLED -> (None, None).
+    MemoryPreset.DEFAULT -> default Memory with in-memory backend.
+    Memory instance -> (memory, backend from memory.backend).
+
+    Raises:
+        TypeError: If memory is not Memory, MemoryPreset.DEFAULT, MemoryPreset.DISABLED, or None.
+    """
+    disabled = memory is None or memory is MemoryPreset.DISABLED
+    default = memory is MemoryPreset.DEFAULT
+    if (
+        memory is not None
+        and memory is not MemoryPreset.DISABLED
+        and memory is not MemoryPreset.DEFAULT
+        and not isinstance(memory, Memory)
+    ):
+        raise TypeError(
+            f"memory must be Memory, MemoryPreset.DEFAULT, MemoryPreset.DISABLED, or None, "
+            f"got {type(memory).__name__}. Use Memory(...), MemoryPreset.DEFAULT, or None."
+        )
+    if disabled:
+        return (None, None)
+    if default:
+        return (
+            Memory(types=[MemoryType.CORE, MemoryType.EPISODIC], top_k=10),
+            get_backend(MemoryBackend.MEMORY),
+        )
+    assert isinstance(memory, Memory), "memory must be Memory when not preset/disabled"
+    return (memory, get_backend(memory.backend, **memory._backend_kwargs()))
+
+
 def _emit_domain_event_for_hook(hook: Hook, ctx: EventContext, bus: Any) -> None:
     """Emit domain events for hooks that have typed domain event equivalents."""
     if hook == Hook.BUDGET_THRESHOLD:
@@ -390,8 +483,8 @@ class Agent(Servable, metaclass=_AgentMeta):
         guardrails: list[Guardrail] — Input/output guardrails. Merged with parent. Default: [].
         context: Context | None — Context window config. Default: None.
         checkpoint: CheckpointConfig | None — State checkpoint config. Default: None.
-        prompt_vars: dict[str, Any] — Template vars for system prompt (e.g. {"user_name": "Alice"}).
-                Merge with inject_builtins ({date}, {agent_id}, {conversation_id}). Default: {}.
+        template_variables: dict[str, Any] — Template vars for system prompt (e.g. {"user_name": "Alice"}).
+                Merge with inject_template_vars ({date}, {agent_id}, {conversation_id}). Default: {}.
 
     Instance attributes (read after creation):
         events: Lifecycle hooks. Use agent.events.on(Hook.LLM_REQUEST_END, fn).
@@ -415,7 +508,7 @@ class Agent(Servable, metaclass=_AgentMeta):
     _syrin_default_memory: Memory | None = None
     _syrin_default_system_prompt: str | Any = ""
     _syrin_system_prompt_method: Any = None  # @system_prompt method if present
-    _syrin_default_prompt_vars: dict[str, Any] = ()  # type: ignore[assignment]
+    _syrin_default_template_vars: dict[str, Any] = ()  # type: ignore[assignment]
     _syrin_default_tools: list[ToolSpec] = []
     _syrin_default_budget: Budget | None = None
     _syrin_default_guardrails: list[Guardrail] = []
@@ -435,7 +528,7 @@ class Agent(Servable, metaclass=_AgentMeta):
         "circuit_breaker": "_circuit_breaker",
         "output": "_output",
         "guardrails": None,
-        "prompt_vars": None,
+        "template_variables": None,
         "tools": None,
         "mcp": None,
     }
@@ -449,8 +542,8 @@ class Agent(Servable, metaclass=_AgentMeta):
             return get_agent_section_schema_and_values(self)
         if section_key == "guardrails":
             return _agent_guardrails_schema_and_values(self)
-        if section_key == "prompt_vars":
-            return _agent_prompt_vars_schema_and_values(self)
+        if section_key == "template_variables":
+            return _agent_template_vars_schema_and_values(self)
         if section_key == "tools":
             return _agent_tools_schema_and_values(self)
         if section_key == "mcp":
@@ -473,8 +566,8 @@ class Agent(Servable, metaclass=_AgentMeta):
         if section == "guardrails":
             _apply_guardrails_overrides(agent, pairs)
             return
-        if section == "prompt_vars":
-            _apply_prompt_vars_overrides(agent, pairs)
+        if section == "template_variables":
+            _apply_template_vars_overrides(agent, pairs)
             return
         if section == "tools":
             _apply_tools_overrides(agent, pairs)
@@ -513,14 +606,14 @@ class Agent(Servable, metaclass=_AgentMeta):
         cls._syrin_default_system_prompt = (
             default_prompt if default_prompt is not NOT_PROVIDED else ""
         )
-        merged_prompt_vars: dict[str, Any] = {}
+        merged_template_vars: dict[str, Any] = {}
         for c in mro:
             if c is object:
                 continue
-            pv = c.__dict__.get("prompt_vars", NOT_PROVIDED)
-            if pv is not NOT_PROVIDED and isinstance(pv, dict):
-                merged_prompt_vars = {**merged_prompt_vars, **pv}
-        cls._syrin_default_prompt_vars = merged_prompt_vars
+            tv = c.__dict__.get("template_variables", NOT_PROVIDED)
+            if tv is not NOT_PROVIDED and isinstance(tv, dict):
+                merged_template_vars = {**merged_template_vars, **tv}
+        cls._syrin_default_template_vars = merged_template_vars
         # Merge: class @tool methods first, then explicit tools. Explicit overrides by name.
         # MCP and MCPClient kept for init-time expansion; MCP also for co-location.
         class_tools = _collect_class_tools(cls)
@@ -563,26 +656,18 @@ class Agent(Servable, metaclass=_AgentMeta):
         max_tool_iterations: int = DEFAULT_MAX_TOOL_ITERATIONS,
         budget_store: BudgetStore | None = None,
         budget_store_key: str = "default",
-        memory: Memory | MemoryPreset | bool | None = NOT_PROVIDED,
+        memory: Memory | MemoryPreset | None = NOT_PROVIDED,
         loop_strategy: LoopStrategy = LoopStrategy.REACT,
-        loop: Loop | type[Loop] | None = None,
+        custom_loop: Loop | type[Loop] | None = None,
         guardrails: list[Guardrail] | GuardrailChain | None = NOT_PROVIDED,
-        context: Context | DefaultContextManager | None = None,
-        rate_limit: APIRateLimit | RateLimitManager | None = None,
-        checkpoint: CheckpointConfig | Checkpointer | None = None,
-        circuit_breaker: Any = None,
-        approval_gate: Any = None,
-        hitl_timeout: int = 300,
+        human_approval_timeout: int = 300,
         debug: bool = False,
-        tracer: Any = None,
-        bus: Any = None,
-        audit: Any = None,
-        deps: Any = None,
         name: str | None = NOT_PROVIDED,
         description: str | None = NOT_PROVIDED,
-        prompt_vars: dict[str, Any] | None = None,
-        inject_builtins: bool = True,
-        max_children: int | None = None,
+        template_variables: dict[str, Any] | None = None,
+        inject_template_vars: bool = True,
+        max_child_agents: int | None = None,
+        config: AgentConfig | None = None,
     ) -> None:
         """Create an agent with model, prompt, tools, and optional config.
 
@@ -597,48 +682,42 @@ class Agent(Servable, metaclass=_AgentMeta):
         **Optional (advanced):**
             output: Structured output config (Pydantic model). Validates responses.
             max_tool_iterations: Max tool-call loops per response (default 10).
-                Why: Stops infinite tool loops. Increase for complex workflows.
+                Why: Stops infinite tool loops. Increase for complex multi-step tool workflows.
+                When: Increase for agents that chain many tools; decrease to fail fast on bugs.
             budget_store: Persist budget across runs (e.g. FileBudgetStore).
                 Why: Track spend across restarts. Requires budget_store_key.
+                When: Production apps with per-user or per-session budget tracking.
             budget_store_key: Key for budget persistence (default "default").
                 Why: Isolate budgets per user/session when using budget_store.
+                When: Multi-tenant apps; each tenant gets separate budget key.
             memory: Memory for conversation and optional persistent recall.
-                memory=None or MemoryPreset.DISABLED: no memory (stateless).
+                memory=None or MemoryPreset.DISABLED: no memory (stateless, single-turn).
                 memory=MemoryPreset.DEFAULT: core+episodic, top_k=10.
-                memory=Memory(): full config (remember/recall/forget). Default: Memory() for multi-turn.
-                Note: memory=True/False still accepted but prefer MemoryPreset.DEFAULT/DISABLED.
-            loop_strategy: Execution strategy. REACT: tool loop (reason→act→observe).
-                SINGLE_SHOT: one LLM call, no tools. Use REACT for tool-using agents.
-            loop: Custom Loop instance. Overrides loop_strategy if set.
+                memory=Memory(): full config (remember/recall/forget).
+                When: Use MemoryPreset.DEFAULT for chat; Memory() for custom backends/thresholds.
+            loop_strategy: Built-in execution strategy (REACT or SINGLE_SHOT).
+                REACT: tool loop (reason→act→observe). Use for agents with tools.
+                SINGLE_SHOT: one LLM call, no tool loop. Use for simple Q&A.
+                Ignored when custom_loop is set.
+            custom_loop: Custom Loop instance or class. Overrides loop_strategy when provided.
+                Use only when you implement your own Loop (e.g. HumanInTheLoop); for built-in
+                behavior use loop_strategy=LoopStrategy.REACT or LoopStrategy.SINGLE_SHOT.
             guardrails: List of Guardrail or GuardrailChain. Validate input/output.
                 Why: Block harmful content, PII, or policy violations.
-            context: Context config (max_tokens, thresholds, budget). Token caps
-                go in context.token_limits (TokenLimits).
-            rate_limit: APIRateLimit to enforce RPM/TPM.
-                Why: Avoid 429 errors from provider rate limits.
-            checkpoint: CheckpointConfig for save/restore state.
-                Why: Resume after crashes or save progress in long runs.
+                When: Production agents handling user input or regulated domains.
             debug: If True, print lifecycle events to console.
                 Why: Quick visibility into agent behavior.
-            tracer: Custom tracer for observability.
-            bus: Optional EventBus for typed domain events (BudgetThresholdReached,
-                ContextCompacted). Use when you need structured event handling for
-                metrics, observability, or custom pipelines.
-            audit: Optional AuditLog for compliance logging. Writes LLM calls, tool
-                calls, handoffs, spawns to JSONL or custom backend.
-            circuit_breaker: Optional CircuitBreaker for LLM provider failures. Trips
-                after N failures; uses fallback model when open or raises
-                CircuitBreakerOpenError if no fallback.
-            approval_gate: Optional ApprovalGate for HITL. When tools have
-                requires_approval=True, blocks until approval. Default: None (reject).
-            hitl_timeout: Seconds to wait for approval. On timeout, reject. Default 300.
-            deps: Dependencies for tools. Tools with ctx: RunContext[Deps] receive this
-                via ctx.deps. Enables testing (mock deps) and multi-tenant (user deps).
-            inject_builtins: If True (default), inject {date}, {agent_id}, {conversation_id}
-                as template vars in system prompts. Set False if you don't use them.
-            max_children: Cap on concurrent child agents when using spawn(). When set,
-                spawn() raises RuntimeError if limit reached. Default: 10 (from class
-                _max_children if not set). Use spawn(..., max_children=N) to override per call.
+                When: Development and debugging.
+            human_approval_timeout: Seconds to wait for HITL approval. On timeout, reject. Default 300.
+            config: AgentConfig for advanced options (context, rate_limit, checkpoint,
+                circuit_breaker, approval_gate, tracer, event_bus, audit, dependencies).
+                Use config=AgentConfig(context=Context(...), audit=AuditLog(...)) etc.
+            template_variables: Template vars for system prompts (e.g. {"user_name": "Alice"}).
+                Merged with inject_template_vars ({date}, {agent_id}, {conversation_id}).
+            inject_template_vars: If True (default), inject {date}, {agent_id}, {conversation_id}
+                into system prompts. Set False if you don't use them.
+            max_child_agents: Cap on concurrent child agents when using spawn().
+                When exceeded, spawn() raises RuntimeError. Default: 10.
 
         Example:
             >>> agent = Agent(
@@ -729,27 +808,9 @@ class Agent(Servable, metaclass=_AgentMeta):
                 f"tools must be list of ToolSpec or None, got {type(tools).__name__}. "
                 "Use @syrin.tool or syrin.tool() to create tools."
             )
-        tools_list: list[Any] = tools if isinstance(tools, list) else []
-        mcp_instances = [x for x in tools_list if _is_mcp(x)]
-        tools_expanded = _expand_tool_sources(tools_list)
-        tools_final: list[ToolSpec] = []
-        for i, t in enumerate(tools_expanded):
-            if t is None:
-                raise TypeError(
-                    "tools must not contain None. "
-                    "Use list of ToolSpec (from @syrin.tool or syrin.tool())."
-                )
-            if not isinstance(t, ToolSpec):
-                raise TypeError(
-                    f"tools[{i}] must be ToolSpec, got {type(t).__name__}. "
-                    "Use @syrin.tool or syrin.tool() to create tools."
-                )
-            tools_final.append(_bind_tool_to_instance(t, self))
-        if budget is not None and not isinstance(budget, Budget):
-            raise TypeError(
-                f"budget must be Budget, got {type(budget).__name__}. "
-                "Use Budget(run=1.0, per=...) for cost limits."
-            )
+        tools_list = tools if isinstance(tools, list) else []
+        tools_final, mcp_instances = _normalize_tools(tools_list, self)
+        budget = _validate_budget(budget)
         if model is None:
             raise TypeError("Agent requires model (pass explicitly or set class-level model)")
         if not isinstance(model, (Model, ModelConfig)):
@@ -774,11 +835,11 @@ class Agent(Servable, metaclass=_AgentMeta):
         )
         if self._system_prompt_source is NOT_PROVIDED:
             self._system_prompt_source = ""
-        class_pv = getattr(cls, "_syrin_default_prompt_vars", None) or {}
-        instance_pv = dict(prompt_vars or {})
-        self._prompt_vars = {**class_pv, **instance_pv}
-        self._inject_builtins = inject_builtins
-        self._call_prompt_vars: dict[str, Any] | None = None
+        class_pv = getattr(cls, "_syrin_default_template_vars", None) or {}
+        instance_pv = dict(template_variables or {})
+        self._template_vars = {**class_pv, **instance_pv}
+        self._inject_template_vars = inject_template_vars
+        self._call_template_vars: dict[str, Any] | None = None
         self._tools = tools_final if tools_final else []
         self._mcp_instances: list[Any] = mcp_instances
         self._guardrails_disabled: set[str] = set()
@@ -791,64 +852,39 @@ class Agent(Servable, metaclass=_AgentMeta):
                     if isinstance(t, ToolSpec):
                         self._runtime.mcp_tool_indices[t.name] = i
         self._max_tool_iterations = max_tool_iterations
-        self._budget = budget
-        self._budget_store = budget_store
-        self._budget_store_key = budget_store_key
-        self._token_limits = None
-        self._persistent_memory: Memory | None = None
-        self._memory_backend: InMemoryBackend | None = None
         self._parent_agent: Agent | None = None
         self._provider: Provider
 
-        # Context (and budget from context) set early for budget_store load
-        if context is None:
-            self._context = DefaultContextManager(Context())
-        elif isinstance(context, Context):
-            self._context = DefaultContextManager(context)
-        else:
-            self._context = context
-        ctx_config = getattr(self._context, "context", None)
-        self._token_limits = getattr(ctx_config, "token_limits", None) if ctx_config else None
+        # Extract advanced options from config (Phase 2: composition over flat params)
+        ctx = config.context if config else None
+        rate_limit = config.rate_limit if config else None
+        checkpoint = config.checkpoint if config else None
+        circuit_breaker = config.circuit_breaker if config else None
+        approval_gate = config.approval_gate if config else None
+        tracer = config.tracer if config else None
+        event_bus = config.event_bus if config else None
+        audit = config.audit if config else None
+        dependencies = config.dependencies if config else None
 
-        # Normalize memory: accept MemoryPreset, Memory, bool (deprecated), None
-        _memory_disabled = memory is None or memory is False or memory is MemoryPreset.DISABLED
-        _memory_default = memory is True or memory is MemoryPreset.DEFAULT
-        if (
-            memory is not None
-            and memory is not True
-            and memory is not False
-            and memory is not MemoryPreset.DISABLED
-            and memory is not MemoryPreset.DEFAULT
-            and not isinstance(memory, Memory)
-        ):
-            raise TypeError(
-                f"memory must be Memory, MemoryPreset.DEFAULT, MemoryPreset.DISABLED, or None, "
-                f"got {type(memory).__name__}. Use Memory(...), MemoryPreset.DEFAULT, or None."
-            )
-        if memory is True or memory is False:
-            import warnings
-
-            warnings.warn(
-                "memory=True/False is deprecated; use MemoryPreset.DEFAULT or MemoryPreset.DISABLED instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-        if _memory_disabled:
-            self._persistent_memory = None
-            self._memory_backend = None
-        elif _memory_default:
-            self._persistent_memory = Memory(
-                types=[MemoryType.CORE, MemoryType.EPISODIC],
-                top_k=10,
-            )
-            self._memory_backend = get_backend(MemoryBackend.MEMORY)
+        # Context component (Phase 3.1): manager and token limits
+        if ctx is None:
+            context_manager = DefaultContextManager(Context())
+        elif isinstance(ctx, ContextConfig):
+            context_manager = DefaultContextManager(ctx.to_context())
+        elif isinstance(ctx, Context):
+            context_manager = DefaultContextManager(ctx)
         else:
-            assert isinstance(memory, Memory), "memory must be Memory when not preset/disabled"
-            self._persistent_memory = memory
-            self._memory_backend = get_backend(memory.backend, **memory._backend_kwargs())
+            context_manager = ctx
+        ctx_config = getattr(context_manager, "context", None)
+        token_limits = getattr(ctx_config, "token_limits", None) if ctx_config else None
+        self._context_component = AgentContextComponent(context_manager, token_limits)
+
+        # Memory component (Phase 3.1)
+        persistent_memory, memory_backend = _resolve_memory(memory)
+        self._memory_component = AgentMemoryComponent(persistent_memory, memory_backend)
 
         # Warn when context needs memory but memory is disabled
-        if self._persistent_memory is None and ctx_config is not None:
+        if self._memory_component.persistent_memory is None and ctx_config is not None:
             mode = getattr(ctx_config, "context_mode", None)
             if mode is not None and str(getattr(mode, "value", mode)) == "intelligent":
                 import warnings
@@ -860,18 +896,21 @@ class Agent(Servable, metaclass=_AgentMeta):
                     stacklevel=2,
                 )
 
-        if (budget is not None or self._token_limits is not None) and budget_store and budget:
-            loaded = budget_store.load(budget_store_key)
-            self._budget_tracker = loaded if loaded is not None else BudgetTracker()
-        else:
-            self._budget_tracker = BudgetTracker()
+        # Budget component (Phase 3.1): state and persistence
+        self._budget_component = AgentBudgetComponent(
+            budget, budget_store, budget_store_key, self._context_component.token_limits
+        )
         self._provider = _resolve_provider(self._model, self._model_config)
         object.__setattr__(self, "_agent_name", name)
         self._description = description
-        self._deps: Any = deps
-        if self._budget is not None:
-            self._budget._consume_callback = self._make_budget_consume_callback()
-        if self._budget is not None and self._budget.per is not None and self._budget_store is None:
+        self._dependencies: object | None = dependencies
+        if self._budget_component.budget is not None:
+            self._budget_component.budget._consume_callback = self._make_budget_consume_callback()
+        if (
+            self._budget_component.budget is not None
+            and self._budget_component.budget.per is not None
+            and self._budget_component.store is None
+        ):
             _log.warning(
                 "Rate limits (hour/day/week/month) are in-memory only; "
                 "pass budget_store (e.g. FileBudgetStore) to persist across restarts."
@@ -888,11 +927,15 @@ class Agent(Servable, metaclass=_AgentMeta):
                 )
 
         loop_instance: Loop
-        if loop is not None:
-            if isinstance(loop, type) and hasattr(loop, "run") and callable(loop.run):
-                loop_instance = loop()
-            elif hasattr(loop, "run") and callable(loop.run):
-                loop_instance = loop  # type: ignore[assignment]
+        if custom_loop is not None:
+            if (
+                isinstance(custom_loop, type)
+                and hasattr(custom_loop, "run")
+                and callable(custom_loop.run)
+            ):
+                loop_instance = custom_loop()
+            elif hasattr(custom_loop, "run") and callable(custom_loop.run):
+                loop_instance = custom_loop  # type: ignore[assignment]
             else:
                 loop_instance = ReactLoop(max_iterations=max_tool_iterations)
         else:
@@ -903,25 +946,26 @@ class Agent(Servable, metaclass=_AgentMeta):
         self._last_iteration: int = 0
         self._conversation_id: str | None = None  # Set by caller; scopes state per conversation
         self._child_count: int = 0
-        if max_children is not None:
-            self._max_children = max_children
+        if max_child_agents is not None:
+            self._max_child_agents = max_child_agents
 
-        # Guardrails setup
+        # Guardrails component (Phase 3.1)
         if guardrails is None or (isinstance(guardrails, list) and len(guardrails) == 0):
-            self._guardrails = GuardrailChain()
+            _guardrails = GuardrailChain()
         elif isinstance(guardrails, GuardrailChain):
-            self._guardrails = guardrails
+            _guardrails = guardrails
         else:
-            self._guardrails = GuardrailChain(list(guardrails))
+            _guardrails = GuardrailChain(list(guardrails))
+        self._guardrails_component = AgentGuardrailsComponent(_guardrails)
 
-        # Observability setup (before context to pass tracer)
+        # Observability component (Phase 3.1)
         self._debug = debug
-        self._tracer = tracer or get_tracer()
-        self._bus = bus
-        if debug and not any(isinstance(e, ConsoleExporter) for e in self._tracer._exporters):
-            self._tracer.add_exporter(ConsoleExporter())
+        _tracer: Tracer = tracer or get_tracer()
+        if debug and not any(isinstance(e, ConsoleExporter) for e in _tracer._exporters):
+            _tracer.add_exporter(ConsoleExporter())
         if debug:
-            self._tracer.set_debug_mode(True)
+            _tracer.set_debug_mode(True)
+        self._observability_component = AgentObservabilityComponent(_tracer, event_bus, audit)
 
         # Connect context to events and observability
         if hasattr(self._context, "set_emit_fn"):
@@ -958,7 +1002,6 @@ class Agent(Servable, metaclass=_AgentMeta):
         self.events = Events(self._emit_event)
 
         # Audit logging (compliance)
-        self._audit = audit
         if audit is not None:
             if not isinstance(audit, AuditLog):
                 raise TypeError(
@@ -971,20 +1014,17 @@ class Agent(Servable, metaclass=_AgentMeta):
         # Initialize run report for tracking metrics across a response() call
         self._run_report: AgentReport = AgentReport()
 
-        self._approval_gate = approval_gate
-        self._hitl_timeout = hitl_timeout
+        self._approval_gate: ApprovalGate | None = approval_gate
+        self._human_approval_timeout = human_approval_timeout
 
         # Circuit breaker
-        self._circuit_breaker = circuit_breaker
+        self._circuit_breaker: CircuitBreaker | None = circuit_breaker
         self._fallback_provider: Provider | None = None
         self._fallback_model_config: ModelConfig | None = None
-        if circuit_breaker is not None:
-            from syrin.circuit import CircuitBreaker
-
-            if not isinstance(circuit_breaker, CircuitBreaker):
-                raise TypeError(
-                    f"circuit_breaker must be CircuitBreaker or None, got {type(circuit_breaker).__name__}"
-                )
+        if circuit_breaker is not None and not isinstance(circuit_breaker, CircuitBreaker):
+            raise TypeError(
+                f"circuit_breaker must be CircuitBreaker or None, got {type(circuit_breaker).__name__}"
+            )
 
         # Checkpoint setup
         if checkpoint is None:
@@ -1059,7 +1099,7 @@ class Agent(Servable, metaclass=_AgentMeta):
             Checkpoint ID (str) for load_checkpoint, or None if disabled.
 
         Example:
-            >>> agent = Agent(model=m, checkpoint=CheckpointConfig(storage="memory"))
+            >>> agent = Agent(model=m, config=AgentConfig(checkpoint=CheckpointConfig(storage="memory")))
             >>> cid = agent.save_checkpoint(reason="before_expensive_step")
             >>> agent.load_checkpoint(cid)
         """
@@ -1229,9 +1269,9 @@ class Agent(Servable, metaclass=_AgentMeta):
         self.events._trigger_after(hook, ctx)
 
         # Domain events (observability, typed consumers)
-        bus = getattr(self, "_bus", None)
-        if bus is not None:
-            _emit_domain_event_for_hook(hook, ctx, bus)
+        event_bus = getattr(self, "_event_bus", None)
+        if event_bus is not None:
+            _emit_domain_event_for_hook(hook, ctx, event_bus)
 
     def _print_event(self, event: str, ctx: EventContext) -> None:
         """Print event to console when debug=True."""
@@ -1371,6 +1411,71 @@ class Agent(Servable, metaclass=_AgentMeta):
             percent_used=round(percent, 2),
         )
 
+    # Phase 3.1: delegate to budget component (facade)
+    @property
+    def _budget_tracker(self) -> BudgetTracker:
+        return self._budget_component.tracker
+
+    @_budget_tracker.setter
+    def _budget_tracker(self, value: BudgetTracker) -> None:
+        self._budget_component.set_tracker(value)
+
+    @property
+    def _budget(self) -> Budget | None:
+        return self._budget_component.budget
+
+    @_budget.setter
+    def _budget(self, value: Budget | None) -> None:
+        self._budget_component.set_budget(value)
+
+    @property
+    def _budget_store(self) -> BudgetStore | None:
+        return self._budget_component.store
+
+    @property
+    def _budget_store_key(self) -> str:
+        return self._budget_component.key
+
+    @property
+    def _context(self) -> Any:
+        return self._context_component.context_manager
+
+    @property
+    def _token_limits(self) -> Any:
+        return self._context_component.token_limits
+
+    @property
+    def _persistent_memory(self) -> Memory | None:
+        return cast("Memory | None", self._memory_component.persistent_memory)
+
+    @_persistent_memory.setter
+    def _persistent_memory(self, value: Memory | None) -> None:
+        self._memory_component.set_persistent_memory(value)
+
+    @property
+    def _memory_backend(self) -> InMemoryBackend | None:
+        return cast("InMemoryBackend | None", self._memory_component.memory_backend)
+
+    @_memory_backend.setter
+    def _memory_backend(self, value: InMemoryBackend | None) -> None:
+        self._memory_component.set_memory_backend(value)
+
+    @property
+    def _guardrails(self) -> GuardrailChain:
+        return cast(GuardrailChain, self._guardrails_component.guardrails)
+
+    @property
+    def _tracer(self) -> Tracer:
+        return cast(Tracer, self._observability_component.tracer)
+
+    @property
+    def _event_bus(self) -> EventBus[Any] | None:
+        return cast("EventBus[Any] | None", self._observability_component.event_bus)
+
+    @property
+    def _audit(self) -> AuditLog | None:
+        return cast("AuditLog | None", self._observability_component.audit)
+
     def get_budget_tracker(self) -> BudgetTracker | None:
         """Return the budget tracker when this agent has a budget or token_limits.
 
@@ -1441,9 +1546,9 @@ class Agent(Servable, metaclass=_AgentMeta):
         during prepare, to compact context on demand (no auto_compact_at).
         """
         if hasattr(self._context, "context") and hasattr(self._context, "compact"):
-            return _ContextFacade(self._context.context, self._context)
+            return _ContextFacade(cast(Context, self._context.context), self._context)
         if hasattr(self._context, "context"):
-            return self._context.context
+            return cast(Context, self._context.context)
         return Context()
 
     @property
@@ -1453,13 +1558,13 @@ class Agent(Servable, metaclass=_AgentMeta):
         Why: Debug context size, see if compaction ran, track token growth.
         """
         if hasattr(self._context, "stats"):
-            return self._context.stats
+            return cast(ContextStats, self._context.stats)
         return ContextStats()
 
     @property
     def _context_manager(self) -> DefaultContextManager:
         """Internal context manager."""
-        return self._context
+        return cast(DefaultContextManager, self._context)
 
     @property
     def run_context(self) -> DefaultAgentRunContext:
@@ -1530,7 +1635,7 @@ class Agent(Servable, metaclass=_AgentMeta):
         Memory types: CORE (identity/prefs), EPISODIC (events), SEMANTIC (facts),
         PROCEDURAL (patterns). Importance 0.0–1.0 affects recall ranking.
 
-        Requires persistent memory (Memory). Use memory=False to disable.
+        Requires persistent memory (Memory). Use memory=None or MemoryPreset.DISABLED to disable.
 
         Args:
             content: Text to store (e.g. "User prefers dark mode").
@@ -1932,7 +2037,7 @@ class Agent(Servable, metaclass=_AgentMeta):
         task: str | None = None,
         *,
         budget: Budget | None = None,
-        max_children: int | None = None,
+        max_child_agents: int | None = None,
     ) -> Agent | Response[str]:
         """Create a child agent. Optionally run a task and return its response.
 
@@ -1947,7 +2052,7 @@ class Agent(Servable, metaclass=_AgentMeta):
             agent_class: Agent class to spawn (e.g. ResearchAgent).
             task: If set, run task and return Response. Else return agent instance.
             budget: Child's budget (pocket money). Must not exceed parent remaining.
-            max_children: Cap on concurrent children. Default from _max_children or 10.
+            max_child_agents: Cap on concurrent children. Default from instance or 10.
 
         Returns:
             Response if task given; else the spawned Agent instance.
@@ -1959,13 +2064,13 @@ class Agent(Servable, metaclass=_AgentMeta):
         """
         import time
 
-        use_instance_limit = max_children is None
-        _max_children = getattr(self, "_max_children", 10) if use_instance_limit else max_children
+        use_instance_limit = max_child_agents is None
+        limit = getattr(self, "_max_child_agents", 10) if use_instance_limit else max_child_agents
 
         current_children = getattr(self, "_child_count", 0)
 
-        if _max_children and current_children >= _max_children:
-            raise RuntimeError(f"Cannot spawn: max children ({_max_children}) reached")
+        if limit and current_children >= limit:
+            raise RuntimeError(f"Cannot spawn: max child agents ({limit}) reached")
 
         child_name = agent_class.__name__
         child_task = task or ""
@@ -2080,7 +2185,7 @@ class Agent(Servable, metaclass=_AgentMeta):
         """Run multiple agents via spawn(), each with its own task.
 
         Why: Fan-out work (e.g. research + summarization + fact-check).
-        Runs sequentially via spawn() to respect parent budget and max_children.
+        Runs sequentially via spawn() to respect parent budget and max_child_agents.
         Emits SPAWN_START/SPAWN_END per child.
 
         Note: Uses sequential execution to avoid event-loop conflicts with
@@ -2113,13 +2218,15 @@ class Agent(Servable, metaclass=_AgentMeta):
         method = getattr(self.__class__, "_syrin_system_prompt_method", None)
         return method if method is not None else self._system_prompt_source
 
-    def effective_prompt_vars(self, call_vars: dict[str, Any] | None = None) -> dict[str, Any]:
-        """Return merged prompt_vars: class + instance + call. For introspection."""
-        class_pv = getattr(self.__class__, "_syrin_default_prompt_vars", None) or {}
-        merged = {**class_pv, **self._prompt_vars}
+    def effective_template_variables(
+        self, call_vars: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        """Return merged template_variables: class + instance + call. For introspection."""
+        class_tv = getattr(self.__class__, "_syrin_default_template_vars", None) or {}
+        merged = {**class_tv, **self._template_vars}
         if call_vars:
             merged = {**merged, **call_vars}
-        if self._inject_builtins:
+        if self._inject_template_vars:
             builtins = self.get_prompt_builtins()
             for k, v in builtins.items():
                 if k not in merged:
@@ -2164,7 +2271,7 @@ class Agent(Servable, metaclass=_AgentMeta):
             except (ValueError, TypeError) as e:
                 raise ValueError(
                     f"Prompt {getattr(source, 'name', 'unknown')} missing required params. "
-                    f"Pass via Agent(prompt_vars={{...}}) or response(..., prompt_vars={{...}}). {e}"
+                    f"Pass via Agent(template_variables={{...}}) or response(..., template_variables={{...}}). {e}"
                 ) from e
         if callable(source):
             sig = inspect.signature(source)
@@ -2204,18 +2311,18 @@ class Agent(Servable, metaclass=_AgentMeta):
                 return self._context.context.get_capacity(model_for_context)
             return Context().get_capacity(model_for_context)
 
-        call_pv = getattr(self, "_call_prompt_vars", None) or {}
-        effective_vars = self.effective_prompt_vars(call_vars=call_pv)
+        call_tv = getattr(self, "_call_template_vars", None) or {}
+        effective_vars = self.effective_template_variables(call_vars=call_tv)
         conversation_id = getattr(self, "_conversation_id", None)
         ctx = make_prompt_context(
-            self, conversation_id=conversation_id, inject_builtins=self._inject_builtins
+            self, conversation_id=conversation_id, inject_template_vars=self._inject_template_vars
         )
         emit = getattr(self, "_emit_event", None)
         if emit:
             emit(
                 Hook.SYSTEM_PROMPT_BEFORE_RESOLVE,
                 EventContext(
-                    prompt_vars=effective_vars,
+                    template_variables=effective_vars,
                     source=getattr(self.__class__, "_syrin_system_prompt_method", None)
                     or self._system_prompt_source,
                 ),
@@ -2332,13 +2439,13 @@ class Agent(Servable, metaclass=_AgentMeta):
             if spec.name == name:
                 try:
                     if spec.inject_run_context:
-                        if self._deps is None:
+                        if self._dependencies is None:
                             raise ToolExecutionError(
-                                f"Tool {name!r} expects ctx: RunContext but Agent has no deps. "
-                                "Pass deps=MyDeps(...) to Agent."
+                                f"Tool {name!r} expects ctx: RunContext but Agent has no dependencies. "
+                                "Pass dependencies=MyDeps(...) to Agent."
                             )
                         ctx = RunContext(
-                            deps=self._deps,
+                            deps=self._dependencies,
                             agent_name=cast(str, self._agent_name),
                             conversation_id=getattr(self, "_conversation_id", None),
                             budget_state=self.budget_state,
@@ -2624,8 +2731,7 @@ class Agent(Servable, metaclass=_AgentMeta):
         self._budget_tracker.record(cost_info)
         if self._budget is not None:
             self._budget._set_spent(self._budget_tracker.current_run_cost)
-        if self._budget_store is not None:
-            self._budget_store.save(self._budget_store_key, self._budget_tracker)
+        self._budget_component.save()
         self._check_and_apply_budget()
 
     async def _complete_async(
@@ -2650,7 +2756,10 @@ class Agent(Servable, metaclass=_AgentMeta):
         """Resolve fallback model to (provider, config). Cached."""
         if self._fallback_provider is not None and self._fallback_model_config is not None:
             return self._fallback_provider, self._fallback_model_config
-        fallback = self._circuit_breaker.fallback
+        cb = self._circuit_breaker
+        if cb is None:
+            raise ValueError("circuit_breaker is not set")
+        fallback = cb.fallback
         if fallback is None:
             raise ValueError("circuit_breaker has no fallback")
         fallback_model = Model(model_id=fallback) if isinstance(fallback, str) else fallback
@@ -2810,8 +2919,7 @@ class Agent(Servable, metaclass=_AgentMeta):
                         self._budget_tracker.record(cost_info)
                         if self._budget is not None:
                             self._budget._set_spent(self._budget_tracker.current_run_cost)
-                        if self._budget_store is not None:
-                            self._budget_store.save(self._budget_store_key, self._budget_tracker)
+                        self._budget_component.save()
                 yield StreamChunk(
                     index=chunk_index,
                     text=content,
@@ -2833,7 +2941,7 @@ class Agent(Servable, metaclass=_AgentMeta):
         self,
         user_input: str,
         context: Context | None = None,
-        prompt_vars: dict[str, Any] | None = None,
+        template_variables: dict[str, Any] | None = None,
         *,
         inject: list[dict[str, Any]] | None = None,
         inject_source_detail: str | None = None,
@@ -2849,8 +2957,8 @@ class Agent(Servable, metaclass=_AgentMeta):
             context: Optional Context for this call only. When set, overrides the agent's
                 default context (max_tokens, reserve, thresholds, budget). The Context
                 used for this call is on ``result.context``; per-call stats on ``result.context_stats``.
-            prompt_vars: Optional per-call prompt vars for dynamic system prompts.
-                Overrides instance prompt_vars for this call only.
+            template_variables: Optional per-call template vars for dynamic system prompts.
+                Overrides instance template_variables for this call only.
             inject: Optional per-call context injection (RAG results, dynamic blocks).
                 Each item is a dict with ``role`` and ``content``. Overrides Context.runtime_inject when provided.
             inject_source_detail: Provenance label for inject (e.g. 'rag').
@@ -2865,7 +2973,7 @@ class Agent(Servable, metaclass=_AgentMeta):
         """
         _validate_user_input(user_input, "response")
         self._call_context = context
-        self._call_prompt_vars = dict(prompt_vars) if prompt_vars else None
+        self._call_template_vars = dict(template_variables) if template_variables else None
         self._call_inject = inject
         self._call_inject_source_detail = inject_source_detail
         try:
@@ -2884,7 +2992,7 @@ class Agent(Servable, metaclass=_AgentMeta):
                 raise
         finally:
             self._call_context = None
-            self._call_prompt_vars = None
+            self._call_template_vars = None
             self._call_inject = None
             self._call_inject_source_detail = None
 
@@ -2892,7 +3000,7 @@ class Agent(Servable, metaclass=_AgentMeta):
         self,
         user_input: str,
         context: Context | None = None,
-        prompt_vars: dict[str, Any] | None = None,
+        template_variables: dict[str, Any] | None = None,
         *,
         inject: list[dict[str, Any]] | None = None,
         inject_source_detail: str | None = None,
@@ -2907,7 +3015,7 @@ class Agent(Servable, metaclass=_AgentMeta):
             context: Optional Context for this call only (see response()). Overrides
                 the agent's context for this call. Used context is on ``result.context``;
                 per-call stats on ``result.context_stats``.
-            prompt_vars: Optional per-call prompt vars for dynamic system prompts.
+            template_variables: Optional per-call template vars for dynamic system prompts.
 
         Returns:
             Response (same as response()).
@@ -2917,7 +3025,7 @@ class Agent(Servable, metaclass=_AgentMeta):
         """
         _validate_user_input(user_input, "arun")
         self._call_context = context
-        self._call_prompt_vars = dict(prompt_vars) if prompt_vars else None
+        self._call_template_vars = dict(template_variables) if template_variables else None
         self._call_inject = inject
         self._call_inject_source_detail = inject_source_detail
         try:
@@ -2936,7 +3044,7 @@ class Agent(Servable, metaclass=_AgentMeta):
                 raise
         finally:
             self._call_context = None
-            self._call_prompt_vars = None
+            self._call_template_vars = None
             self._call_inject = None
             self._call_inject_source_detail = None
 
@@ -2944,7 +3052,7 @@ class Agent(Servable, metaclass=_AgentMeta):
         self,
         user_input: str,
         context: Context | None = None,
-        prompt_vars: dict[str, Any] | None = None,
+        template_variables: dict[str, Any] | None = None,
         *,
         inject: list[dict[str, Any]] | None = None,
         inject_source_detail: str | None = None,
@@ -2957,7 +3065,7 @@ class Agent(Servable, metaclass=_AgentMeta):
         Args:
             user_input: User message.
             context: Optional Context for this call only (see response()). Overrides agent's context.
-            prompt_vars: Optional per-call prompt vars for dynamic system prompts.
+            template_variables: Optional per-call template vars for dynamic system prompts.
 
         Yields:
             StreamChunk with text (delta), accumulated_text, cost_so_far,
@@ -2973,7 +3081,7 @@ class Agent(Servable, metaclass=_AgentMeta):
         """
         _validate_user_input(user_input, "stream")
         self._call_context = context
-        self._call_prompt_vars = dict(prompt_vars) if prompt_vars else None
+        self._call_template_vars = dict(template_variables) if template_variables else None
         self._call_inject = inject
         self._call_inject_source_detail = inject_source_detail
         try:
@@ -2984,7 +3092,7 @@ class Agent(Servable, metaclass=_AgentMeta):
             yield from self._stream_response(user_input)
         finally:
             self._call_context = None
-            self._call_prompt_vars = None
+            self._call_template_vars = None
             self._call_inject = None
             self._call_inject_source_detail = None
 
@@ -2992,7 +3100,7 @@ class Agent(Servable, metaclass=_AgentMeta):
         self,
         user_input: str,
         context: Context | None = None,
-        prompt_vars: dict[str, Any] | None = None,
+        template_variables: dict[str, Any] | None = None,
         *,
         inject: list[dict[str, Any]] | None = None,
         inject_source_detail: str | None = None,
@@ -3004,7 +3112,7 @@ class Agent(Servable, metaclass=_AgentMeta):
         Args:
             user_input: User message.
             context: Optional Context for this call only (see response()). Overrides agent's context.
-            prompt_vars: Optional per-call prompt vars for dynamic system prompts.
+            template_variables: Optional per-call template vars for dynamic system prompts.
 
         Note:
             Astream does not return a Response; for context stats for this run,
@@ -3016,7 +3124,7 @@ class Agent(Servable, metaclass=_AgentMeta):
         """
         _validate_user_input(user_input, "astream")
         self._call_context = context
-        self._call_prompt_vars = dict(prompt_vars) if prompt_vars else None
+        self._call_template_vars = dict(template_variables) if template_variables else None
         self._call_inject = inject
         self._call_inject_source_detail = inject_source_detail
         try:
@@ -3074,10 +3182,7 @@ class Agent(Servable, metaclass=_AgentMeta):
                             self._budget_tracker.record(cost_info)
                             if self._budget is not None:
                                 self._budget._set_spent(self._budget_tracker.current_run_cost)
-                            if self._budget_store is not None:
-                                self._budget_store.save(
-                                    self._budget_store_key, self._budget_tracker
-                                )
+                            self._budget_component.save()
                     yield StreamChunk(
                         index=chunk_index,
                         text=content,
@@ -3118,15 +3223,14 @@ class Agent(Servable, metaclass=_AgentMeta):
                         self._budget_tracker.record(cost_info)
                         if self._budget is not None:
                             self._budget._set_spent(self._budget_tracker.current_run_cost)
-                        if self._budget_store is not None:
-                            self._budget_store.save(self._budget_store_key, self._budget_tracker)
+                        self._budget_component.save()
                 # Auto-store turn when streaming (playground uses /stream)
                 from syrin.agent._run import _auto_store_turn
 
                 _auto_store_turn(self, user_input, accumulated)
         finally:
             self._call_context = None
-            self._call_prompt_vars = None
+            self._call_template_vars = None
             self._call_inject = None
             self._call_inject_source_detail = None
 
@@ -3190,15 +3294,15 @@ def _agent_guardrails_schema_and_values(agent: Any) -> tuple[Any, dict[str, obje
     )
 
 
-def _agent_prompt_vars_schema_and_values(agent: Any) -> tuple[Any, dict[str, object]]:
-    """Build (ConfigSchema, current_values) for prompt_vars section (realtime template vars)."""
+def _agent_template_vars_schema_and_values(agent: Any) -> tuple[Any, dict[str, object]]:
+    """Build (ConfigSchema, current_values) for template_variables section (realtime template vars)."""
     from syrin.remote._types import ConfigSchema, FieldSchema
 
-    pv = getattr(agent, "_prompt_vars", {}) or {}
+    pv = getattr(agent, "_template_vars", {}) or {}
     fields: list[Any] = []
     current_values: dict[str, object] = {}
     for key, val in pv.items():
-        path = f"prompt_vars.{key}"
+        path = f"template_variables.{key}"
         fields.append(
             FieldSchema(
                 name=key,
@@ -3214,7 +3318,7 @@ def _agent_prompt_vars_schema_and_values(agent: Any) -> tuple[Any, dict[str, obj
         )
         current_values[path] = val
     return (
-        ConfigSchema(section="prompt_vars", class_name="Agent", fields=fields),
+        ConfigSchema(section="template_variables", class_name="Agent", fields=fields),
         current_values,
     )
 
@@ -3299,14 +3403,14 @@ def _apply_guardrails_overrides(agent: Any, pairs: list[tuple[str, object]]) -> 
                 disabled.add(name)
 
 
-def _apply_prompt_vars_overrides(agent: Any, pairs: list[tuple[str, object]]) -> None:
-    """Apply prompt_vars.* overrides to agent._prompt_vars."""
-    pv = getattr(agent, "_prompt_vars", None)
+def _apply_template_vars_overrides(agent: Any, pairs: list[tuple[str, object]]) -> None:
+    """Apply template_variables.* overrides to agent._template_vars."""
+    pv = getattr(agent, "_template_vars", None)
     if pv is None:
-        object.__setattr__(agent, "_prompt_vars", {})
-        pv = agent._prompt_vars
+        object.__setattr__(agent, "_template_vars", {})
+        pv = agent._template_vars
     for path, value in pairs:
-        if not path.startswith("prompt_vars."):
+        if not path.startswith("template_variables."):
             continue
         key = path.split(".", 1)[1]
         if key:

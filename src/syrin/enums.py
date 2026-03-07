@@ -50,7 +50,7 @@ class ContextMode(StrEnum):
 
 
 class MemoryPreset(StrEnum):
-    """Preset for agent memory. Use instead of memory=True/False for clarity.
+    """Preset for agent memory. Use MemoryPreset.DEFAULT or MemoryPreset.DISABLED for clarity.
 
     Attributes:
         DISABLED: No memory. Stateless agent.

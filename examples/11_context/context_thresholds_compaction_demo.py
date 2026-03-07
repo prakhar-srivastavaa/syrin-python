@@ -18,7 +18,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from examples.models.models import almock, gpt4_mini
-from syrin import Agent
+from syrin import Agent, AgentConfig
 from syrin.context import Context
 from syrin.model import Model
 from syrin.threshold import ContextThreshold
@@ -43,12 +43,14 @@ def main() -> None:
     agent = Agent(
         model=_model,
         system_prompt="You are a helpful assistant. Be very brief.",
-        context=Context(
-            max_tokens=120,
-            reserve=20,
-            thresholds=[
-                ContextThreshold(at=50, action=lambda evt: evt.compact()),  # compact at 50%
-            ],
+        config=AgentConfig(
+            context=Context(
+                max_tokens=120,
+                reserve=20,
+                thresholds=[
+                    ContextThreshold(at=50, action=lambda evt: evt.compact()),  # compact at 50%
+                ],
+            )
         ),
     )
 

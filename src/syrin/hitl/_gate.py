@@ -51,7 +51,10 @@ class ApprovalGate:
 
     Example:
         >>> gate = ApprovalGate(callback=lambda msg, timeout, ctx: input("Approve? [y/n]: ") == "y")
-        >>> agent = Agent(loop=HumanInTheLoop(approval_gate=gate))
+        >>> agent = Agent(
+        ...     config=AgentConfig(approval_gate=gate),
+        ...     custom_loop=HumanInTheLoop(approval_gate=gate, timeout=300),
+        ... )
     """
 
     def __init__(

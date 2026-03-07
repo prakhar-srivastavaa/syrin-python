@@ -15,7 +15,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from examples.models.models import almock, gpt4_mini
-from syrin import Agent, Context
+from syrin import Agent, AgentConfig, Context
 from syrin.context import FormationMode
 from syrin.memory import Memory
 
@@ -30,11 +30,13 @@ def _main() -> None:
         model=_model,
         system_prompt="You are helpful. Keep answers brief.",
         memory=Memory(),
-        context=Context(
-            max_tokens=8000,
-            formation_mode=FormationMode.PULL,
-            pull_top_k=10,
-            pull_threshold=0.0,
+        config=AgentConfig(
+            context=Context(
+                max_tokens=8000,
+                formation_mode=FormationMode.PULL,
+                pull_top_k=10,
+                pull_threshold=0.0,
+            )
         ),
     )
 

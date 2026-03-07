@@ -90,9 +90,42 @@ class ContextWindowCapacity:
 
 
 @dataclass
-class Context:
-    """Context window configuration: limits, compaction triggers, and token caps.
+class ContextConfig:
+    """Reduced context config for 90% of cases. Tweak 3–5 knobs; rest use defaults.
 
+    Converts to full Context via to_context(). Use when you only need window size,
+    reserve, thresholds, token caps, or proactive compaction.
+
+    Attributes:
+        max_tokens: Context window size. None = use model or 128k.
+        reserve: Tokens reserved for reply. Default 2000.
+        thresholds: ContextThreshold list (e.g. compact at 75%).
+        token_limits: Optional TokenLimits for token caps.
+        auto_compact_at: Proactive compact when utilization >= this (0.0–1.0). None = off.
+    """
+
+    max_tokens: int | None = None
+    reserve: int = 2000
+    thresholds: list[ContextThreshold] = field(default_factory=list)
+    token_limits: TokenLimits | None = None
+    auto_compact_at: float | None = None
+
+    def to_context(self) -> "Context":
+        """Build full Context with defaults for fields not in this config."""
+        return Context(
+            max_tokens=self.max_tokens,
+            reserve=self.reserve,
+            thresholds=self.thresholds,
+            token_limits=self.token_limits,
+            auto_compact_at=self.auto_compact_at,
+        )
+
+
+@dataclass
+class Context:
+    """Token limits and formation policy. Budget = cost limits ($); Context = what goes in the window and how.
+
+    Context window configuration: limits, compaction triggers, and token caps.
     Provides context window management. Compaction is on-demand: call
     ctx.compact() from a ContextThreshold action (e.g. at 75% to compact).
 
@@ -332,6 +365,7 @@ class Context:
 
 __all__ = [
     "Context",
+    "ContextConfig",
     "ContextStats",
     "ContextWindowCapacity",
 ]

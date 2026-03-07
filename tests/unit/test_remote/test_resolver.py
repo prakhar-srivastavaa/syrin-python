@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from syrin import Agent, Budget, Model
+from syrin import Agent, AgentConfig, Budget, Model
 from syrin.budget import RateLimit
 from syrin.enums import DecayStrategy
 from syrin.memory import Memory
@@ -187,30 +187,30 @@ class TestValidOverrides:
         assert "PIIScanner" not in agent._guardrails_disabled
         reg.unregister(agent_id)
 
-    def test_apply_prompt_vars(self) -> None:
-        """Apply prompt_vars.{key}=value -> agent._prompt_vars updated."""
+    def test_apply_template_vars(self) -> None:
+        """Apply template_variables.{key}=value -> agent._template_vars updated."""
         agent = Agent(
             model=Model.Almock(),
             name="pv_test",
             budget=Budget(run=1.0),
-            prompt_vars={"env": "staging", "limit": "10"},
+            template_variables={"env": "staging", "limit": "10"},
         )
         reg = get_registry()
         reg.register(agent)
         agent_id = reg.make_agent_id(agent)
         schema = reg.get_schema(agent_id)
         assert schema is not None
-        assert "prompt_vars" in schema.sections
+        assert "template_variables" in schema.sections
         payload = _payload(
             agent_id,
-            ("prompt_vars.env", "prod"),
-            ("prompt_vars.limit", "20"),
+            ("template_variables.env", "prod"),
+            ("template_variables.limit", "20"),
         )
         result = ConfigResolver().apply_overrides(agent, payload, schema=schema)
-        assert "prompt_vars.env" in result.accepted
-        assert "prompt_vars.limit" in result.accepted
-        assert agent._prompt_vars.get("env") == "prod"
-        assert agent._prompt_vars.get("limit") == "20"
+        assert "template_variables.env" in result.accepted
+        assert "template_variables.limit" in result.accepted
+        assert agent._template_vars.get("env") == "prod"
+        assert agent._template_vars.get("limit") == "20"
         reg.unregister(agent_id)
 
     def test_apply_tools_disable(self) -> None:
@@ -365,7 +365,7 @@ class TestHotSwapBlocklist:
             model=Model.Almock(),
             name="cp_agent",
             budget=Budget(run=1.0),
-            checkpoint=CheckpointConfig(storage="memory", path=None),
+            config=AgentConfig(checkpoint=CheckpointConfig(storage="memory", path=None)),
         )
         reg = get_registry()
         reg.register(agent)

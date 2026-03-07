@@ -110,7 +110,7 @@ agent.get_checkpoint_report() -> AgentReport
 **agent.checkpointer:** When using `CheckpointConfig`, use `agent.checkpointer` for manual save/load:
 
 ```python
-agent = Agent(..., checkpoint=CheckpointConfig(storage="memory"))
+agent = Agent(..., config=AgentConfig(checkpoint=CheckpointConfig(storage="memory")))
 cid = agent.checkpointer.save("my_agent", {"iteration": 5})
 state = agent.checkpointer.load(cid)
 checkpoints = agent.checkpointer.list_checkpoints("my_agent")

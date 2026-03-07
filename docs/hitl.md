@@ -21,7 +21,7 @@ agent = Agent(
     model=model,
     tools=[delete_record],
     approval_gate=gate,
-    hitl_timeout=300,
+    human_approval_timeout=300,
 )
 agent.response("Delete record abc123")
 ```
@@ -59,12 +59,15 @@ Or with ApprovalGate:
 
 ```python
 gate = ApprovalGate(callback=lambda msg, t, ctx: ...)
-agent = Agent(..., loop=HumanInTheLoop(approval_gate=gate, timeout=300))
+agent = Agent(
+    ...,
+    custom_loop=HumanInTheLoop(approval_gate=gate, timeout=300),
+)
 ```
 
 ## Timeout
 
-`hitl_timeout` (Agent) or `timeout` (HumanInTheLoop): seconds to wait. On timeout, treat as rejection.
+`human_approval_timeout` (Agent) or `timeout` (HumanInTheLoop): seconds to wait. On timeout, treat as rejection.
 
 ## Hooks
 

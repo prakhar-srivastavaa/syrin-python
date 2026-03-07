@@ -1,7 +1,7 @@
 """Dependency Injection Example (v0.3.0+).
 
 Demonstrates:
-- Agent(deps=...) for runtime dependencies
+- Agent(config=AgentConfig(dependencies=...)) for runtime dependencies
 - Tools receive ctx: RunContext[MyDeps] with ctx.deps
 - Testing with mock dependencies (inject MockDeps)
 
@@ -16,7 +16,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from examples.models.models import almock
-from syrin import Agent, RunContext, tool
+from syrin import Agent, AgentConfig, RunContext, tool
 
 load_dotenv(Path(__file__).resolve().parent.parent.parent / ".env")
 
@@ -84,7 +84,7 @@ if __name__ == "__main__":
         search_client=RealSearchClient(),
         user_id="alice",
     )
-    agent = SearchAgent(deps=real_deps)
+    agent = SearchAgent(config=AgentConfig(dependencies=real_deps))
     result = agent.response("Search for AI trends")
     print(f"Result: {result.content[:150]}...")
     print(f"Cost: ${result.cost:.6f}")
@@ -96,7 +96,7 @@ if __name__ == "__main__":
         search_client=MockSearchClient(),
         user_id="test-user",
     )
-    test_agent = SearchAgent(deps=mock_deps)
+    test_agent = SearchAgent(config=AgentConfig(dependencies=mock_deps))
     test_result = test_agent.response("Search for testing")
     print(f"\nWith mock: {test_result.content[:100]}...")
     print("Serving at http://localhost:8000/playground")

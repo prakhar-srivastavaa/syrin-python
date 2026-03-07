@@ -16,7 +16,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from examples.models.models import almock, gpt4_mini
-from syrin import Agent, Context
+from syrin import Agent, AgentConfig, Context
 from syrin.context import InjectPlacement, PrepareInput
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
@@ -39,11 +39,13 @@ def _main() -> None:
     agent = Agent(
         model=_model,
         system_prompt="You are helpful. Use the [RAG] block when relevant.",
-        context=Context(
-            max_tokens=8000,
-            runtime_inject=rag_injector,
-            inject_placement=InjectPlacement.BEFORE_CURRENT_TURN,
-            inject_source_detail="rag",
+        config=AgentConfig(
+            context=Context(
+                max_tokens=8000,
+                runtime_inject=rag_injector,
+                inject_placement=InjectPlacement.BEFORE_CURRENT_TURN,
+                inject_source_detail="rag",
+            )
         ),
     )
 
@@ -71,7 +73,7 @@ def _main() -> None:
     agent_no_runtime = Agent(
         model=_model,
         system_prompt="You are helpful.",
-        context=Context(max_tokens=8000),
+        config=AgentConfig(context=Context(max_tokens=8000)),
     )
 
     agent_no_runtime.response(

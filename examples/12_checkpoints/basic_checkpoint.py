@@ -19,7 +19,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from examples.models.models import almock
-from syrin import Agent, CheckpointConfig, CheckpointTrigger
+from syrin import Agent, AgentConfig, CheckpointConfig, CheckpointTrigger
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
@@ -39,7 +39,10 @@ for trigger in [
     CheckpointTrigger.BUDGET,
     CheckpointTrigger.MANUAL,
 ]:
-    agent = Agent(model=almock, checkpoint=CheckpointConfig(storage="memory", trigger=trigger))
+    agent = Agent(
+        model=almock,
+        config=AgentConfig(checkpoint=CheckpointConfig(storage="memory", trigger=trigger)),
+    )
     print(f"  {trigger.value}")
 
 # 3. Checkpoint configuration
@@ -51,7 +54,7 @@ config = CheckpointConfig(
     max_checkpoints=5,
     compress=False,
 )
-agent = Agent(model=almock, checkpoint=config)
+agent = Agent(model=almock, config=AgentConfig(checkpoint=config))
 
 # 4. Save and restore
 agent = Agent(model=almock)

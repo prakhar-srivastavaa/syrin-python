@@ -57,9 +57,11 @@ class TestMemoryNone:
         assert len(messages) >= 1
         assert messages[-1].content == "Hello"
 
-    def test_agent_memory_false_same_as_none(self) -> None:
-        """memory=False same as memory=None."""
-        agent = Agent(model=_almock(), memory=False)
+    def test_agent_memory_preset_disabled_same_as_none(self) -> None:
+        """memory=MemoryPreset.DISABLED same as memory=None."""
+        from syrin.enums import MemoryPreset
+
+        agent = Agent(model=_almock(), memory=MemoryPreset.DISABLED)
         assert agent._persistent_memory is None
 
 
@@ -82,9 +84,11 @@ class TestMemoryExplicit:
         assert "Hi" in contents
         assert "Second" in contents
 
-    def test_agent_memory_true_gives_persistent(self) -> None:
-        """memory=True gives persistent Memory with CORE+EPISODIC."""
-        agent = Agent(model=_almock(), memory=True)
+    def test_agent_memory_preset_default_gives_persistent(self) -> None:
+        """memory=MemoryPreset.DEFAULT gives persistent Memory with CORE+EPISODIC."""
+        from syrin.enums import MemoryPreset
+
+        agent = Agent(model=_almock(), memory=MemoryPreset.DEFAULT)
         assert agent._persistent_memory is not None
 
 
@@ -102,6 +106,7 @@ class TestContextNeedsMemoryWarning:
 
     def test_context_mode_intelligent_with_memory_none_warns(self) -> None:
         """context_mode=intelligent with memory=None emits warning."""
+        from syrin.agent.config import AgentConfig
         from syrin.context import Context
         from syrin.enums import ContextMode
 
@@ -109,7 +114,7 @@ class TestContextNeedsMemoryWarning:
             Agent(
                 model=_almock(),
                 memory=None,
-                context=Context(context_mode=ContextMode.INTELLIGENT),
+                config=AgentConfig(context=Context(context_mode=ContextMode.INTELLIGENT)),
             )
 
 

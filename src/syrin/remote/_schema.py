@@ -314,7 +314,7 @@ _AGENT_TOP_LEVEL: list[tuple[str, str, type[Any]]] = [
     ("debug", "bool", bool),
     ("loop_strategy", "str", type(None)),  # StrEnum → str
     ("system_prompt", "str", str),
-    ("hitl_timeout", "int", int),
+    ("human_approval_timeout", "int", int),
 ]
 
 
@@ -348,7 +348,7 @@ def _agent_section_schema() -> ConfigSchema:
                 default = False
             elif name == "system_prompt":
                 default = ""
-            elif name == "hitl_timeout":
+            elif name == "human_approval_timeout":
                 default = 300
             fields.append(
                 FieldSchema(
@@ -378,8 +378,8 @@ def get_agent_section_schema_and_values(agent: Any) -> tuple[ConfigSchema, dict[
             v = getattr(agent, "_debug", None)
         elif attr == "system_prompt":
             v = getattr(agent, "_system_prompt_source", "") or ""
-        elif attr == "hitl_timeout":
-            v = getattr(agent, "_hitl_timeout", None)
+        elif attr == "human_approval_timeout":
+            v = getattr(agent, "_human_approval_timeout", None)
         elif attr == "loop_strategy":
             from syrin.enums import LoopStrategy as LS
 

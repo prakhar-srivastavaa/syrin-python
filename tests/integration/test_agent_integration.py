@@ -77,9 +77,9 @@ class TestAgentWithWithoutMemory:
         assert response.content is not None
 
     def test_agent_without_memory_memory_false(self) -> None:
-        """Agent with memory=False — no conversation persistence."""
+        """Agent with memory=None — no conversation persistence."""
         model = _almock()
-        agent = Agent(model=model, system_prompt="You are helpful.", memory=False)
+        agent = Agent(model=model, system_prompt="You are helpful.", memory=None)
 
         response = agent.response("Hello")
 

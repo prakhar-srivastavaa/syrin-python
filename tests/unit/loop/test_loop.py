@@ -557,7 +557,7 @@ class TestCustomLoop:
         # Works with Agent - pass the instance
         agent = Agent(
             model=ModelConfig(name="test", provider="openai", model_id="gpt-4o"),
-            loop=loop,  # Pass instance
+            custom_loop=loop,  # Pass instance
         )
         assert agent._loop.name == "mine"
 
@@ -568,14 +568,14 @@ class TestAgentIntegration:
     def test_agent_accepts_loop_instance(self):
         agent = Agent(
             model=ModelConfig(name="test", provider="openai", model_id="gpt-4o"),
-            loop=ReactLoop(),
+            custom_loop=ReactLoop(),
         )
         assert agent._loop is not None
 
     def test_agent_accepts_loop_class(self):
         agent = Agent(
             model=ModelConfig(name="test", provider="openai", model_id="gpt-4o"),
-            loop=SingleShotLoop,
+            custom_loop=SingleShotLoop,
         )
         assert agent._loop is not None
 
@@ -610,7 +610,7 @@ class TestAgentRunLoopResponse:
 
         agent = Agent(
             model=ModelConfig(name="test", provider="openai", model_id="gpt-4o-mini"),
-            loop=TestLoop(),
+            custom_loop=TestLoop(),
         )
 
         result = agent.response("test")
@@ -637,7 +637,7 @@ class TestAgentRunLoopResponse:
 
         agent = Agent(
             model=ModelConfig(name="test", provider="openai", model_id="gpt-4o-mini"),
-            loop=TestLoop(),
+            custom_loop=TestLoop(),
         )
 
         result = agent.response("test")
@@ -666,7 +666,7 @@ class TestAgentRunLoopResponse:
 
         agent = Agent(
             model=ModelConfig(name="test", provider="openai", model_id="gpt-4o-mini"),
-            loop=TestLoop(),
+            custom_loop=TestLoop(),
         )
 
         result = agent.response("test")
@@ -695,7 +695,7 @@ class TestAgentRunLoopResponse:
 
         agent = Agent(
             model=ModelConfig(name="test", provider="openai", model_id="gpt-4o-mini"),
-            loop=TestLoop(),
+            custom_loop=TestLoop(),
         )
 
         result = agent.response("test")
@@ -722,7 +722,7 @@ class TestAgentRunLoopResponse:
 
         agent = Agent(
             model=ModelConfig(name="test", provider="openai", model_id="gpt-4o-mini"),
-            loop=TestLoop(),
+            custom_loop=TestLoop(),
         )
 
         result = agent.response("test")

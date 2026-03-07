@@ -240,7 +240,9 @@ class TokenLimits(BaseModel):
 
 
 class Budget(BaseModel):
-    """Budget configuration: run limit, rate limits, on_exceeded callback, thresholds, sharing.
+    """Cost limits in USD. Budget = how much the agent can spend; Context = token limits and formation policy.
+
+    Budget configuration: run limit, rate limits, on_exceeded callback, thresholds, sharing.
 
     Args:
         run: Max cost per run in USD

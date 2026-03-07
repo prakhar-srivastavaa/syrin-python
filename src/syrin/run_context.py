@@ -44,7 +44,7 @@ class RunContext(Generic[DepsT]):
         ...     def get_data(self, ctx: syrin.RunContext[MyDeps], query: str) -> str:
         ...         return ctx.deps.db.query(user_id=ctx.deps.user_id, q=query)
         >>>
-        >>> agent = MyAgent(deps=MyDeps(db=db, user_id="alice"))
+        >>> agent = MyAgent(dependencies=MyDeps(db=db, user_id="alice"))
         >>> agent.response("What's in my data?")
     """
 

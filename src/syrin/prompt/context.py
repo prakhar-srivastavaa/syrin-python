@@ -49,14 +49,14 @@ def make_prompt_context(
     agent: Any,
     *,
     conversation_id: str | None = None,
-    inject_builtins: bool = True,
+    inject_template_vars: bool = True,
 ) -> PromptContext:
     """Build PromptContext from an Agent instance.
 
     Args:
         agent: The Agent instance.
         conversation_id: Current conversation ID for state isolation.
-        inject_builtins: If True (default), populate builtins with date, agent_id,
+        inject_template_vars: If True (default), populate builtins with date, agent_id,
             conversation_id. These are available as template vars in system prompts
             (e.g. {date}, {agent_id}, {conversation_id}). Set False to skip.
     """
@@ -74,7 +74,7 @@ def make_prompt_context(
         }
     date_val = datetime.now(timezone.utc)
     builtins: dict[str, Any] = {}
-    if inject_builtins:
+    if inject_template_vars:
         builtins = {
             "date": date_val,
             "agent_id": agent_id,

@@ -252,10 +252,10 @@ def apply_agent_section_overrides(
             object.__setattr__(
                 agent, "_system_prompt_source", str(value) if value is not None else ""
             )
-        elif key == "hitl_timeout":
+        elif key == "human_approval_timeout":
             object.__setattr__(
                 agent,
-                "_hitl_timeout",
+                "_human_approval_timeout",
                 int(cast(int | float | str, value)) if value is not None else 300,
             )
         elif key == "loop_strategy":

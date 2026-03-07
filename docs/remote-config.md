@@ -12,7 +12,7 @@ Remote config lets a backend (Syrin Cloud or your own server) push configuration
 
 | Section | Agent attribute | In dashboard? | Notes |
 |--------|------------------|---------------|--------|
-| **agent** | (top-level) | ✅ Yes | `max_tool_iterations`, `debug`, `loop_strategy`, `system_prompt`, `hitl_timeout` |
+| **agent** | (top-level) | ✅ Yes | `max_tool_iterations`, `debug`, `loop_strategy`, `system_prompt`, `human_approval_timeout` |
 | **budget** | `_budget` | ✅ Yes | Run limit, reserve, per (rate limits), thresholds, shared |
 | **memory** | `_persistent_memory` | ✅ Yes | Backend, path, types, top_k, decay, scope, etc. |
 | **context** | `_context.context` | ✅ Yes | max_tokens, reserve, thresholds, budget (token caps), encoding |
@@ -43,7 +43,7 @@ GET /config returns `baseline_values`, `overrides`, and `current_values`, and en
 
 **Expose in the dashboard (already in schema):**
 
-- **agent** — Edit system prompt, max tool iterations, debug, loop strategy, hitl_timeout. High value, safe.
+- **agent** — Edit system prompt, max tool iterations, debug, loop strategy, human_approval_timeout. High value, safe.
 - **budget** — Run limit, reserve, per-period limits, thresholds. Core for cost control.
 - **memory** — Backend, top_k, decay, scope. Useful for tuning retrieval and retention.
 - **context** — max_tokens, reserve, thresholds. Controls context window and compaction.
@@ -166,7 +166,7 @@ Registration handshake. The agent sends `SyncRequest` (agent_id, schema, library
 The library can extract field schemas from your config classes so the backend knows what can be overridden.
 
 - **`extract_schema(cls, prefix)`** — Auto-detects Pydantic, dataclass, or plain class and returns a list of `FieldSchema`. Use a dotted `prefix` (e.g. `"budget"`, `"memory.decay"`). Nested models (e.g. `Budget.per` → `RateLimit`) are recursed into; callables, Protocols, and `type[...]` are marked `remote_excluded`.
-- **`extract_agent_schema(agent)`** — Builds a full `AgentSchema` from a live agent: agent section (max_tool_iterations, debug, loop_strategy, system_prompt, hitl_timeout), plus budget, memory, context, checkpoint, rate_limit, circuit_breaker, and output sections with current values.
+- **`extract_agent_schema(agent)`** — Builds a full `AgentSchema` from a live agent: agent section (max_tool_iterations, debug, loop_strategy, system_prompt, human_approval_timeout), plus budget, memory, context, checkpoint, rate_limit, circuit_breaker, and output sections with current values.
 
 Supported sources: Pydantic (`Budget`, `Memory`, `Decay`, `CheckpointConfig`), dataclasses (`Context`, `Output`, `APIRateLimit`), and plain classes with `__init__` (e.g. `CircuitBreaker`). StrEnum fields get `enum_values`; Pydantic constraints (ge, le, gt, lt, pattern, min_length, max_length) are extracted from `Field` metadata.
 

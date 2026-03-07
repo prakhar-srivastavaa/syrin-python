@@ -20,7 +20,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from examples.models.models import almock
-from syrin import Agent, Budget, RateLimit, warn_on_exceeded
+from syrin import Agent, AgentConfig, Budget, RateLimit, warn_on_exceeded
 from syrin.enums import ThresholdMetric
 from syrin.ratelimit import APIRateLimit
 from syrin.threshold import RateLimitThreshold, ThresholdContext
@@ -51,7 +51,10 @@ r_cal = RateLimit(month=500.00, calendar_month=True)
 print(f"calendar_month={r_cal.calendar_month}")
 
 # 4. APIRateLimit for RPM / TPM / RPD
-agent = Agent(model=almock, rate_limit=APIRateLimit(rpm=500, tpm=150_000))
+agent = Agent(
+    model=almock,
+    config=AgentConfig(rate_limit=APIRateLimit(rpm=500, tpm=150_000)),
+)
 print(f"Rate limit config: {agent.rate_limit}")
 
 
@@ -62,37 +65,41 @@ def on_warning(ctx: ThresholdContext) -> None:
 
 agent = Agent(
     model=almock,
-    rate_limit=APIRateLimit(
-        rpm=100,
-        thresholds=[
-            RateLimitThreshold(at=80, action=on_warning, metric=ThresholdMetric.RPM),
-        ],
+    config=AgentConfig(
+        rate_limit=APIRateLimit(
+            rpm=100,
+            thresholds=[
+                RateLimitThreshold(at=80, action=on_warning, metric=ThresholdMetric.RPM),
+            ],
+        )
     ),
 )
 
 # 6. Multiple thresholds (RPM + TPM)
 agent = Agent(
     model=almock,
-    rate_limit=APIRateLimit(
-        rpm=500,
-        tpm=150_000,
-        thresholds=[
-            RateLimitThreshold(
-                at=50,
-                action=lambda ctx: print(f"  RPM at {ctx.percentage}%"),
-                metric=ThresholdMetric.RPM,
-            ),
-            RateLimitThreshold(
-                at=70,
-                action=lambda ctx: print(f"  TPM at {ctx.percentage}%"),
-                metric=ThresholdMetric.TPM,
-            ),
-            RateLimitThreshold(
-                at=100,
-                action=lambda _: print("  RPM limit reached!"),
-                metric=ThresholdMetric.RPM,
-            ),
-        ],
+    config=AgentConfig(
+        rate_limit=APIRateLimit(
+            rpm=500,
+            tpm=150_000,
+            thresholds=[
+                RateLimitThreshold(
+                    at=50,
+                    action=lambda ctx: print(f"  RPM at {ctx.percentage}%"),
+                    metric=ThresholdMetric.RPM,
+                ),
+                RateLimitThreshold(
+                    at=70,
+                    action=lambda ctx: print(f"  TPM at {ctx.percentage}%"),
+                    metric=ThresholdMetric.TPM,
+                ),
+                RateLimitThreshold(
+                    at=100,
+                    action=lambda _: print("  RPM limit reached!"),
+                    metric=ThresholdMetric.RPM,
+                ),
+            ],
+        ),
     ),
 )
 

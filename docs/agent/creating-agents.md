@@ -1,10 +1,29 @@
 # Creating Agents
 
-**Recommended: Use the Builder or presets** for clearer, scalable agent creation. The constructor and class-based approach remain available for subclassing and backward compatibility.
+**Recommended order:** (1) Class-based, (2) Builder, (3) Presets, (4) Direct constructor.
 
-## Recommended: Builder (Primary API)
+## Class-based (Primary)
 
-For most use cases, the fluent **Builder** is the best choice—it scales cleanly as you add tools, budget, memory, and other options:
+Subclass `Agent`, set `model`, `system_prompt`, `tools`, etc. on the class; instantiate with `MyAgent()`. Use when you have named agent types (e.g. `Researcher`, `Writer`):
+
+```python
+from syrin import Agent
+from syrin.model import Model
+
+class Assistant(Agent):
+    # model = Model.OpenAI("gpt-4o-mini")
+    model = Model.Almock()  # No API Key needed
+    system_prompt = "You are a helpful assistant."
+
+agent = Assistant()
+response = agent.response("Hello")
+```
+
+Class attributes (`model`, `system_prompt`, `tools`, `budget`, `guardrails`) become defaults. Instance arguments override them.
+
+## Builder (Secondary)
+
+For agents with many options, the fluent **Builder** scales cleanly:
 
 ```python
 from syrin import Agent, Budget
@@ -33,19 +52,15 @@ agent = Agent.presets.assistant()                          # Full assistant pres
 agent = Agent.presets.research()                           # Research agent with tools
 ```
 
-## Class-based vs direct instantiation
+## Direct instantiation (Tertiary)
 
-- **Class-based:** Subclass `Agent`, set `model`, `system_prompt`, `tools`, etc. on the class; instantiate with `MyAgent()`. Use when you have named agent types (e.g. `Researcher`, `Writer`).
-- **Direct instantiation:** Call `Agent(model=..., system_prompt=..., tools=[...])` with no subclass. Use for one-off agents or scripts.
-
-## Instance-Based (No Class)
+Call `Agent(model=..., system_prompt=..., tools=[...])` with no subclass. Use for one-off agents or scripts.
 
 ```python
 from syrin import Agent
 from syrin.model import Model
 
 agent = Agent(
-    # model=Model.OpenAI("gpt-4o-mini"),
     model=Model.Almock(),  # No API Key needed
     system_prompt="You are helpful.",
 )
@@ -53,23 +68,6 @@ response = agent.response("Hello")
 ```
 
 All configuration is passed to `Agent()` as constructor arguments.
-
-## Class-Based (Subclass)
-
-```python
-from syrin import Agent
-from syrin.model import Model
-
-class Assistant(Agent):
-    # model = Model.OpenAI("gpt-4o-mini")
-    model = Model.Almock()  # No API Key needed
-    system_prompt = "You are a helpful assistant."
-
-agent = Assistant()
-response = agent.response("Hello")
-```
-
-Class attributes (`model`, `system_prompt`, `tools`, `budget`, `guardrails`) become defaults. Instance arguments override them.
 
 ## Inheritance and MRO
 
@@ -158,8 +156,8 @@ Agents have `name` and `description` for discovery, routing, and Agent Cards. Se
 
 ```python
 class ResearcherAgent(Agent):
-    name = "researcher"
-    description = "Searches and summarizes information from the web"
+    _agent_name = "researcher"
+    _agent_description = "Searches and summarizes information from the web"
     model = Model.OpenAI("gpt-4o")
     system_prompt = "You are a researcher."
 

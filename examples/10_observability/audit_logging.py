@@ -10,7 +10,7 @@ Requires: uv pip install syrin[serve]
 """
 
 import syrin
-from syrin import Agent, AuditLog, Model, Pipeline
+from syrin import Agent, AgentConfig, AuditLog, Model, Pipeline
 from syrin.agent.multi_agent import DynamicPipeline
 
 
@@ -20,7 +20,7 @@ def main() -> None:
     agent = Agent(
         model=Model.Almock(),
         system_prompt="You are helpful.",
-        audit=audit,
+        config=AgentConfig(audit=audit),
     )
     agent.response("What is 2+2?")
     print("Agent audit written to ./audit_agent.jsonl")
@@ -64,6 +64,6 @@ class AuditDemoAgent(syrin.Agent):
 if __name__ == "__main__":
     main()
     audit = syrin.AuditLog(path="./audit_serve.jsonl")
-    agent = AuditDemoAgent(audit=audit)
+    agent = AuditDemoAgent(config=AgentConfig(audit=audit))
     print("Serving at http://localhost:8000/playground")
     agent.serve(port=8000, enable_playground=True, debug=True)

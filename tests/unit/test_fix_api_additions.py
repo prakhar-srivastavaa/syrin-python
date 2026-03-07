@@ -7,6 +7,7 @@ RateLimit.window, GuardrailCheckResult.guardrail_name, Agent.checkpointer.
 from __future__ import annotations
 
 from syrin import Agent, CheckpointConfig, Model
+from syrin.agent.config import AgentConfig
 from syrin.budget import RateLimit, TokenLimits, TokenRateLimit
 from syrin.circuit import CircuitBreaker
 from syrin.domain_events import BudgetThresholdReached, EventBus
@@ -128,7 +129,7 @@ class TestAgentCheckpointer:
         """agent.checkpointer returns Checkpointer when checkpoint configured."""
         agent = Agent(
             model=Model(provider="openai", model_id="gpt-4o-mini"),
-            checkpoint=CheckpointConfig(storage="memory"),
+            config=AgentConfig(checkpoint=CheckpointConfig(storage="memory")),
         )
         assert agent.checkpointer is not None
         assert agent.checkpointer == agent._checkpointer
@@ -142,7 +143,7 @@ class TestAgentCheckpointer:
         """agent.checkpointer.save/load works for manual checkpointing."""
         agent = Agent(
             model=Model(provider="openai", model_id="gpt-4o-mini"),
-            checkpoint=CheckpointConfig(storage="memory"),
+            config=AgentConfig(checkpoint=CheckpointConfig(storage="memory")),
         )
         cid = agent.checkpointer.save("test_agent", {"iteration": 1})
         assert cid is not None

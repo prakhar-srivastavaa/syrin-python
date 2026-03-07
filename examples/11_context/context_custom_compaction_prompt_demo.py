@@ -17,7 +17,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from examples.models.models import almock, gpt4_mini
-from syrin import Agent
+from syrin import Agent, AgentConfig
 from syrin.context import CompactionMethod, Context
 from syrin.model import Model
 from syrin.threshold import ContextThreshold
@@ -40,15 +40,19 @@ def main() -> None:
     agent = Agent(
         model=_model,
         system_prompt="You are helpful. Be brief.",
-        context=Context(
-            max_tokens=120,
-            reserve=20,
-            compaction_prompt="Summarize the following in one short paragraph. Keep key facts:\n\n{messages}",
-            compaction_system_prompt="You are a summarization assistant. Output only the summary.",
-            compaction_model=_model,
-            thresholds=[
-                ContextThreshold(at=50, action=lambda evt: evt.compact() if evt.compact else None),
-            ],
+        config=AgentConfig(
+            context=Context(
+                max_tokens=120,
+                reserve=20,
+                compaction_prompt="Summarize the following in one short paragraph. Keep key facts:\n\n{messages}",
+                compaction_system_prompt="You are a summarization assistant. Output only the summary.",
+                compaction_model=_model,
+                thresholds=[
+                    ContextThreshold(
+                        at=50, action=lambda evt: evt.compact() if evt.compact else None
+                    ),
+                ],
+            )
         ),
     )
 

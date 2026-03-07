@@ -15,7 +15,7 @@ import tempfile
 from pathlib import Path
 
 from examples.models.models import almock
-from syrin import Agent, CheckpointConfig, CheckpointTrigger, Context
+from syrin import Agent, AgentConfig, CheckpointConfig, CheckpointTrigger, Context
 from syrin.memory import Memory
 
 
@@ -28,15 +28,17 @@ def main() -> None:
             model=almock,
             system_prompt="You are a helpful assistant. Keep replies concise.",
             memory=mem,
-            context=Context(
-                max_tokens=8000,
-                auto_compact_at=0.6,
-            ),
-            checkpoint=CheckpointConfig(
-                storage="sqlite",
-                path=str(db_path),
-                trigger=CheckpointTrigger.STEP,
-                max_checkpoints=5,
+            config=AgentConfig(
+                context=Context(
+                    max_tokens=8000,
+                    auto_compact_at=0.6,
+                ),
+                checkpoint=CheckpointConfig(
+                    storage="sqlite",
+                    path=str(db_path),
+                    trigger=CheckpointTrigger.STEP,
+                    max_checkpoints=5,
+                ),
             ),
         )
 
@@ -57,11 +59,13 @@ def main() -> None:
             model=almock,
             system_prompt="You are a helpful assistant. Keep replies concise.",
             memory=mem2,
-            context=Context(max_tokens=8000, auto_compact_at=0.6),
-            checkpoint=CheckpointConfig(
-                storage="sqlite",
-                path=str(db_path),
-                trigger=CheckpointTrigger.STEP,
+            config=AgentConfig(
+                context=Context(max_tokens=8000, auto_compact_at=0.6),
+                checkpoint=CheckpointConfig(
+                    storage="sqlite",
+                    path=str(db_path),
+                    trigger=CheckpointTrigger.STEP,
+                ),
             ),
         )
         ok = agent2.load_checkpoint(cid)

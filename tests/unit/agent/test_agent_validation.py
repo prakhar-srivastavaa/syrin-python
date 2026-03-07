@@ -182,27 +182,27 @@ def test_agent_arun_none_rejects() -> None:
 
 
 # -----------------------------------------------------------------------------
-# memory=False disables persistent memory
+# memory=None or MemoryPreset.DISABLED disables persistent memory
 # -----------------------------------------------------------------------------
 
 
 def test_agent_remember_raises_when_memory_disabled() -> None:
-    """agent.remember() raises RuntimeError when memory=False."""
-    agent = Agent(model=_almock(), memory=False)
+    """agent.remember() raises RuntimeError when memory is disabled."""
+    agent = Agent(model=_almock(), memory=None)
     with pytest.raises(RuntimeError, match=r"[Nn]o persistent memory"):
         agent.remember("test")
 
 
 def test_agent_recall_raises_when_memory_disabled() -> None:
-    """agent.recall() raises RuntimeError when memory=False."""
-    agent = Agent(model=_almock(), memory=False)
+    """agent.recall() raises RuntimeError when memory is disabled."""
+    agent = Agent(model=_almock(), memory=None)
     with pytest.raises(RuntimeError, match=r"[Nn]o persistent memory"):
         agent.recall()
 
 
 def test_agent_forget_raises_when_memory_disabled() -> None:
-    """agent.forget() raises RuntimeError when memory=False."""
-    agent = Agent(model=_almock(), memory=False)
+    """agent.forget() raises RuntimeError when memory is disabled."""
+    agent = Agent(model=_almock(), memory=None)
     with pytest.raises(RuntimeError, match=r"[Nn]o persistent memory"):
         agent.forget("test")
 

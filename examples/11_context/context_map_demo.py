@@ -15,7 +15,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from examples.models.models import almock, gpt4_mini
-from syrin import Agent, Context
+from syrin import Agent, AgentConfig, Context
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 _model = gpt4_mini if os.environ.get("USE_REAL_MODEL") == "1" else almock
@@ -29,11 +29,13 @@ def _main() -> None:
     agent = Agent(
         model=_model,
         system_prompt="You are helpful. Stay grounded in any session summary provided.",
-        context=Context(
-            max_tokens=8000,
-            map_backend="file",
-            map_path=str(map_path),
-            inject_map_summary=True,
+        config=AgentConfig(
+            context=Context(
+                max_tokens=8000,
+                map_backend="file",
+                map_path=str(map_path),
+                inject_map_summary=True,
+            )
         ),
     )
 

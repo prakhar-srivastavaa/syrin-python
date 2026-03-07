@@ -29,12 +29,12 @@ class PersonaAgent(Agent):
 
     @system_prompt
     def my_prompt(self, user_name: str = "", tone: str = "professional") -> str:
-        """In-class system prompt. Receives prompt_vars."""
+        """In-class system prompt. Receives template_variables."""
         return f"You assist {user_name or 'the user'}. Be {tone}."
 
 
 if __name__ == "__main__":
-    agent = PersonaAgent(prompt_vars={"user_name": "Carol", "tone": "witty"})
+    agent = PersonaAgent(template_variables={"user_name": "Carol", "tone": "witty"})
     r = agent.response("What's your personality?")
     print(f"Carol: {r.content[:80]}...")
     print("Serving at http://localhost:8000/playground")

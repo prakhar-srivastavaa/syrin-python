@@ -15,7 +15,7 @@ def _almock() -> Model:
 def test_agent_static_system_prompt_unchanged() -> None:
     """Agent with static system_prompt works as before."""
     agent = Agent(model=_almock(), system_prompt="You are helpful.")
-    vars_ = agent.effective_prompt_vars()
+    vars_ = agent.effective_template_variables()
     assert "date" in vars_
     assert "agent_id" in vars_
     assert agent.response("Hi").content is not None
@@ -31,10 +31,10 @@ def test_agent_with_prompt_and_prompt_vars() -> None:
     agent = Agent(
         model=_almock(),
         system_prompt=persona_prompt,
-        prompt_vars={"user_name": "Alice", "tone": "friendly"},
+        template_variables={"user_name": "Alice", "tone": "friendly"},
     )
-    ctx = make_prompt_context(agent, inject_builtins=True)
-    resolved = agent._resolve_system_prompt(agent.effective_prompt_vars(), ctx)
+    ctx = make_prompt_context(agent, inject_template_vars=True)
+    resolved = agent._resolve_system_prompt(agent.effective_template_variables(), ctx)
     assert "Alice" in resolved
     assert "friendly" in resolved
     assert agent.response("Hi").content is not None
@@ -50,13 +50,13 @@ def test_agent_prompt_vars_merge_class_instance() -> None:
     class PersonaAgent(Agent):
         model = _almock()
         system_prompt = p
-        prompt_vars = {"tone": "formal"}
+        template_variables = {"tone": "formal"}
 
-    agent = PersonaAgent(prompt_vars={"user_name": "Bob", "tone": "casual"})
-    vars_ = agent.effective_prompt_vars()
+    agent = PersonaAgent(template_variables={"user_name": "Bob", "tone": "casual"})
+    vars_ = agent.effective_template_variables()
     assert vars_["user_name"] == "Bob"
     assert vars_["tone"] == "casual"
-    ctx = make_prompt_context(agent, inject_builtins=True)
+    ctx = make_prompt_context(agent, inject_template_vars=True)
     resolved = agent._resolve_system_prompt(vars_, ctx)
     assert "Bob" in resolved
     assert "casual" in resolved
@@ -72,9 +72,9 @@ def test_agent_per_call_prompt_vars() -> None:
     agent = Agent(
         model=_almock(),
         system_prompt=p,
-        prompt_vars={"user_name": "Default"},
+        template_variables={"user_name": "Default"},
     )
-    r1 = agent.response("Hi", prompt_vars={"user_name": "Alice"})
+    r1 = agent.response("Hi", template_variables={"user_name": "Alice"})
     assert r1.content is not None
 
 
@@ -102,9 +102,9 @@ def test_agent_system_prompt_in_class() -> None:
         def my_prompt(self, user_name: str = "") -> str:
             return f"You assist {user_name or 'user'}."
 
-    agent = MyAgent(prompt_vars={"user_name": "Carol"})
-    vars_ = agent.effective_prompt_vars()
-    ctx = make_prompt_context(agent, inject_builtins=True)
+    agent = MyAgent(template_variables={"user_name": "Carol"})
+    vars_ = agent.effective_template_variables()
+    ctx = make_prompt_context(agent, inject_template_vars=True)
     resolved = agent._resolve_system_prompt(vars_, ctx)
     assert "Carol" in resolved
     r = agent.response("Hi")
@@ -153,23 +153,23 @@ def test_agent_get_prompt_builtins() -> None:
     assert builtins["conversation_id"] is None
 
 
-def test_agent_inject_builtins_false() -> None:
-    """inject_builtins=False skips built-ins."""
-    agent = Agent(model=_almock(), system_prompt="Hi", inject_builtins=False)
-    vars_ = agent.effective_prompt_vars()
+def test_agent_inject_template_vars_false() -> None:
+    """inject_template_vars=False skips built-in template vars."""
+    agent = Agent(model=_almock(), system_prompt="Hi", inject_template_vars=False)
+    vars_ = agent.effective_template_variables()
     assert "date" not in vars_
     assert "agent_id" not in vars_
     assert "conversation_id" not in vars_
 
 
 def test_agent_prompt_missing_var_raises() -> None:
-    """Prompt with required param, prompt_vars omits it, raises clear error."""
+    """Prompt with required param, template_variables omits it, raises clear error."""
 
     @prompt
     def p(required: str) -> str:
         return f"You use {required}."
 
-    agent = Agent(model=_almock(), system_prompt=p, prompt_vars={})
+    agent = Agent(model=_almock(), system_prompt=p, template_variables={})
     with pytest.raises(ValueError, match="required|missing"):
         agent.response("Hi")
 

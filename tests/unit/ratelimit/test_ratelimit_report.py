@@ -31,7 +31,12 @@ class TestRateLimitReport:
             ],
         )
 
-        agent = Agent(model=Model("openai/gpt-4o-mini"), rate_limit=rate_limit)
+        from syrin.agent.config import AgentConfig
+
+        agent = Agent(
+            model=Model("openai/gpt-4o-mini"),
+            config=AgentConfig(rate_limit=rate_limit),
+        )
 
         # Verify rate limit manager is set up
         assert agent._rate_limit_manager is not None

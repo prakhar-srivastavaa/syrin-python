@@ -286,34 +286,44 @@ See [Guardrails](guardrails.md).
 
 ### `context`
 
-Context manager for message preparation and compression.
+Context manager for message preparation and compression. Pass via `AgentConfig`.
 
-**Type:** `Context | DefaultContextManager | None`  
+**Type:** `Context | ContextConfig | DefaultContextManager | None`  
 **Default:** `DefaultContextManager(Context())`
 
-```python
-from syrin.context import Context
+Use **ContextConfig** when you only need the main knobs (max_tokens, reserve, thresholds, token_limits, auto_compact_at); it builds a full `Context` internally.
 
-agent = Agent(model=model, context=Context())
+```python
+from syrin import Agent, AgentConfig
+from syrin.context import Context, ContextConfig
+
+# Full Context (all options)
+agent = Agent(model=model, config=AgentConfig(context=Context(max_tokens=8000)))
+
+# ContextConfig (3–5 knobs for 90% of cases)
+agent = Agent(model=model, config=AgentConfig(context=ContextConfig(max_tokens=8000, auto_compact_at=0.6)))
 ```
 
 ---
 
 ### `rate_limit`
 
-API rate limit configuration.
+API rate limit configuration. Pass via `AgentConfig`.
 
 **Type:** `APIRateLimit | RateLimitManager | None`  
 **Default:** `None`
 
 ```python
+from syrin import AgentConfig
 from syrin.ratelimit import APIRateLimit
 
 agent = Agent(
     model=model,
-    rate_limit=APIRateLimit(
-        requests_per_minute=60,
-        tokens_per_minute=90000,
+    config=AgentConfig(
+        rate_limit=APIRateLimit(
+            requests_per_minute=60,
+            tokens_per_minute=90000,
+        ),
     ),
 )
 ```
@@ -324,22 +334,25 @@ See [Rate Limiting](rate-limiting.md).
 
 ### `checkpoint`
 
-Checkpoint configuration for saving/loading state.
+Checkpoint configuration for saving/loading state. Pass via `AgentConfig`.
 
 **Type:** `CheckpointConfig | Checkpointer | None`  
 **Default:** `None`
 
 ```python
+from syrin import AgentConfig
 from syrin.checkpoint import CheckpointConfig
 
 agent = Agent(
     model=model,
-    checkpoint=CheckpointConfig(
+    config=AgentConfig(
+        checkpoint=CheckpointConfig(
         enabled=True,
         storage="sqlite",
         path="/tmp/checkpoints.db",
-        trigger=CheckpointTrigger.STEP,
-        max_checkpoints=10,
+            trigger=CheckpointTrigger.STEP,
+            max_checkpoints=10,
+        ),
     ),
 )
 ```
@@ -363,15 +376,16 @@ agent = Agent(model=model, debug=True)
 
 ### `tracer`
 
-Custom tracer for observability. If `None`, uses the default tracer.
+Custom tracer for observability. Pass via `AgentConfig`. If `None`, uses the default tracer.
 
-**Type:** `Any`  
+**Type:** `Tracer | None`  
 **Default:** `None`
 
 ```python
+from syrin import AgentConfig
 from syrin.observability import get_tracer
 
-agent = Agent(model=model, tracer=get_tracer())
+agent = Agent(model=model, config=AgentConfig(tracer=get_tracer()))
 ```
 
 ---

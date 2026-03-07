@@ -275,10 +275,10 @@ def test_patch_then_revert_restores_baseline() -> None:
 
 
 class TestRemoteConfigE2EFullFeatures:
-    """E2E: serve agent with guardrails, prompt_vars, tools; override via PATCH; assert state."""
+    """E2E: serve agent with guardrails, template_variables, tools; override via PATCH; assert state."""
 
     def test_full_features_get_config_has_all_sections(self) -> None:
-        """GET /config returns guardrails, prompt_vars, tools sections when agent has them."""
+        """GET /config returns guardrails, template_variables, tools sections when agent has them."""
         from syrin.guardrails.built_in import PIIScanner
         from syrin.tool import tool
 
@@ -293,7 +293,7 @@ class TestRemoteConfigE2EFullFeatures:
             system_prompt="Hi.",
             tools=[alpha],
             guardrails=[PIIScanner()],
-            prompt_vars={"x": "y"},
+            template_variables={"x": "y"},
         )
         config = ServeConfig()
         router = build_router(agent, config)
@@ -308,18 +308,18 @@ class TestRemoteConfigE2EFullFeatures:
         assert "sections" in data
         sections = data["sections"]
         assert "guardrails" in sections
-        assert "prompt_vars" in sections
+        assert "template_variables" in sections
         assert "tools" in sections
         assert "budget" in sections
         assert "agent" in sections
         assert "current_values" in data
         cv = data["current_values"]
-        assert cv.get("prompt_vars.x") == "y"
+        assert cv.get("template_variables.x") == "y"
         assert cv.get("tools.alpha.enabled") is True
         assert cv.get("guardrails.PIIScanner.enabled") is True
 
     def test_full_features_patch_overrides_reflected_on_agent(self) -> None:
-        """PATCH guardrails/tools/prompt_vars overrides; agent state and GET /config reflect them."""
+        """PATCH guardrails/tools/template_variables overrides; agent state and GET /config reflect them."""
         from syrin.guardrails.built_in import PIIScanner
         from syrin.tool import tool
 
@@ -338,7 +338,7 @@ class TestRemoteConfigE2EFullFeatures:
             system_prompt="Hi. Env: {env}.",
             tools=[alpha, beta],
             guardrails=[PIIScanner()],
-            prompt_vars={"env": "staging"},
+            template_variables={"env": "staging"},
         )
         config = ServeConfig()
         router = build_router(agent, config)
@@ -355,13 +355,13 @@ class TestRemoteConfigE2EFullFeatures:
         agent_id = get_data["agent_id"]
         assert "e2e_patch_agent" in agent_id
 
-        # 2) Apply overrides: disable PIIScanner, set prompt_vars.env, disable tool alpha
+        # 2) Apply overrides: disable PIIScanner, set template_variables.env, disable tool alpha
         payload = {
             "agent_id": agent_id,
             "version": 1,
             "overrides": [
                 {"path": "guardrails.PIIScanner.enabled", "value": False},
-                {"path": "prompt_vars.env", "value": "prod"},
+                {"path": "template_variables.env", "value": "prod"},
                 {"path": "tools.alpha.enabled", "value": False},
             ],
         }
@@ -369,13 +369,13 @@ class TestRemoteConfigE2EFullFeatures:
         assert patch_r.status_code == 200
         patch_data = patch_r.json()
         assert "guardrails.PIIScanner.enabled" in patch_data["accepted"]
-        assert "prompt_vars.env" in patch_data["accepted"]
+        assert "template_variables.env" in patch_data["accepted"]
         assert "tools.alpha.enabled" in patch_data["accepted"]
         assert len(patch_data["rejected"]) == 0
 
         # 3) Assert agent state
         assert "PIIScanner" in agent._guardrails_disabled
-        assert agent._prompt_vars.get("env") == "prod"
+        assert agent._template_vars.get("env") == "prod"
         assert "alpha" in agent._tools_disabled
         assert len(agent.tools) == 1
         assert agent.tools[0].name == "beta"
@@ -385,6 +385,6 @@ class TestRemoteConfigE2EFullFeatures:
         assert get2_r.status_code == 200
         cv = get2_r.json()["current_values"]
         assert cv.get("guardrails.PIIScanner.enabled") is False
-        assert cv.get("prompt_vars.env") == "prod"
+        assert cv.get("template_variables.env") == "prod"
         assert cv.get("tools.alpha.enabled") is False
         assert cv.get("tools.beta.enabled") is True

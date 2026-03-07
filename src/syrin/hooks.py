@@ -537,11 +537,11 @@ HOOK_SCHEMAS: dict[Hook, HookContextSchema] = {
         hook=Hook.SYSTEM_PROMPT_BEFORE_RESOLVE,
         description="Before system prompt resolution (dynamic prompts)",
         fields={
-            "prompt_vars": dict,
+            "template_variables": dict,
             "source": object,
         },
         example={
-            "prompt_vars": {"user_name": "Alice", "date": "2025-02-28"},
+            "template_variables": {"user_name": "Alice", "date": "2025-02-28"},
             "source": "<Prompt or callable>",
         },
     ),

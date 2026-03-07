@@ -124,7 +124,7 @@ agent = Agent(
 ```
 
 - Default: `memory=Memory()` when omitted (multi-turn enabled).
-- `memory=None` or `memory=False` — Disable memory (no history, no recall).
+- `memory=None` or `memory=MemoryPreset.DISABLED` — Disable memory (no history, no recall).
 
 ---
 

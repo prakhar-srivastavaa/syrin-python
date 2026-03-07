@@ -116,7 +116,9 @@ result = agent.response("Long conversation...")
 
 ### Context
 
-**`Context`** is the main configuration object. Pass it to the agent as **`context=Context(...)`**. It controls the context window, reserves, thresholds, token caps, encoding, and compactor.
+**`Context`** is the main configuration object. Pass it to the agent as **`config=AgentConfig(context=Context(...))`**. It controls the context window, reserves, thresholds, token caps, encoding, and compactor.
+
+**Tweak these 3–5 knobs for 90% of cases:** **max_tokens** (window size), **reserve** (tokens held for reply), **thresholds** (e.g. compact at 75%), **token_limits** (optional token caps), **auto_compact_at** (optional proactive compact at 60%). Other fields (encoding, compactor, context_mode, formation_mode, map, output chunks) are for advanced use. Use **ContextConfig** for a reduced config with just these knobs: `from syrin import Agent, AgentConfig, ContextConfig; Agent(..., config=AgentConfig(context=ContextConfig(max_tokens=8000)))`.
 
 #### Context fields (why, what, how)
 
@@ -766,6 +768,8 @@ Example (keep only last N messages):
 
 ```python
 from typing import Any
+
+from syrin import Agent, AgentConfig
 from syrin.context import ContextManager, ContextPayload, TokenLimits
 from syrin.context.counter import get_counter
 
@@ -795,7 +799,10 @@ class RecentOnlyManager:
     def on_compact(self, event) -> None:
         pass
 
-agent = Agent(model=model, context=RecentOnlyManager(keep=20))
+agent = Agent(
+    model=model,
+    config=AgentConfig(context=RecentOnlyManager(keep=20)),
+)
 ```
 
 **create_context_manager(context=None, emit_fn=None, tracer=None)** returns a **DefaultContextManager** for a given **Context** and optional emit/tracer.
@@ -840,7 +847,7 @@ You can replace the compactor in a custom manager or extend **DefaultContextMana
 ## Integration with memory and budget
 
 - **Memory:** Persistent memory (**Memory**) is recalled and formatted as **memory_context**. The default context manager injects it as a system message (**[Memory]\n...**) when **memory_context** is non-empty. So context stats and compaction apply to the full message list including memory.
-- **Budget:** Cost limits are **Budget** (USD). Token usage caps are **Context.token_limits** (**TokenLimits**). You can use both: **Agent(budget=Budget(...), context=Context(token_limits=TokenLimits(...)))**.
+- **Budget:** Cost limits are **Budget** (USD). Token usage caps are **Context.token_limits** (**TokenLimits**). You can use both: **Agent(budget=Budget(...), config=AgentConfig(context=Context(token_limits=TokenLimits(...))))**.
 - **Long-running sessions:** For agents that run across restarts, combine **checkpoint** (saves messages + context snapshot), **BufferMemory** (restored on load), and **auto_compact_at** (e.g. 0.6). See [Agent: Checkpointing - Long-running sessions](agent/checkpointing.md) and `examples/12_checkpoints/long_running_agent.py`.
 
 ---
@@ -957,10 +964,12 @@ agent = Agent(
 **agent.context** still exposes the agent’s default **Context** config. For the config and stats **actually used** on a given call, use **result.context** and **result.context_stats** (set on every **Response** from **response()** / **arun()**).
 
 ```python
+from syrin import AgentConfig
+
 agent = Agent(
     # model=Model("openai/gpt-4o"),
     model=Model.Almock(),  # No API Key needed
-    context=Context(max_tokens=128000),
+    config=AgentConfig(context=Context(max_tokens=128000)),
 )
 result = agent.response("Summarize this", context=Context(max_tokens=4000))
 # Default context (unchanged):
@@ -978,8 +987,13 @@ print(result.context_stats.total_tokens)
 
 ```python
 # Per-model reserve via Model constructor or with_params
+from syrin import AgentConfig
+
 model = Model("openai/gpt-4o", default_reserve_tokens=8000)
-agent = Agent(model=model, context=Context(max_tokens=128000))
+agent = Agent(
+    model=model,
+    config=AgentConfig(context=Context(max_tokens=128000)),
+)
 # Budget for this agent uses reserve 8000 from the model
 ```
 

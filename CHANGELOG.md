@@ -7,9 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.7.0] - 2026-03-07
+
 ### Breaking
 
-- **Context:** `Context.budget` removed. Use **`Context.token_limits`** (TokenLimits) for token caps. **`ContextWindowBudget`** renamed to **`ContextWindowCapacity`**. **`Context.get_budget(model)`** renamed to **`Context.get_capacity(model)`**. **ContextManager.prepare()** now takes **`capacity`** (ContextWindowCapacity) instead of **`budget`**.
+- **Context:** `Context.budget` removed. Use **`Context.token_limits`** (TokenLimits). **`ContextWindowBudget`** → **`ContextWindowCapacity`**. **`Context.get_budget(model)`** → **`Context.get_capacity(model)`**. **ContextManager.prepare()** takes **`capacity`** instead of **`budget`**.
+
+### Added
+
+- **Context management** — Snapshot (provenance, why_included, context_rot_risk), breakdown, custom compaction prompt, `auto_compact_at`, runtime injection, `context_mode` (full/focused), formation_mode (push/pull), stored output chunks, persistent context map, pluggable RelevanceScorer.
+- **Memory–context** — Memory on by default; `memory=None` turns off. No extra field.
+- **Handoff/spawn** — Context visibility in events (`handoff_context`, `context_inherited`, `initial_context_tokens`).
+
+### Fixed
+
+- Examples: `Output(type=...)` → `Output(MyModel)`; `Agent(dependencies=...)` → `Agent(config=AgentConfig(dependencies=...))`.
 
 ---
 

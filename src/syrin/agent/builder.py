@@ -34,7 +34,7 @@ class AgentBuilder:
         """
         self._model = model
         self._system_prompt: str | Any = ""
-        self._prompt_vars: dict[str, Any] = {}
+        self._template_variables: dict[str, Any] = {}
         self._tools: list[Any] = []
         self._budget: Budget | None = None
         self._output: Any = None
@@ -43,23 +43,23 @@ class AgentBuilder:
         self._budget_store_key: str = "default"
         self._memory: Memory | None = None
         self._loop_strategy: Any = None
-        self._loop: Any = None
+        self._custom_loop: Any = None
         self._guardrails: Any = None
         self._context: Context | None = None
         self._rate_limit: Any = None
         self._checkpoint: Any = None
         self._debug: bool = False
         self._tracer: Any = None
-        self._bus: Any = None
+        self._event_bus: Any = None
 
     def with_system_prompt(self, prompt: str | Any) -> AgentBuilder:
         """Set system prompt (str, Prompt from @prompt, or callable)."""
         self._system_prompt = prompt if prompt is not None else ""
         return self
 
-    def with_prompt_vars(self, vars: dict[str, Any]) -> AgentBuilder:
-        """Set prompt vars for dynamic system prompts."""
-        self._prompt_vars = dict(vars) if vars else {}
+    def with_template_variables(self, variables: dict[str, Any]) -> AgentBuilder:
+        """Set template variables for dynamic system prompts."""
+        self._template_variables = dict(variables) if variables else {}
         return self
 
     def with_tools(self, tools: list[Any]) -> AgentBuilder:
@@ -98,9 +98,9 @@ class AgentBuilder:
         self._loop_strategy = strategy
         return self
 
-    def with_loop(self, loop: Any) -> AgentBuilder:
+    def with_custom_loop(self, loop: Any) -> AgentBuilder:
         """Set custom Loop instance."""
-        self._loop = loop
+        self._custom_loop = loop
         return self
 
     def with_guardrails(self, guardrails: Any) -> AgentBuilder:
@@ -133,19 +133,39 @@ class AgentBuilder:
         self._tracer = tracer
         return self
 
-    def with_bus(self, bus: Any) -> AgentBuilder:
+    def with_event_bus(self, event_bus: Any) -> AgentBuilder:
         """Set event bus for typed domain events."""
-        self._bus = bus
+        self._event_bus = event_bus
         return self
 
     def build(self) -> Agent:
         """Build and return the Agent."""
         from syrin.agent import Agent
+        from syrin.agent.config import AgentConfig
+
+        config: AgentConfig | None = None
+        if any(
+            x is not None
+            for x in (
+                self._context,
+                self._rate_limit,
+                self._checkpoint,
+                self._tracer,
+                self._event_bus,
+            )
+        ):
+            config = AgentConfig(
+                context=self._context,
+                rate_limit=self._rate_limit,
+                checkpoint=self._checkpoint,
+                tracer=self._tracer,
+                event_bus=self._event_bus,
+            )
 
         return Agent(
             model=self._model,
             system_prompt=self._system_prompt,
-            prompt_vars=self._prompt_vars,
+            template_variables=self._template_variables,
             tools=self._tools,
             budget=self._budget,
             output=self._output,
@@ -154,12 +174,8 @@ class AgentBuilder:
             budget_store_key=self._budget_store_key,
             memory=self._memory,
             loop_strategy=self._loop_strategy,
-            loop=self._loop,
+            custom_loop=self._custom_loop,
             guardrails=self._guardrails,
-            context=self._context,
-            rate_limit=self._rate_limit,
-            checkpoint=self._checkpoint,
             debug=self._debug,
-            tracer=self._tracer,
-            bus=self._bus,
+            config=config,
         )

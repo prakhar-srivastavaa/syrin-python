@@ -6,14 +6,14 @@ custom implementations, but built-in loops are simplified.
 
 Usage:
     # Simple - just use the built-in
-    agent = Agent(loop=ReactLoop())
+    agent = Agent(custom_loop=ReactLoop())
 
     # Human in the loop - simplified
     async def approve(tool): return True
-    agent = Agent(loop=HumanInTheLoop(approve))
+    agent = Agent(custom_loop=HumanInTheLoop(approve))
 
     # Single shot - no iteration
-    agent = Agent(loop=SingleShotLoop())
+    agent = Agent(custom_loop=SingleShotLoop())
 """
 
 from __future__ import annotations
@@ -326,7 +326,7 @@ class ReactLoop(Loop):
                 approved = True
                 if needs_approval:
                     gate = getattr(ctx, "approval_gate", None)
-                    timeout = getattr(ctx, "hitl_timeout", 300)
+                    timeout = getattr(ctx, "human_approval_timeout", 300)
                     ctx.emit_event(
                         Hook.HITL_PENDING,
                         EventContext(

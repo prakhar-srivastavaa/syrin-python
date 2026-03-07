@@ -221,7 +221,7 @@ class TestSpawn:
             model = Model("test/model")
 
         parent = Parent()
-        parent._max_children = 2
+        parent._max_child_agents = 2
 
         # Spawn 2 with task — each completes before returning, so _child_count stays 0 after each
         parent.spawn(Child, "Task 1")
@@ -234,7 +234,7 @@ class TestSpawn:
         parent._child_count = 0
         _c1 = parent.spawn(Child)  # no task — returns agent, _child_count=1
         _c2 = parent.spawn(Child)  # _child_count=2
-        with pytest.raises(RuntimeError, match="max children"):
+        with pytest.raises(RuntimeError, match="max child agents"):
             parent.spawn(Child)  # would be 3rd concurrent
 
     @patch("syrin.agent._resolve_provider")
@@ -651,11 +651,11 @@ class TestSpawnHooks:
         class ChildAgent(Agent):
             model = Model("test/model")
 
-        parent = Agent(model=Model("test/model"), max_children=2)
+        parent = Agent(model=Model("test/model"), max_child_agents=2)
         # Spawn without task so children stay "in flight" (_child_count not decremented)
         parent.spawn(ChildAgent)
         parent.spawn(ChildAgent)
-        with pytest.raises(RuntimeError, match="max children.*2.*reached"):
+        with pytest.raises(RuntimeError, match="max child agents.*2.*reached"):
             parent.spawn(ChildAgent)
 
 

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from syrin import Agent, Model, RunContext, tool
+from syrin import Agent, AgentConfig, Model, RunContext, tool
 
 # -----------------------------------------------------------------------------
 # Dependencies
@@ -62,7 +62,7 @@ def test_tool_with_ctx_receives_deps() -> None:
     """Tool with ctx receives RunContext with deps."""
     counter: list[int] = []
     deps = DIExampleDeps(value="injected", counter=counter)
-    agent = DIAgent(deps=deps)
+    agent = DIAgent(config=AgentConfig(dependencies=deps))
     result = agent._execute_tool("tool_with_ctx", {"key": "foo"})
     assert len(counter) >= 1
     assert result == "injected:foo"
@@ -76,7 +76,7 @@ def test_tool_with_ctx_no_deps_raises() -> None:
     with pytest.raises(ToolExecutionError) as exc_info:
         agent._execute_tool("tool_with_ctx", {"key": "foo"})
     assert "expects ctx: RunContext" in str(exc_info.value)
-    assert "no deps" in str(exc_info.value).lower() or "Pass deps=" in str(exc_info.value)
+    assert "no deps" in str(exc_info.value).lower() or "Pass dependencies=" in str(exc_info.value)
 
 
 def test_tool_schema_excludes_ctx() -> None:

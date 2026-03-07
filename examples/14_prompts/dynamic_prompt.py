@@ -1,9 +1,9 @@
 """Dynamic System Prompt Example.
 
 Demonstrates:
-- @prompt with prompt_vars for runtime variable injection
-- Per-call prompt_vars override
-- effective_prompt_vars() and get_prompt_builtins() for introspection
+- @prompt with template_variables for runtime variable injection
+- Per-call template_variables override
+- effective_template_variables() and get_prompt_builtins() for introspection
 
 Run: python -m examples.14_prompts.dynamic_prompt
 Visit: http://localhost:8000/playground
@@ -33,26 +33,26 @@ def persona_prompt(
 
 class PersonaAgent(Agent):
     _agent_name = "persona-agent"
-    _agent_description = "Agent with dynamic prompt_vars"
+    _agent_description = "Agent with dynamic template_variables"
     model = almock
     system_prompt = persona_prompt
-    prompt_vars = {"tone": "friendly"}
+    template_variables = {"tone": "friendly"}
 
 
-# Instance prompt_vars override class
-alice = PersonaAgent(prompt_vars={"user_name": "Alice", "tone": "casual"})
-vars_ = alice.effective_prompt_vars()
+# Instance template_variables override class
+alice = PersonaAgent(template_variables={"user_name": "Alice", "tone": "casual"})
+vars_ = alice.effective_template_variables()
 print(f"Effective vars: user_name={vars_['user_name']}, tone={vars_['tone']}")
 
 r1 = alice.response("What can you help me with?")
 print(f"Alice: {r1.content[:80]}...")
 
 # Per-call override (same agent, different user)
-r2 = alice.response("Hi", prompt_vars={"user_name": "Bob"})
+r2 = alice.response("Hi", template_variables={"user_name": "Bob"})
 print(f"Bob (per-call): {r2.content[:80]}...")
 
 
 if __name__ == "__main__":
-    agent = PersonaAgent(prompt_vars={"user_name": "Demo", "tone": "concise"})
+    agent = PersonaAgent(template_variables={"user_name": "Demo", "tone": "concise"})
     print("Serving at http://localhost:8000/playground")
     agent.serve(port=8000, enable_playground=True, debug=True)

@@ -15,7 +15,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from examples.models.models import almock, gpt4_mini
-from syrin import Agent, Context
+from syrin import Agent, AgentConfig, Context
 from syrin.memory import Memory
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
@@ -32,11 +32,13 @@ def _main() -> None:
             "Keep each paragraph focused."
         ),
         memory=Memory(),
-        context=Context(
-            max_tokens=8000,
-            store_output_chunks=True,
-            output_chunk_top_k=5,
-            output_chunk_threshold=0.0,
+        config=AgentConfig(
+            context=Context(
+                max_tokens=8000,
+                store_output_chunks=True,
+                output_chunk_top_k=5,
+                output_chunk_threshold=0.0,
+            )
         ),
     )
 

@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from syrin import Agent, AuditLog, Model
+from syrin.agent.config import AgentConfig
 from syrin.enums import AuditEventType
 from syrin.types import ProviderResponse, TokenUsage
 
@@ -22,7 +23,7 @@ class TestAgentAuditIntegration:
             audit = AuditLog(path=str(path))
 
             model = Model("anthropic/claude-3-5-sonnet")
-            agent = Agent(model=model, system_prompt="Test", audit=audit)
+            agent = Agent(model=model, system_prompt="Test", config=AgentConfig(audit=audit))
 
             mock_resp = ProviderResponse(
                 content="Hi",
@@ -71,7 +72,7 @@ class TestAgentAuditIntegration:
         """Agent with non-AuditLog audit raises TypeError."""
         model = Model("anthropic/claude-3-5-sonnet")
         with pytest.raises(TypeError) as exc_info:
-            Agent(model=model, audit="invalid")  # type: ignore[arg-type]
+            Agent(model=model, config=AgentConfig(audit="invalid"))  # type: ignore[arg-type]
         assert "audit must be AuditLog" in str(exc_info.value)
 
     def test_audit_include_llm_calls_false_skips_llm_events(self) -> None:
@@ -81,7 +82,7 @@ class TestAgentAuditIntegration:
             audit = AuditLog(path=str(path), include_llm_calls=False)
 
             model = Model("anthropic/claude-3-5-sonnet")
-            agent = Agent(model=model, system_prompt="Test", audit=audit)
+            agent = Agent(model=model, system_prompt="Test", config=AgentConfig(audit=audit))
 
             mock_resp = ProviderResponse(
                 content="Hi",

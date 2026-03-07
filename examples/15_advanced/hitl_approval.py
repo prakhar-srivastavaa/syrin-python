@@ -46,7 +46,7 @@ class HITLAgent(Agent):
     system_prompt = "Use delete_record to delete, search to find."
     tools = [delete_record, search]
     approval_gate = gate
-    hitl_timeout = 60
+    human_approval_timeout = 60
 
 
 if __name__ == "__main__":

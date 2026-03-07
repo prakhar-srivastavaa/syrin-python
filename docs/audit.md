@@ -48,6 +48,7 @@ dyn.run("Create a report")
 Implement `AuditBackendProtocol`:
 
 ```python
+from syrin import AgentConfig
 from syrin.audit import AuditBackendProtocol, AuditEntry, AuditFilters
 
 class S3AuditBackend(AuditBackendProtocol):
@@ -59,7 +60,10 @@ class S3AuditBackend(AuditBackendProtocol):
         # Optional
         ...
 
-agent = Agent(model=model, audit=AuditLog(custom_backend=S3AuditBackend(...)))
+agent = Agent(
+    model=model,
+    config=AgentConfig(audit=AuditLog(custom_backend=S3AuditBackend(...))),
+)
 ```
 
 ## Event Types

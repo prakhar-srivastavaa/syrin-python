@@ -73,7 +73,7 @@ agent.response("Hello")
 agent = (
     Agent.builder(Model("openai/gpt-4o-mini"))
     .with_budget(Budget(run=0.5))
-    .with_bus(bus)
+    .with_event_bus(bus)
     .build()
 )
 ```

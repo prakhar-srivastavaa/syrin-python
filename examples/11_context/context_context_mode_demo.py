@@ -17,7 +17,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from examples.models.models import almock, gpt4_mini
-from syrin import Agent, Context
+from syrin import Agent, AgentConfig, Context
 from syrin.context import ContextMode
 from syrin.memory import Memory
 
@@ -32,10 +32,12 @@ def _main() -> None:
         model=_model,
         system_prompt="You are helpful. Keep answers brief.",
         memory=Memory(),  # Keep conversation history across turns
-        context=Context(
-            max_tokens=8000,
-            context_mode=ContextMode.FOCUSED,
-            focused_keep=3,
+        config=AgentConfig(
+            context=Context(
+                max_tokens=8000,
+                context_mode=ContextMode.FOCUSED,
+                focused_keep=3,
+            )
         ),
     )
 
@@ -60,7 +62,7 @@ def _main() -> None:
     agent_full = Agent(
         model=_model,
         system_prompt="You are helpful.",
-        context=Context(max_tokens=8000, context_mode=ContextMode.FULL),
+        config=AgentConfig(context=Context(max_tokens=8000, context_mode=ContextMode.FULL)),
     )
     agent_full.response("Hello")
     snap_full = agent_full.context.snapshot()
