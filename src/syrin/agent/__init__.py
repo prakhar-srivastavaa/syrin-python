@@ -55,6 +55,19 @@ class _ContextFacade:
         return getattr(self._config, name)
 
 
+class _AgentRuntime:
+    """Internal runtime state. Not part of public API."""
+
+    __slots__ = ("remote_baseline", "remote_overrides", "mcp_tool_indices", "budget_tracker_shared")
+
+    def __init__(self) -> None:
+        self.remote_baseline: dict[str, object] | None = None
+        self.remote_overrides: dict[str, object] = {}
+        self.mcp_tool_indices: dict[str, int] = {}
+        self.budget_tracker_shared: bool = False
+
+
+from syrin._sentinel import NOT_PROVIDED
 from syrin.agent._context_builder import build_messages as build_messages_for_llm
 from syrin.agent._run_context import DefaultAgentRunContext
 from syrin.audit import AuditHookHandler, AuditLog
@@ -65,6 +78,7 @@ from syrin.enums import (
     Hook,
     LoopStrategy,
     MemoryBackend,
+    MemoryPreset,
     MemoryType,
 )
 from syrin.events import EventContext, Events
@@ -110,7 +124,6 @@ from syrin.tool import ToolSpec
 from syrin.types import CostInfo, Message, ModelConfig, ProviderResponse, TokenUsage
 
 DEFAULT_MAX_TOOL_ITERATIONS = 10
-_UNSET: Any = object()
 _log = logging.getLogger(__name__)
 
 _agent_loop: asyncio.AbstractEventLoop | None = None
@@ -142,8 +155,8 @@ def _merge_class_attrs(mro: tuple[type, ...], name: str, merge: bool) -> Any:
         for cls in mro:
             if cls is object:
                 continue
-            val = cls.__dict__.get(name, _UNSET)
-            if val is _UNSET or val is None:
+            val = cls.__dict__.get(name, NOT_PROVIDED)
+            if val is NOT_PROVIDED or val is None:
                 continue
             # Skip descriptors (e.g. @property) so we don't merge the property object
             if hasattr(val, "__get__"):
@@ -162,7 +175,7 @@ def _merge_class_attrs(mro: tuple[type, ...], name: str, merge: bool) -> Any:
             if hasattr(val, "__get__"):
                 continue
             return val
-    return _UNSET
+    return NOT_PROVIDED
 
 
 def _collect_system_prompt_method(cls: type) -> Any:
@@ -358,9 +371,10 @@ class Agent(Servable, metaclass=_AgentMeta):
         - Trace and debug with events and spans.
 
     How to create one:
-        - Pass everything at construction: ``Agent(model=..., system_prompt=...)``
+        - Recommended: ``Agent.builder(model).with_system_prompt(...).with_budget(...).build()``
+        - Or presets: ``Agent.basic(model)``, ``Agent.with_memory(model)``
+        - Or constructor: ``Agent(model=..., system_prompt=...)``
         - Or subclass and set class attributes: ``model = Model.OpenAI(...)``
-        - Child classes override parent for model/prompt/budget; tools are merged.
 
     Subclass attributes (set on your Agent subclass; override parent defaults):
         model: Model | None — LLM to use (Model.OpenAI, Model.Anthropic, etc.). Required.
@@ -368,6 +382,7 @@ class Agent(Servable, metaclass=_AgentMeta):
         name: str | None — Agent identifier for handoffs, discovery. Default: None.
         description: str — Human-readable description (metaclass moves to internal). Default: "".
         _agent_name: ClassVar[str | None] — Same as name; use this to avoid type-checker override warnings.
+        Name precedence: constructor name > class _agent_name/name > cls.__name__.lower()
         _agent_description: ClassVar[str] — Same as description; use this to avoid type-checker override warnings.
         tools: list[ToolSpec] — Tools the agent can call. Merged with parent. Default: [].
         budget: Budget | None — Cost limits (run, per-period). Default: None (unlimited).
@@ -375,11 +390,14 @@ class Agent(Servable, metaclass=_AgentMeta):
         guardrails: list[Guardrail] — Input/output guardrails. Merged with parent. Default: [].
         context: Context | None — Context window config. Default: None.
         checkpoint: CheckpointConfig | None — State checkpoint config. Default: None.
-        prompt_vars: dict[str, Any] — Template vars for dynamic system prompts. Default: {}.
+        prompt_vars: dict[str, Any] — Template vars for system prompt (e.g. {"user_name": "Alice"}).
+                Merge with inject_builtins ({date}, {agent_id}, {conversation_id}). Default: {}.
 
     Instance attributes (read after creation):
         events: Lifecycle hooks. Use agent.events.on(Hook.LLM_REQUEST_END, fn).
         budget_state: BudgetState | None — Current budget state when budget configured.
+
+        Internal: _runtime holds remote config state. Not part of public API.
 
     Example:
         >>> from syrin import Agent
@@ -475,13 +493,13 @@ class Agent(Servable, metaclass=_AgentMeta):
         default_guardrails = _merge_class_attrs(mro, "guardrails", merge=True)
         default_memory = _merge_class_attrs(mro, "memory", merge=False)
         default_name = _merge_class_attrs(mro, "_agent_name", merge=False)
-        if default_name is _UNSET:
+        if default_name is NOT_PROVIDED:
             default_name = _merge_class_attrs(mro, "name", merge=False)
         default_description = _merge_class_attrs(mro, "_agent_description", merge=False)
-        if default_description is _UNSET:
+        if default_description is NOT_PROVIDED:
             default_description = _merge_class_attrs(mro, "description", merge=False)
-        cls._syrin_default_model = default_model if default_model is not _UNSET else None
-        # Keep _UNSET when no class sets memory so __init__ can default to Memory
+        cls._syrin_default_model = default_model if default_model is not NOT_PROVIDED else None
+        # Keep NOT_PROVIDED when no class sets memory so __init__ can default to Memory
         cls._syrin_default_memory = default_memory
         method_names = _get_system_prompt_method_names(cls)
         if len(method_names) > 1:
@@ -492,19 +510,21 @@ class Agent(Servable, metaclass=_AgentMeta):
                 "into a single @system_prompt method."
             )
         cls._syrin_system_prompt_method = _collect_system_prompt_method(cls)
-        cls._syrin_default_system_prompt = default_prompt if default_prompt is not _UNSET else ""
+        cls._syrin_default_system_prompt = (
+            default_prompt if default_prompt is not NOT_PROVIDED else ""
+        )
         merged_prompt_vars: dict[str, Any] = {}
         for c in mro:
             if c is object:
                 continue
-            pv = c.__dict__.get("prompt_vars", _UNSET)
-            if pv is not _UNSET and isinstance(pv, dict):
+            pv = c.__dict__.get("prompt_vars", NOT_PROVIDED)
+            if pv is not NOT_PROVIDED and isinstance(pv, dict):
                 merged_prompt_vars = {**merged_prompt_vars, **pv}
         cls._syrin_default_prompt_vars = merged_prompt_vars
         # Merge: class @tool methods first, then explicit tools. Explicit overrides by name.
         # MCP and MCPClient kept for init-time expansion; MCP also for co-location.
         class_tools = _collect_class_tools(cls)
-        explicit_list = list(default_tools) if default_tools is not _UNSET else []
+        explicit_list = list(default_tools) if default_tools is not NOT_PROVIDED else []
         by_name: dict[str, ToolSpec] = {t.name: t for t in class_tools}
         mcp_sources: list[Any] = []
         for t in explicit_list:
@@ -517,34 +537,36 @@ class Agent(Servable, metaclass=_AgentMeta):
             elif hasattr(t, "tools") and callable(getattr(t, "tools", None)):
                 mcp_sources.append(t)
         cls._syrin_default_tools = list(by_name.values()) + mcp_sources
-        cls._syrin_default_budget = default_budget if default_budget is not _UNSET else None
+        cls._syrin_default_budget = default_budget if default_budget is not NOT_PROVIDED else None
         cls._syrin_default_guardrails = (
-            list(default_guardrails) if default_guardrails is not _UNSET else []
+            list(default_guardrails) if default_guardrails is not NOT_PROVIDED else []
         )
-        if default_name is not _UNSET and isinstance(default_name, str):
+        if default_name is not NOT_PROVIDED and isinstance(default_name, str):
             cls._syrin_default_name = default_name
-        elif default_name is _UNSET and "_syrin_default_name" not in cls.__dict__:
+        elif default_name is NOT_PROVIDED and "_syrin_default_name" not in cls.__dict__:
             cls._syrin_default_name = None
-        if default_description is not _UNSET:
+        if default_description is not NOT_PROVIDED:
             cls._syrin_default_description = default_description
-        elif default_description is _UNSET and "_syrin_default_description" not in cls.__dict__:
+        elif (
+            default_description is NOT_PROVIDED and "_syrin_default_description" not in cls.__dict__
+        ):
             cls._syrin_default_description = ""
 
     def __init__(
         self,
-        model: Model | ModelConfig | None = _UNSET,
-        system_prompt: str | None = _UNSET,
-        tools: list[ToolSpec] | None = _UNSET,
-        budget: Budget | None = _UNSET,
+        model: Model | ModelConfig | None = NOT_PROVIDED,
+        system_prompt: str | None = NOT_PROVIDED,
+        tools: list[ToolSpec] | None = NOT_PROVIDED,
+        budget: Budget | None = NOT_PROVIDED,
         *,
         output: Output | None = None,
         max_tool_iterations: int = DEFAULT_MAX_TOOL_ITERATIONS,
         budget_store: BudgetStore | None = None,
         budget_store_key: str = "default",
-        memory: Memory | bool | None = _UNSET,
+        memory: Memory | MemoryPreset | bool | None = NOT_PROVIDED,
         loop_strategy: LoopStrategy = LoopStrategy.REACT,
         loop: Loop | type[Loop] | None = None,
-        guardrails: list[Guardrail] | GuardrailChain | None = _UNSET,
+        guardrails: list[Guardrail] | GuardrailChain | None = NOT_PROVIDED,
         context: Context | DefaultContextManager | None = None,
         rate_limit: APIRateLimit | RateLimitManager | None = None,
         checkpoint: CheckpointConfig | Checkpointer | None = None,
@@ -556,8 +578,8 @@ class Agent(Servable, metaclass=_AgentMeta):
         bus: Any = None,
         audit: Any = None,
         deps: Any = None,
-        name: str | None = _UNSET,
-        description: str | None = _UNSET,
+        name: str | None = NOT_PROVIDED,
+        description: str | None = NOT_PROVIDED,
         prompt_vars: dict[str, Any] | None = None,
         inject_builtins: bool = True,
         max_children: int | None = None,
@@ -580,10 +602,13 @@ class Agent(Servable, metaclass=_AgentMeta):
                 Why: Track spend across restarts. Requires budget_store_key.
             budget_store_key: Key for budget persistence (default "default").
                 Why: Isolate budgets per user/session when using budget_store.
-            memory: Memory for conversation and optional persistent recall. Default: Memory() for multi-turn. Set memory=None to disable.
-                Use memory=Memory() for remember/recall/forget.
-            loop_strategy: Execution strategy (REACT, SINGLE_SHOT, etc.).
-                Why: REACT = tool loop; SINGLE_SHOT = one LLM call, no tools.
+            memory: Memory for conversation and optional persistent recall.
+                memory=None or MemoryPreset.DISABLED: no memory (stateless).
+                memory=MemoryPreset.DEFAULT: core+episodic, top_k=10.
+                memory=Memory(): full config (remember/recall/forget). Default: Memory() for multi-turn.
+                Note: memory=True/False still accepted but prefer MemoryPreset.DEFAULT/DISABLED.
+            loop_strategy: Execution strategy. REACT: tool loop (reason→act→observe).
+                SINGLE_SHOT: one LLM call, no tools. Use REACT for tool-using agents.
             loop: Custom Loop instance. Overrides loop_strategy if set.
             guardrails: List of Guardrail or GuardrailChain. Validate input/output.
                 Why: Block harmful content, PII, or policy violations.
@@ -609,6 +634,8 @@ class Agent(Servable, metaclass=_AgentMeta):
             hitl_timeout: Seconds to wait for approval. On timeout, reject. Default 300.
             deps: Dependencies for tools. Tools with ctx: RunContext[Deps] receive this
                 via ctx.deps. Enables testing (mock deps) and multi-tenant (user deps).
+            inject_builtins: If True (default), inject {date}, {agent_id}, {conversation_id}
+                as template vars in system prompts. Set False if you don't use them.
             max_children: Cap on concurrent child agents when using spawn(). When set,
                 spawn() raises RuntimeError if limit reached. Default: 10 (from class
                 _max_children if not set). Use spawn(..., max_children=N) to override per call.
@@ -623,13 +650,13 @@ class Agent(Servable, metaclass=_AgentMeta):
             ... )
         """
         cls = self.__class__
-        if model is _UNSET:
+        if model is NOT_PROVIDED:
             model = getattr(cls, "_syrin_default_model", None)
-        if system_prompt is _UNSET:
+        if system_prompt is NOT_PROVIDED:
             system_prompt = getattr(cls, "_syrin_default_system_prompt", "") or ""
         # Merge class tools (@tool methods + class tools=[]) with constructor tools (later overrides by name)
         base_tools = getattr(cls, "_syrin_default_tools", None) or []
-        if tools is _UNSET:
+        if tools is NOT_PROVIDED:
             tools = base_tools
         else:
             if not isinstance(tools, list):
@@ -653,16 +680,16 @@ class Agent(Servable, metaclass=_AgentMeta):
                 if isinstance(t, ToolSpec):
                     by_name[t.name] = t
             tools = list(by_name.values())
-        if budget is _UNSET:
+        if budget is NOT_PROVIDED:
             budget = getattr(cls, "_syrin_default_budget", None)
-        if guardrails is _UNSET:
+        if guardrails is NOT_PROVIDED:
             guardrails = getattr(cls, "_syrin_default_guardrails", None) or []
-        if memory is _UNSET:
-            class_mem = getattr(cls, "_syrin_default_memory", _UNSET)
-            memory = Memory() if class_mem is _UNSET or class_mem is None else class_mem
-        if name is _UNSET:
+        if memory is NOT_PROVIDED:
+            class_mem = getattr(cls, "_syrin_default_memory", NOT_PROVIDED)
+            memory = Memory() if class_mem is NOT_PROVIDED or class_mem is None else class_mem
+        if name is NOT_PROVIDED:
             name = getattr(cls, "_syrin_default_name", None)
-        if description is _UNSET:
+        if description is NOT_PROVIDED:
             description = getattr(cls, "_syrin_default_description", "") or ""
         if name is None:
             name = cls.__name__.lower()
@@ -743,9 +770,9 @@ class Agent(Servable, metaclass=_AgentMeta):
             self._model_config.output = output.type
 
         self._system_prompt_source = (
-            system_prompt if system_prompt is not _UNSET and system_prompt is not None else ""
+            system_prompt if system_prompt is not NOT_PROVIDED and system_prompt is not None else ""
         )
-        if self._system_prompt_source is _UNSET:
+        if self._system_prompt_source is NOT_PROVIDED:
             self._system_prompt_source = ""
         class_pv = getattr(cls, "_syrin_default_prompt_vars", None) or {}
         instance_pv = dict(prompt_vars or {})
@@ -757,15 +784,12 @@ class Agent(Servable, metaclass=_AgentMeta):
         self._guardrails_disabled: set[str] = set()
         self._tools_disabled: set[str] = set()
         self._mcp_disabled: set[int] = set()
-        # Override store for scale-friendly remote config: baseline = code values, overrides = user changes, current = baseline + overrides
-        self._remote_baseline_values: dict[str, object] | None = None
-        self._remote_overrides: dict[str, object] = {}
-        self._mcp_tool_indices: dict[str, int] = {}
+        self._runtime = _AgentRuntime()
         for i, x in enumerate(tools_list):
             if _is_mcp(x) and hasattr(x, "tools") and callable(x.tools):
                 for t in x.tools():
                     if isinstance(t, ToolSpec):
-                        self._mcp_tool_indices[t.name] = i
+                        self._runtime.mcp_tool_indices[t.name] = i
         self._max_tool_iterations = max_tool_iterations
         self._budget = budget
         self._budget_store = budget_store
@@ -774,7 +798,6 @@ class Agent(Servable, metaclass=_AgentMeta):
         self._persistent_memory: Memory | None = None
         self._memory_backend: InMemoryBackend | None = None
         self._parent_agent: Agent | None = None
-        self._budget_tracker_shared: bool = False
         self._provider: Provider
 
         # Context (and budget from context) set early for budget_store load
@@ -787,26 +810,40 @@ class Agent(Servable, metaclass=_AgentMeta):
         ctx_config = getattr(self._context, "context", None)
         self._token_limits = getattr(ctx_config, "token_limits", None) if ctx_config else None
 
+        # Normalize memory: accept MemoryPreset, Memory, bool (deprecated), None
+        _memory_disabled = memory is None or memory is False or memory is MemoryPreset.DISABLED
+        _memory_default = memory is True or memory is MemoryPreset.DEFAULT
         if (
             memory is not None
             and memory is not True
             and memory is not False
+            and memory is not MemoryPreset.DISABLED
+            and memory is not MemoryPreset.DEFAULT
             and not isinstance(memory, Memory)
         ):
             raise TypeError(
-                f"memory must be Memory, True, False, or None, got {type(memory).__name__}. "
-                "Use Memory(types=[...], top_k=10), True for defaults, or False/None to disable."
+                f"memory must be Memory, MemoryPreset.DEFAULT, MemoryPreset.DISABLED, or None, "
+                f"got {type(memory).__name__}. Use Memory(...), MemoryPreset.DEFAULT, or None."
             )
-        if memory is None or memory is False:
+        if memory is True or memory is False:
+            import warnings
+
+            warnings.warn(
+                "memory=True/False is deprecated; use MemoryPreset.DEFAULT or MemoryPreset.DISABLED instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        if _memory_disabled:
             self._persistent_memory = None
             self._memory_backend = None
-        elif memory is True:
+        elif _memory_default:
             self._persistent_memory = Memory(
                 types=[MemoryType.CORE, MemoryType.EPISODIC],
                 top_k=10,
             )
             self._memory_backend = get_backend(MemoryBackend.MEMORY)
         else:
+            assert isinstance(memory, Memory), "memory must be Memory when not preset/disabled"
             self._persistent_memory = memory
             self._memory_backend = get_backend(memory.backend, **memory._backend_kwargs())
 
@@ -1362,7 +1399,7 @@ class Agent(Servable, metaclass=_AgentMeta):
         raw = list(self._tools) if self._tools else []
         tools_disabled = getattr(self, "_tools_disabled", set()) or set()
         mcp_disabled = getattr(self, "_mcp_disabled", set()) or set()
-        mcp_indices = getattr(self, "_mcp_tool_indices", {}) or {}
+        mcp_indices = self._runtime.mcp_tool_indices
         return [
             t
             for t in raw
@@ -1996,7 +2033,7 @@ class Agent(Servable, metaclass=_AgentMeta):
         if borrowed is not None and getattr(borrowed, "_parent_budget", None) is not None:
             child_agent._parent_agent = self
             child_agent._budget_tracker = self._budget_tracker
-            child_agent._budget_tracker_shared = True
+            child_agent._runtime.budget_tracker_shared = True
 
         if task:
             t0 = time.perf_counter()
@@ -2006,7 +2043,7 @@ class Agent(Servable, metaclass=_AgentMeta):
                 if use_instance_limit and self._child_count > 0:
                     self._child_count -= 1
             duration = time.perf_counter() - t0
-            if not getattr(child_agent, "_budget_tracker_shared", False):
+            if not child_agent._runtime.budget_tracker_shared:
                 self._update_parent_budget(result.cost)
             end_ctx = EventContext(
                 {
@@ -3319,3 +3356,6 @@ from syrin.agent.builder import AgentBuilder as _AgentBuilder
 
 Agent.presets = _presets  # type: ignore[attr-defined]
 Agent.builder = staticmethod(lambda model: _AgentBuilder(model))  # type: ignore[attr-defined]
+Agent.basic = staticmethod(_presets.basic)  # type: ignore[attr-defined]
+Agent.with_memory = staticmethod(_presets.with_memory)  # type: ignore[attr-defined]
+Agent.with_budget = staticmethod(_presets.with_budget)  # type: ignore[attr-defined]

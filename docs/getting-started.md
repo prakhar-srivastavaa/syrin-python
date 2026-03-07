@@ -47,23 +47,28 @@ Use `await model.acomplete(messages)` for async. See the [Models Guide](models.m
 
 ## Your First Agent (30 seconds)
 
-For prompts with tools, memory, or budget, use an Agent:
+For prompts with tools, memory, or budget, use an Agent. **Recommended:** use the Builder or presets:
 
 ```python
-import os
 from syrin import Agent, Model
 
-class SimpleAgent(Agent):
-    # model = Model.OpenAI("gpt-4o-mini", api_key=os.getenv("OPENAI_API_KEY"))
-    model = Model.Almock()  # No API Key needed
-    system_prompt = "You are a helpful assistant."
+# Option 1: Builder (recommended for most agents)
+agent = Agent.builder(Model.Almock()).with_system_prompt("You are helpful.").build()
 
+# Option 2: Preset (quick path)
+agent = Agent.basic(Model.Almock(), system_prompt="You are helpful.")
+
+# Option 3: Class-based (for named agent types)
+class SimpleAgent(Agent):
+    model = Model.Almock()
+    system_prompt = "You are a helpful assistant."
 agent = SimpleAgent()
+
 response = agent.response("What is 2 + 2?")
 print(response.content)  # Output: "4" or "The answer is 4"
 ```
 
-That's it! You just created an AI agent that can answer questions.
+That's it! Prefer `Agent.builder()` when adding tools, budget, or memory.
 
 **Tip:** You can tweak model properties: `temperature`, `max_tokens`, `context_window`, etc. See the [Models Guide](models.md) for the full list.
 

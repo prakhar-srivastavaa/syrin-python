@@ -172,6 +172,7 @@ from syrin.enums import (
     InjectionStrategy,
     LoopStrategy,
     MemoryBackend,
+    MemoryPreset,
     MemoryScope,
     MemoryType,
     MessageRole,
@@ -206,9 +207,7 @@ from syrin.guardrails import (
 )
 from syrin.hitl import ApprovalGate, ApprovalGateProtocol
 from syrin.loop import (
-    CODE_ACTION,
     HITL,
-    PLAN_EXECUTE,
     REACT,
     SINGLE_SHOT,
     CodeActionLoop,
@@ -558,6 +557,7 @@ __all__ = [
     "Hook",
     "DocFormat",
     "MemoryType",
+    "MemoryPreset",
     "MemoryBackend",
     "MemoryScope",
     "DecayStrategy",
@@ -585,8 +585,6 @@ __all__ = [
     "ToolApprovalFn",
     "REACT",
     "SINGLE_SHOT",
-    "PLAN_EXECUTE",
-    "CODE_ACTION",
     "HITL",
     # =============================================================================
     # Observability

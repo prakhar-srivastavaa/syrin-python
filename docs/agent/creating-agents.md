@@ -1,6 +1,37 @@
 # Creating Agents
 
-You can create agents in two ways: **instance-based** (pass arguments to `Agent()`) or **class-based** (declare defaults on a subclass). Both approaches are supported.
+**Recommended: Use the Builder or presets** for clearer, scalable agent creation. The constructor and class-based approach remain available for subclassing and backward compatibility.
+
+## Recommended: Builder (Primary API)
+
+For most use cases, the fluent **Builder** is the best choice—it scales cleanly as you add tools, budget, memory, and other options:
+
+```python
+from syrin import Agent, Budget
+from syrin.model import Model
+
+agent = (
+    Agent.builder(Model.OpenAI("gpt-4o-mini"))
+    .with_system_prompt("You are helpful.")
+    .with_budget(Budget(run=0.50))
+    .with_tools([search, calculate])
+    .build()
+)
+```
+
+**When to use:** Any agent with 3+ options. Keeps construction readable and avoids a long constructor call.
+
+## Presets (Quick Paths)
+
+For common patterns, use presets:
+
+```python
+agent = Agent.basic(Model.OpenAI("gpt-4o-mini"))           # Minimal: no memory, no budget
+agent = Agent.with_memory(Model.OpenAI("gpt-4o-mini"))     # Multi-turn with memory
+agent = Agent.with_budget(Model.OpenAI("gpt-4o-mini"))     # With cost budget
+agent = Agent.presets.assistant()                          # Full assistant preset
+agent = Agent.presets.research()                           # Research agent with tools
+```
 
 ## Class-based vs direct instantiation
 
@@ -118,7 +149,12 @@ agent = Agent(model=Model.Almock())  # OK (or Model.OpenAI("gpt-4o") when you ha
 
 ## Agent Name and Description (Discovery + Routing)
 
-Agents have `name` and `description` for discovery, routing, and Agent Cards. Required for serving.
+Agents have `name` and `description` for discovery, routing, and Agent Cards. Set on the class as `name` or `_agent_name` (same thing; `_agent_name` avoids type-checker override warnings).
+
+**Precedence (highest wins):**
+1. Constructor: `Agent(name="my-agent", ...)`
+2. Class: `name = "researcher"` or `_agent_name = "researcher"`
+3. Fallback: lowercase class name (e.g. `ResearcherAgent` → `"researcheragent"`)
 
 ```python
 class ResearcherAgent(Agent):
@@ -126,9 +162,10 @@ class ResearcherAgent(Agent):
     description = "Searches and summarizes information from the web"
     model = Model.OpenAI("gpt-4o")
     system_prompt = "You are a researcher."
+
+agent = ResearcherAgent(name="custom")  # Uses "custom" (constructor overrides class)
 ```
 
-If `name` is not set, it defaults to the lowercase class name (`ResearcherAgent` → `"researcheragent"`).  
 `description` defaults to `""`.
 
 ## Next Steps

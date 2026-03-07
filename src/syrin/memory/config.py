@@ -301,7 +301,11 @@ class Memory(BaseModel):
     top_k: int = Field(
         10,
         gt=0,
-        description="Max memories to recall per query. Higher = more context, higher cost.",
+        description=(
+            "Max memories to recall per query. Higher = more context, higher cost. "
+            "Common values: 5-10 for chat, 10-15 for assistants, 15-20 for research. "
+            "Example: Memory(top_k=10) for most use cases."
+        ),
     )
     relevance_threshold: float = Field(
         0.7,
@@ -311,7 +315,12 @@ class Memory(BaseModel):
     )
     injection_strategy: InjectionStrategy = Field(
         default=InjectionStrategy.ATTENTION_OPTIMIZED,
-        description="Order of recalled memories in context: CHRONOLOGICAL, RELEVANCE, or ATTENTION_OPTIMIZED (default).",
+        description=(
+            "Order of recalled memories in context. "
+            "CHRONOLOGICAL: oldest-first. RELEVANCE: highest-scoring first. "
+            "ATTENTION_OPTIMIZED (default): most important near end for better recall. "
+            "Use ATTENTION_OPTIMIZED for most cases; CHRONOLOGICAL when temporal order matters."
+        ),
     )
 
     auto_store: bool = Field(

@@ -2,6 +2,13 @@
 
 Syrin integrates MCP (Model Context Protocol) so you can **group tools in MCP** and **use MCP inside your agent's tools**. Define an MCP server with `@tool` methods (same decorator as Agent), then add the MCP instance to `Agent(tools=[...])`. The agent uses MCP tools as if they were regular tools.
 
+**Recommended path:** Add the MCP instance to `tools=[...]`:
+```python
+mcp = ProductMCP()
+agent = Agent(tools=[mcp], model=..., system_prompt=...)
+```
+Use `mcp.select("tool1", "tool2")` to whitelist specific tools.
+
 **Two ways to use MCP:**
 1. **Group tools** — Create an MCP class with multiple `@tool` methods. Keeps related tools organized.
 2. **Use MCP in agents** — Put the MCP instance in `tools=[ProductMCP()]`. Agent can call all MCP tools. When serving, `/mcp` is auto-mounted alongside `/chat`.

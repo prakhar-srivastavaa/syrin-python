@@ -2,6 +2,9 @@
 
 Usage:
     >>> from syrin import Agent
+    >>> agent = Agent.basic(Model.OpenAI("gpt-4o-mini"), system_prompt="You are helpful.")
+    >>> agent = Agent.with_memory(Model.OpenAI("gpt-4o-mini"))
+    >>> agent = Agent.with_budget(Model.OpenAI("gpt-4o-mini"), budget=Budget(run=0.25))
     >>> agent = Agent.presets.research()
     >>> agent = Agent.presets.assistant()
     >>> agent = Agent.presets.code_helper()
@@ -13,7 +16,109 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from syrin.agent import Agent
+    from syrin.budget import Budget
+    from syrin.memory import Memory
     from syrin.model import Model
+
+
+def basic(model: Model, *, system_prompt: str = "You are helpful.") -> Agent:
+    """Create a minimal agent: model + system prompt, no memory, no budget.
+
+    Use when you want the simplest possible agent for quick tasks or experimentation.
+
+    Args:
+        model: LLM to use (required). Use Model.OpenAI, Model.Anthropic, etc.
+        system_prompt: Instructions for the agent. Default: "You are helpful."
+
+    Returns:
+        Agent with no memory, no budget, SINGLE_SHOT loop (no tools).
+
+    Example:
+        >>> from syrin import Agent
+        >>> from syrin.model import Model
+        >>> agent = Agent.basic(Model.OpenAI("gpt-4o-mini"), system_prompt="You are concise.")
+        >>> agent.response("What is 2+2?")
+    """
+    from syrin import Agent
+    from syrin.enums import LoopStrategy
+
+    return Agent(
+        model=model,
+        system_prompt=system_prompt,
+        memory=None,
+        loop_strategy=LoopStrategy.SINGLE_SHOT,
+    )
+
+
+def with_memory(
+    model: Model,
+    *,
+    system_prompt: str = "You are helpful.",
+    memory: Memory | None = None,
+) -> Agent:
+    """Create an agent with persistent memory (remember/recall/forget).
+
+    Use for multi-turn conversations or when the agent needs to remember facts across turns.
+
+    Args:
+        model: LLM to use (required).
+        system_prompt: Instructions for the agent. Default: "You are helpful."
+        memory: Memory config. Default: Memory() with core+episodic, top_k=10.
+
+    Returns:
+        Agent with memory enabled, REACT loop.
+
+    Example:
+        >>> agent = Agent.with_memory(Model.OpenAI("gpt-4o-mini"))
+        >>> agent.response("Remember my name is Alice.")
+        >>> agent.response("What's my name?")  # "Alice"
+    """
+    from syrin import Agent
+    from syrin.enums import LoopStrategy, MemoryType
+    from syrin.memory import Memory
+
+    return Agent(
+        model=model,
+        system_prompt=system_prompt,
+        memory=memory
+        if memory is not None
+        else Memory(types=[MemoryType.CORE, MemoryType.EPISODIC], top_k=10),
+        loop_strategy=LoopStrategy.REACT,
+    )
+
+
+def with_budget(
+    model: Model,
+    *,
+    system_prompt: str = "You are helpful.",
+    budget: Budget | None = None,
+) -> Agent:
+    """Create an agent with cost budget control.
+
+    Use when you need to cap spend per run or per period.
+
+    Args:
+        model: LLM to use (required).
+        system_prompt: Instructions for the agent. Default: "You are helpful."
+        budget: Budget config. Default: Budget(run=0.25) ($0.25 per run).
+
+    Returns:
+        Agent with budget, REACT loop.
+
+    Example:
+        >>> from syrin import Agent, Budget
+        >>> agent = Agent.with_budget(Model.OpenAI("gpt-4o-mini"), budget=Budget(run=0.50))
+        >>> agent.response("Summarize this long document")
+    """
+    from syrin import Agent, Budget
+    from syrin.enums import LoopStrategy
+
+    return Agent(
+        model=model,
+        system_prompt=system_prompt,
+        budget=budget if budget is not None else Budget(run=0.25),
+        loop_strategy=LoopStrategy.REACT,
+    )
 
 
 def research() -> Agent:

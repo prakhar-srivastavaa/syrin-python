@@ -119,14 +119,14 @@ def test_patch_agent_loop_strategy_accepts_display_format() -> None:
     payload = {
         "agent_id": agent_id,
         "version": 1,
-        "overrides": [{"path": "agent.loop_strategy", "value": "plan execute"}],
+        "overrides": [{"path": "agent.loop_strategy", "value": "react"}],
     }
     r = client.patch("/config", json=payload)
     assert r.status_code == 200
     data = r.json()
     assert "agent.loop_strategy" not in [p for p, _ in data.get("rejected", [])]
 
-    assert type(agent._loop).__name__ == "PlanExecuteLoop"
+    assert type(agent._loop).__name__ == "ReactLoop"
 
 
 def test_patch_config_invalid_path_rejected() -> None:

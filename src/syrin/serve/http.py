@@ -391,12 +391,18 @@ def build_router(
     ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
         """Return (baseline, overrides, current) from agent override store. Freeze baseline on first use."""
         reg = get_registry()
-        baseline = getattr(a, "_remote_baseline_values", None)
-        overrides = getattr(a, "_remote_overrides", None) or {}
+        rt = getattr(a, "_runtime", None)
+        baseline: dict[str, Any]
+        overrides: dict[str, Any]
+        if rt is None:
+            baseline, overrides = {}, {}
+        else:
+            baseline = rt.remote_baseline
+            overrides = rt.remote_overrides or {}
         if baseline is None:
             schema = reg.get_schema(reg.make_agent_id(a)) or extract_agent_schema(a)
-            object.__setattr__(a, "_remote_baseline_values", dict(schema.current_values))
-            baseline = a._remote_baseline_values
+            rt.remote_baseline = dict(schema.current_values)
+            baseline = rt.remote_baseline
         current = {**baseline, **overrides}
         return baseline, overrides, current
 
@@ -458,7 +464,7 @@ def build_router(
             )
         # Ensure baseline exists (e.g. PATCH before first GET)
         _get_baseline_overrides_current(agent)
-        overrides_store = agent._remote_overrides
+        overrides_store = agent._runtime.remote_overrides
         # Update store: value is None -> revert (remove from overrides); else set override
         for ov in payload.overrides:
             if ov.value is None:
@@ -467,7 +473,7 @@ def build_router(
                 overrides_store[ov.path] = ov.value
         # Sync agent state to baseline + overrides
         schema = reg.get_schema(agent_id) or extract_agent_schema(agent)
-        baseline = agent._remote_baseline_values or {}
+        baseline = agent._runtime.remote_baseline or {}
         current = {**baseline, **overrides_store}
         # Build sync payload: skip None and normalize invalid enum values so resolver never false-rejects
         from syrin.remote._resolver import _field_for_path

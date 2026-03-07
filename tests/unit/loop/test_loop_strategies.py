@@ -390,19 +390,12 @@ class TestCodeActionLoop:
 class TestLoopStrategyIntegration:
     """Test LoopStrategy enum integration."""
 
-    def test_loop_strategy_plan_execute(self):
-        """LoopStrategy.PLAN_EXECUTE should map to PlanExecuteLoop."""
-        from syrin.loop import LoopStrategyMapping
+    def test_loop_strategy_single_shot(self):
+        """LoopStrategy.SINGLE_SHOT maps to SingleShotLoop."""
+        from syrin.loop import LoopStrategyMapping, SingleShotLoop
 
-        loop_class = LoopStrategyMapping.get_loop(LoopStrategy.PLAN_EXECUTE)
-        assert loop_class == PlanExecuteLoop
-
-    def test_loop_strategy_code_action(self):
-        """LoopStrategy.CODE_ACTION should map to CodeActionLoop."""
-        from syrin.loop import LoopStrategyMapping
-
-        loop_class = LoopStrategyMapping.get_loop(LoopStrategy.CODE_ACTION)
-        assert loop_class == CodeActionLoop
+        loop_class = LoopStrategyMapping.get_loop(LoopStrategy.SINGLE_SHOT)
+        assert loop_class == SingleShotLoop
 
     def test_loop_strategy_react(self):
         """LoopStrategy.REACT should map to ReactLoop."""

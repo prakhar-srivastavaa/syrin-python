@@ -15,11 +15,15 @@ class StopReason(StrEnum):
 
 
 class LoopStrategy(StrEnum):
-    """Agent execution loop strategy."""
+    """Agent execution loop strategy.
+
+    Attributes:
+        REACT: Reason → Act → Observe loop. Agent can call tools, get results,
+            and decide next step. Use for tool-using agents (search, calculator, etc.).
+        SINGLE_SHOT: One LLM call, no tools. Fast for simple Q&A. No tool loop.
+    """
 
     REACT = "react"
-    PLAN_EXECUTE = "plan_execute"
-    CODE_ACTION = "code_action"
     SINGLE_SHOT = "single_shot"
 
 
@@ -43,6 +47,18 @@ class ContextMode(StrEnum):
     FULL = "full"
     FOCUSED = "focused"
     INTELLIGENT = "intelligent"
+
+
+class MemoryPreset(StrEnum):
+    """Preset for agent memory. Use instead of memory=True/False for clarity.
+
+    Attributes:
+        DISABLED: No memory. Stateless agent.
+        DEFAULT: Core + episodic, top_k=10. Quick multi-turn chat.
+    """
+
+    DISABLED = "disabled"
+    DEFAULT = "default"
 
 
 class FormationMode(StrEnum):

@@ -64,6 +64,10 @@ Learn by doing! Pick a use case that matches what you want to build:
 
 **[Concept Map](concept-map.md)** — Budget vs TokenLimits vs Memory (quick reference)
 
+**[Decision Guide](guides/decision-guide.md)** — Memory (True vs Memory() vs None), Budget vs TokenLimits, loop strategies, formation mode
+
+**[Context Types](guides/context-types.md)** — RunContext (tools) vs PromptContext (dynamic prompts)
+
 **[Extension Points](extension-points.md)** — How to implement Model, Provider, Loop, Guardrail, etc.
 
 **[Feature Reference Guide](reference.md)** - Complete API reference
@@ -95,12 +99,9 @@ Copy and run this to test your setup:
 ```python
 from syrin import Agent, Model
 
-class MyAgent(Agent):
-    # model = Model.OpenAI("gpt-4o-mini")
-    model = Model.Almock()  # No API Key needed
-    system_prompt = "You are helpful."
-
-agent = MyAgent()
+# Recommended: Builder or presets
+agent = Agent.builder(Model.Almock()).with_system_prompt("You are helpful.").build()
+# Or: agent = Agent.basic(Model.Almock())
 response = agent.response("Hello! How are you?")
 print(response.content)
 ```

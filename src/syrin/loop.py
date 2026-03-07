@@ -1039,8 +1039,6 @@ class LoopStrategyMapping:
 
     _MAPPING = {
         LoopStrategy.REACT: ReactLoop,
-        LoopStrategy.PLAN_EXECUTE: PlanExecuteLoop,
-        LoopStrategy.CODE_ACTION: CodeActionLoop,
         LoopStrategy.SINGLE_SHOT: SingleShotLoop,
     }
 
@@ -1055,15 +1053,10 @@ class LoopStrategyMapping:
         if isinstance(strategy, str):
             strategy = LoopStrategy(strategy)
         loop_class = cls.get_loop(strategy)
-        if loop_class in (ReactLoop, HumanInTheLoop, CodeActionLoop):
-            return loop_class(max_iterations=max_iterations)  # type: ignore[call-arg]
-        if loop_class is PlanExecuteLoop:
-            return loop_class(max_execution_iterations=max_iterations)  # type: ignore[call-arg]
+        if loop_class is ReactLoop:
+            return ReactLoop(max_iterations=max_iterations)
         return loop_class()
 
-
-PLAN_EXECUTE = PlanExecuteLoop
-CODE_ACTION = CodeActionLoop
 
 # Simple constants
 REACT = ReactLoop
@@ -1083,7 +1076,5 @@ __all__ = [
     "REACT",
     "SINGLE_SHOT",
     "HITL",
-    "PLAN_EXECUTE",
-    "CODE_ACTION",
     "ToolApprovalFn",
 ]

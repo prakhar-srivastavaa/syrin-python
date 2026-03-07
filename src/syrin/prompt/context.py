@@ -51,7 +51,15 @@ def make_prompt_context(
     conversation_id: str | None = None,
     inject_builtins: bool = True,
 ) -> PromptContext:
-    """Build PromptContext from an Agent instance."""
+    """Build PromptContext from an Agent instance.
+
+    Args:
+        agent: The Agent instance.
+        conversation_id: Current conversation ID for state isolation.
+        inject_builtins: If True (default), populate builtins with date, agent_id,
+            conversation_id. These are available as template vars in system prompts
+            (e.g. {date}, {agent_id}, {conversation_id}). Set False to skip.
+    """
     agent_id = (
         getattr(agent, "_agent_name", None)
         or getattr(agent, "name", None)

@@ -144,7 +144,10 @@ class Context:
     focused_keep: int = 10
     """When context_mode=focused, number of turns (user+assistant pairs) to keep. Use focused mode for long chats with topic shifts. Must be >= 1."""
     formation_mode: FormationMode = FormationMode.PUSH
-    """PUSH (default): Use full conversation from memory (last N or all). PULL: Retrieve segments by relevance to current query from Memory's segment store. PULL requires Memory; good for long conversations with topic shifts."""
+    """How conversation history feeds into context. PUSH (default): Use full conversation
+    from memory (last N or all). PULL: Retrieve segments by relevance to current query
+    from Memory's segment store. When to use: PUSH for short/linear chats; PULL when
+    conversations are long and you want only relevant prior turns (requires Memory)."""
     pull_top_k: int = 10
     """When formation_mode=PULL, max segments to retrieve per turn. Higher = more context, higher cost."""
     pull_threshold: float = 0.0

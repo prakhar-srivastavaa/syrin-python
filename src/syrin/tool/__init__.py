@@ -37,7 +37,11 @@ class ToolSpec(BaseModel):
     name: str = Field(..., description="Tool name (used in tool_calls.name)")
     description: str = Field(
         default="",
-        description="Description for the model. Shown in tool list.",
+        description=(
+            "Description for the model. The LLM uses this to decide when to call this tool—"
+            "be specific about when and why. Example: 'Search web for current facts. "
+            "Use when the user asks about news, events, or recent information.'"
+        ),
     )
     parameters_schema: dict[str, object] = Field(
         default_factory=dict,

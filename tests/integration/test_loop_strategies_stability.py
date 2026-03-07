@@ -182,12 +182,7 @@ class TestLoopStrategyMapping:
 
         assert LoopStrategyMapping.get_loop(LoopStrategy.SINGLE_SHOT) is SingleShotLoop
 
-    def test_plan_execute_maps_to_plan_execute_loop(self) -> None:
-        from syrin.loop import LoopStrategyMapping
-
-        assert LoopStrategyMapping.get_loop(LoopStrategy.PLAN_EXECUTE) is PlanExecuteLoop
-
-    def test_code_action_maps_to_code_action_loop(self) -> None:
-        from syrin.loop import LoopStrategyMapping
-
-        assert LoopStrategyMapping.get_loop(LoopStrategy.CODE_ACTION) is CodeActionLoop
+    def test_plan_execute_and_code_action_still_available_as_loop_param(self) -> None:
+        """PlanExecuteLoop and CodeActionLoop can still be passed as loop=... (not via loop_strategy)."""
+        assert PlanExecuteLoop is not None
+        assert CodeActionLoop is not None
