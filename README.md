@@ -74,14 +74,14 @@ Syrin gives you budgeting, thresholds, hooks, observability, context, memory, gu
 Web playground + built-in observability — chat with your agent in the browser, and see cost, tokens, steps, and traces for every reply.
 
 <p align="center">
-  <img src="assets/demos/chatbot_serving.png" alt="Playground chat with chatbot" width="700">
+  <img src="https://github.com/syrin-labs/syrin-python/raw/main/assets/demos/chatbot_serving.png" alt="Playground chat with chatbot" width="700">
 </p>
 <p align="center">
   <em>Chat with your agent (e.g. <code>chatbot.py</code>) in the browser.</em>
 </p>
 
 <p align="center">
-  <img src="assets/demos/reply_observability.png" alt="Built-in observability" width="700">
+  <img src="https://github.com/syrin-labs/syrin-python/raw/main/assets/demos/reply_observability.png" alt="Built-in observability" width="700">
 </p>
 <p align="center">
   <em>With each reply: the how, why, and what — cost, tokens, steps, traces.</em>
