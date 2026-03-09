@@ -152,7 +152,7 @@ class RateLimitRetryHandler:
     def _is_rate_limit_error(self, error: Exception) -> bool:
         """Check if an exception is a rate limit error.
 
-        Supports OpenAI, Anthropic, and generic rate limit errors.
+        Supports OpenAI, Anthropic, OpenRouter, and generic rate limit errors.
         """
         error_str = str(error).lower()
 

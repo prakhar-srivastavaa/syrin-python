@@ -470,7 +470,7 @@ class Agent(Servable, metaclass=_AgentMeta):
         - Or subclass and set class attributes: ``model = Model.OpenAI(...)``
 
     Subclass attributes (set on your Agent subclass; override parent defaults):
-        model: Model | None — LLM to use (Model.OpenAI, Model.Anthropic, etc.). Required.
+        model: Model | None — LLM to use (Model.OpenAI, Model.Anthropic, Model.OpenRouter, etc.). Required.
         system_prompt: str — Instructions sent with every request. Default: "".
         name: str | None — Agent identifier for handoffs, discovery. Default: None.
         description: str — Human-readable description (metaclass moves to internal). Default: "".
@@ -672,7 +672,7 @@ class Agent(Servable, metaclass=_AgentMeta):
         """Create an agent with model, prompt, tools, and optional config.
 
         **Required:**
-            model: LLM to use. Use Model.OpenAI, Model.Anthropic, etc. The brain of your agent.
+            model: LLM to use. Use Model.OpenAI, Model.Anthropic, Model.OpenRouter, etc. The brain of your agent.
 
         **Core (most users need these):**
             system_prompt: Instructions that define behavior. Sent with every request. Default: empty.
@@ -816,7 +816,7 @@ class Agent(Servable, metaclass=_AgentMeta):
         if not isinstance(model, (Model, ModelConfig)):
             raise TypeError(
                 f"model must be Model or ModelConfig, got {type(model).__name__}. "
-                "Use Model.OpenAI(), Model.Anthropic(), Model.Almock(), etc."
+                "Use Model.OpenAI(), Model.Anthropic(), Model.OpenRouter(), Model.Almock(), etc."
             )
         if isinstance(model, Model):
             self._model: Model | None = model

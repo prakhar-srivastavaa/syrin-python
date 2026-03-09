@@ -1,4 +1,4 @@
-"""Tests for providers module (base, litellm, openai, anthropic)."""
+"""Tests for providers module (base, litellm, openai, anthropic, openrouter)."""
 
 from __future__ import annotations
 

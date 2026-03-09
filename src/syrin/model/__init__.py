@@ -6,6 +6,7 @@ Usage:
     model = Model.Anthropic("claude-sonnet")
     model = Model.Ollama("llama3")
     model = Model.Google("gemini-2.0-flash")
+    model = Model.OpenRouter("openai/gpt-4o")
 
     # Tweak properties: temperature, max_tokens, context_window, etc.
     model = Model.OpenAI("gpt-4o-mini", temperature=0.7, max_tokens=2048, api_key="...")
@@ -15,6 +16,9 @@ Usage:
 
     # Third-party OpenAI-compatible APIs (DeepSeek, KIMI, Grok, etc.)
     model = Model.Custom("deepseek-chat", api_base="https://api.deepseek.com/v1", api_key="...")
+
+    # OpenRouter — 100+ models via a single API key
+    model = Model.OpenRouter("arcee-ai/trinity-large-preview:free", api_key="...")
 
     # For fully custom LLM providers, inherit from Model:
     class MyModel(Model):
@@ -44,6 +48,7 @@ from syrin.model.providers import (
     LiteLLM,
     Ollama,
     OpenAI,
+    OpenRouter,
     setup_provider_namespaces,
 )
 
@@ -72,6 +77,7 @@ __all__ = [
     "Ollama",
     "Google",
     "LiteLLM",
+    "OpenRouter",
     # Structured output
     "OutputType",
     "output",

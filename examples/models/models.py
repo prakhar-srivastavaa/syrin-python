@@ -155,3 +155,18 @@ grok_pro = Model.Custom(
     api_key=os.getenv("XAI_API_KEY"),
     context_window=131_072,
 )
+
+# OpenRouter - https://openrouter.ai (100+ models, single API key)
+# Uses OpenAI-compatible API; pass any model available on OpenRouter
+openrouter_free = Model.OpenRouter(
+    "arcee-ai/trinity-large-preview:free",
+    api_key=os.getenv("OPENROUTER_API_KEY"),
+)
+openrouter_gpt4 = Model.OpenRouter(
+    "openai/gpt-4o",
+    api_key=os.getenv("OPENROUTER_API_KEY"),
+)
+openrouter_claude = Model.OpenRouter(
+    "anthropic/claude-sonnet-4-5",
+    api_key=os.getenv("OPENROUTER_API_KEY"),
+)

@@ -32,6 +32,7 @@ class Provider(ABC):
     """Abstract base for LLM providers. Implement complete(); stream() defaults to one chunk.
 
     Built-in providers: OpenAIProvider, AnthropicProvider, LiteLLMProvider, etc.
+    OpenRouter uses OpenAIProvider (OpenAI-compatible API).
     To add a new LLM: subclass Provider, implement complete(), optionally override stream().
 
     Methods:

@@ -26,7 +26,7 @@ src/syrin/
 ├── output.py        # Output type wrapper
 ├── pipe.py          # Pipe, pipe()
 ├── prompt/          # Prompt, prompt(), validated()
-├── providers/       # Provider protocol, registry, OpenAI/Anthropic/LiteLLM
+├── providers/       # Provider protocol, registry, OpenAI/Anthropic/OpenRouter/LiteLLM
 ├── ratelimit/       # Rate limit manager, backends
 ├── response/        # Response, reports
 ├── task.py          # task()
@@ -68,7 +68,7 @@ See `docs/extension-points.md` for implementation examples.
 
 ## 5. Model vs ModelConfig vs Provider
 
-- **Model:** User-facing. Use `Model.OpenAI(...)`, `Model.Anthropic(...)`, or subclass.
+- **Model:** User-facing. Use `Model.OpenAI(...)`, `Model.Anthropic(...)`, `Model.OpenRouter(...)`, or subclass.
 - **ModelConfig:** Internal config (provider id, model_id, etc.). Prefer `Model.to_config()` rather than constructing `ModelConfig` directly when wiring agents.
 - **Provider:** Execution backend. Resolution: `Model` → `get_provider()` or registry. Single path; no duplicate resolution logic.
 

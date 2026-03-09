@@ -200,6 +200,82 @@ def _make_ollama(
     )
 
 
+def _make_openrouter(
+    model_name: str,
+    *,
+    temperature: float | None = None,
+    max_tokens: int | None = None,
+    max_output_tokens: int | None = None,
+    top_p: float | None = None,
+    top_k: int | None = None,
+    stop: list[str] | None = None,
+    api_key: str | None = None,
+    api_base: str | None = None,
+    context_window: int | None = None,
+    output: type | None = None,
+    input_price: float | None = None,
+    output_price: float | None = None,
+    fallback: list[Model] | None = None,
+    **kwargs: Any,
+) -> Model:
+    """Create an OpenRouter model.
+
+    OpenRouter provides a unified API for 100+ models (OpenAI, Anthropic, Google,
+    Meta, Mistral, etc.) via an OpenAI-compatible endpoint.
+
+    Usage:
+        Model.OpenRouter("openai/gpt-4o")
+        Model.OpenRouter("anthropic/claude-sonnet-4-5")
+        Model.OpenRouter("meta-llama/llama-3-70b-instruct")
+        Model.OpenRouter("arcee-ai/trinity-large-preview:free")
+
+    Args:
+        model_name: Model name on OpenRouter (e.g., "openai/gpt-4o",
+            "anthropic/claude-sonnet-4-5", "arcee-ai/trinity-large-preview:free")
+        temperature: Sampling temperature (0.0-2.0)
+        max_tokens: Max output tokens
+        max_output_tokens: Max output tokens
+        top_p: Nucleus sampling
+        top_k: Top-k sampling
+        stop: Stop sequences
+        api_key: OpenRouter API key (required; pass explicitly,
+            e.g. os.getenv("OPENROUTER_API_KEY"))
+        api_base: Custom base URL (default: https://openrouter.ai/api/v1)
+        context_window: Context window size
+        output: Structured output type
+        input_price: Input price per 1M tokens
+        output_price: Output price per 1M tokens
+        fallback: Fallback models
+        **kwargs: Additional Model parameters
+
+    Returns:
+        Model instance
+    """
+    from syrin.model import Model
+
+    display_name = model_name.split("/")[-1] if "/" in model_name else model_name
+
+    return Model(
+        model_id=f"openrouter/{model_name}",
+        name=display_name,
+        provider="openrouter",
+        api_base=api_base or os.getenv("OPENROUTER_BASE_URL") or "https://openrouter.ai/api/v1",
+        api_key=api_key,
+        context_window=context_window or 128000,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        max_output_tokens=max_output_tokens,
+        top_p=top_p,
+        top_k=top_k,
+        stop=stop,
+        output=output,
+        input_price=input_price,
+        output_price=output_price,
+        fallback=fallback,
+        **kwargs,
+    )
+
+
 def _make_google(
     model_name: str,
     *,
@@ -323,6 +399,7 @@ Anthropic = _make_anthropic
 Ollama = _make_ollama
 Google = _make_google
 LiteLLM = _make_litellm
+OpenRouter = _make_openrouter
 
 
 def setup_provider_namespaces(model_class: type) -> None:
@@ -332,6 +409,7 @@ def setup_provider_namespaces(model_class: type) -> None:
     model_class.Ollama = Ollama  # type: ignore[attr-defined]
     model_class.Google = Google  # type: ignore[attr-defined]
     model_class.LiteLLM = LiteLLM  # type: ignore[attr-defined]
+    model_class.OpenRouter = OpenRouter  # type: ignore[attr-defined]
 
 
 __all__ = [
@@ -340,5 +418,6 @@ __all__ = [
     "Ollama",
     "Google",
     "LiteLLM",
+    "OpenRouter",
     "setup_provider_namespaces",
 ]

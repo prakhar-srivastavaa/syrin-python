@@ -47,7 +47,7 @@ agent = Agent(
     # model=Model.OpenAI("gpt-4o-mini"),
     model=Model.Almock(),  # No API Key needed
 )
-# Or: Model.Anthropic("claude-sonnet-4-5"), Model.Ollama("llama3"), etc.
+# Or: Model.Anthropic("claude-sonnet-4-5"), Model.OpenRouter("arcee-ai/trinity-large-preview:free"), Model.Ollama("llama3"), etc.
 ```
 
 Must be provided on the class or at construction. Raises `TypeError` if missing.

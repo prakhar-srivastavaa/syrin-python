@@ -1,7 +1,7 @@
 """All Model Providers Example.
 
 Demonstrates:
-- Model.OpenAI, Model.Anthropic, Model.Google, Model.Ollama, Model.LiteLLM
+- Model.OpenAI, Model.Anthropic, Model.Google, Model.Ollama, Model.LiteLLM, Model.OpenRouter
 - Model.Custom for third-party OpenAI-compatible APIs
 - Model.Almock for testing without API keys
 - Model settings: temperature, max_tokens, context_window
@@ -31,6 +31,7 @@ model = Model.Anthropic("claude-sonnet-4-5", api_key=os.getenv("ANTHROPIC_API_KE
 model = Model.Google("gemini-2.0-flash", api_key=os.getenv("GOOGLE_API_KEY", "test"))
 model = Model.Ollama("llama3")
 model = Model.LiteLLM("openai/gpt-4o", api_key=os.getenv("OPENAI_API_KEY", "sk-test"))
+model = Model.OpenRouter("openai/gpt-4o",api_key=os.getenv("OPENROUTER_API_KEY", "sk-or-test"))
 model = Model.Almock(latency_seconds=0.01, lorem_length=50)
 
 # 2. Model configuration
@@ -49,6 +50,15 @@ model = Model.Custom(
     api_key=os.getenv("DEEPSEEK_API_KEY", "sk-test"),
     context_window=128_000,
 )
+
+# 3b. OpenRouter — access 100+ models via a single API key
+model = Model.OpenRouter(
+    "arcee-ai/trinity-large-preview:free",
+    api_key=os.getenv("OPENROUTER_API_KEY", "sk-or-test"),
+    temperature=0.5,
+    max_tokens=512,
+)
+print(f"OpenRouter free model: {model.name}")
 
 # 4. Structured output
 from pydantic import BaseModel

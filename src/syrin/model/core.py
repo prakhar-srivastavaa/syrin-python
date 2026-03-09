@@ -29,6 +29,7 @@ T = TypeVar("T", bound=BaseModel)
 _PROVIDER_PREFIXES = [
     ("anthropic/", "anthropic"),
     ("openai/", "openai"),
+    ("openrouter/", "openrouter"),
     ("google/", "google"),
     ("ollama/", "ollama"),
     ("azure/", "azure"),
@@ -204,7 +205,7 @@ class Model:
     output (structured output type), fallback, etc. See the Models guide in the docs.
     """
 
-    # Provider namespace - use Model.OpenAI("gpt-4o"), Model.Anthropic("claude"), etc.
+    # Provider namespace - use Model.OpenAI("gpt-4o"), Model.Anthropic("claude"), Model.OpenRouter("openai/gpt-4o"), etc.
     # These are defined as static methods below for IDE support
 
     @staticmethod
@@ -458,6 +459,71 @@ class Model:
             api_base=api_base or os.getenv("LITELLM_BASE_URL") or "https://api.litellm.ai",
             api_key=api_key,
             context_window=context_window,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            max_output_tokens=max_output_tokens,
+            top_p=top_p,
+            top_k=top_k,
+            stop=stop,
+            output=output,
+            input_price=input_price,
+            output_price=output_price,
+            fallback=fallback,
+            **kwargs,
+        )
+
+    @staticmethod
+    def OpenRouter(
+        model_name: str,
+        *,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+        max_output_tokens: int | None = None,
+        top_p: float | None = None,
+        top_k: int | None = None,
+        stop: list[str] | None = None,
+        api_key: str | None = None,
+        api_base: str | None = None,
+        context_window: int | None = None,
+        output: type | None = None,
+        input_price: float | None = None,
+        output_price: float | None = None,
+        fallback: list[Model] | None = None,
+        **kwargs: Any,
+    ) -> Model:
+        """Create an OpenRouter model. Access 100+ models via a unified OpenAI-compatible API.
+
+        OpenRouter (https://openrouter.ai) provides access to models from OpenAI,
+        Anthropic, Google, Meta, Mistral, and many more through a single API key
+        and endpoint.
+
+        Args:
+            model_name: Model name on OpenRouter (e.g., "openai/gpt-4o",
+                "anthropic/claude-sonnet-4-5", "meta-llama/llama-3-70b-instruct",
+                "arcee-ai/trinity-large-preview:free").
+            temperature: Sampling temperature (0.0–2.0). Higher = more creative.
+            max_tokens: Maximum output tokens.
+            api_key: OpenRouter API key. Required; pass explicitly
+                (e.g. os.getenv("OPENROUTER_API_KEY")).
+            api_base: Custom base URL (default: https://openrouter.ai/api/v1).
+
+        Returns:
+            Model instance configured for OpenRouter.
+
+        Example:
+            model = Model.OpenRouter("openai/gpt-4o", api_key=os.getenv("OPENROUTER_API_KEY"))
+            model = Model.OpenRouter("arcee-ai/trinity-large-preview:free", api_key=...)
+        """
+        import os
+
+        display_name = model_name.split("/")[-1] if "/" in model_name else model_name
+        return Model(
+            model_id=f"openrouter/{model_name}",
+            name=display_name,
+            provider="openrouter",
+            api_base=api_base or os.getenv("OPENROUTER_BASE_URL") or "https://openrouter.ai/api/v1",
+            api_key=api_key,
+            context_window=context_window or 128000,
             temperature=temperature,
             max_tokens=max_tokens,
             max_output_tokens=max_output_tokens,
@@ -761,7 +827,7 @@ class Model:
 
     @property
     def provider(self) -> str:
-        """Provider identifier: ``openai``, ``anthropic``, ``ollama``, ``litellm``, etc.
+        """Provider identifier: ``openai``, ``anthropic``, ``openrouter``, ``ollama``, ``litellm``, etc.
 
         Determines which backend handles the completion request.
         """
@@ -1000,6 +1066,10 @@ class Model:
 
             return AnthropicProvider()
         if self._provider == "openai":
+            from syrin.providers.openai import OpenAIProvider
+
+            return OpenAIProvider()
+        if self._provider == "openrouter":
             from syrin.providers.openai import OpenAIProvider
 
             return OpenAIProvider()

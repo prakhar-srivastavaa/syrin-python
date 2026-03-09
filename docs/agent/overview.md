@@ -4,7 +4,7 @@
 
 An **Agent** in Syrin is an AI-powered program that:
 
-- Talks to an LLM (OpenAI, Anthropic, Google, Ollama, etc.)
+- Talks to an LLM (OpenAI, Anthropic, Google, Ollama, OpenRouter, etc.)
 - Can use **tools** (search, calculate, look up data)
 - Can **remember** and **recall** information
 - Respects **budgets** and cost limits
@@ -17,7 +17,7 @@ An **Agent** in Syrin is an AI-powered program that:
 ┌─────────────────────────────────────────────────────────────┐
 │                         Agent                                │
 ├─────────────────────────────────────────────────────────────┤
-│  Model          │  LLM provider (OpenAI, Anthropic, etc.)   │
+│  Model          │  LLM provider (OpenAI, Anthropic, OpenRouter, etc.)   │
 │  System Prompt  │  Instructions for the agent               │
 │  Tools          │  Functions the agent can call             │
 │  Loop           │  Execution strategy (REACT, SingleShot…)  │
@@ -40,7 +40,7 @@ An **Agent** in Syrin is an AI-powered program that:
 
 ### Model
 
-The LLM that powers the agent. Required. Use `Model.OpenAI()`, `Model.Anthropic()`, `Model.Ollama()`, etc.
+The LLM that powers the agent. Required. Use `Model.OpenAI()`, `Model.Anthropic()`, `Model.Ollama()`, `Model.OpenRouter()`, etc.
 
 ```python
 from syrin.model import Model

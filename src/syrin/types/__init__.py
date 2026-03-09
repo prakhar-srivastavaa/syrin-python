@@ -28,7 +28,7 @@ class ModelConfig(BaseModel):
     name: str = Field(..., description="Human-readable model name (e.g., gpt-4o-mini)")
     provider: str = Field(
         ...,
-        description="Provider identifier: openai, anthropic, ollama, litellm, etc.",
+        description="Provider identifier: openai, anthropic, openrouter, ollama, litellm, etc.",
     )
     model_id: str = Field(
         ...,

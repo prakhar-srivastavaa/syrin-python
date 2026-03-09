@@ -25,7 +25,7 @@ class MyModel(Model):
 
 ## Provider
 
-Implement `Provider` and register via the registry. See `syrin/providers/` for examples (OpenAI, Anthropic, LiteLLM, etc.).
+Implement `Provider` and register via the registry. See `syrin/providers/` for examples (OpenAI, Anthropic, OpenRouter, LiteLLM, etc.).
 
 ```python
 from syrin.providers.base import Provider

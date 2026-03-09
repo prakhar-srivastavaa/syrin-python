@@ -118,8 +118,15 @@ class OpenAIProvider(Provider):
             )
         api_messages = [_message_to_openai(m) for m in messages]
         client = _get_client(api_key, model.base_url)
+        # OpenRouter models use full slug (e.g. "arcee-ai/trinity-large-preview:free")
+        # so we only strip the "openrouter/" prefix.  Other OpenAI-compat providers
+        # store "<provider>/<model>" and need only the last segment.
+        if model.provider == "openrouter":
+            resolved_model = model.model_id.removeprefix("openrouter/")
+        else:
+            resolved_model = model.model_id.split("/")[-1]
         request_kwargs: dict[str, Any] = {
-            "model": model.model_id.split("/")[-1],  # Strip provider prefix
+            "model": resolved_model,
             "messages": api_messages,
             "max_tokens": max_tokens,
             **kwargs,

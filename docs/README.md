@@ -57,7 +57,7 @@ Learn by doing! Pick a use case that matches what you want to build:
 **[Code quality](code-quality.md)** - mypy strict, ruff, public API typing, test coverage, and consistent patterns.
 
 **[Models Guide](models.md)** - Complete guide to models
-- Built-in models (OpenAI, Anthropic, Google, Ollama, LiteLLM)
+- Built-in models (OpenAI, Anthropic, Google, Ollama, LiteLLM, OpenRouter)
 - Model.Custom for third-party APIs
 - Custom models via inheritance
 - Tweakable properties, fallbacks, structured output
@@ -226,7 +226,7 @@ python examples/01_simple_qa_agent.py
 
 👥 **Multi-Agent** - Build teams of specialized agents
 
-🎨 **Flexible Models** - Use OpenAI, Claude, Google, or local models
+🎨 **Flexible Models** - Use OpenAI, Claude, Google, OpenRouter, or local models
 
 🔌 **Hooks & Events** - Execute code at any point in agent lifecycle
 

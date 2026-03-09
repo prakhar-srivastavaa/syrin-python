@@ -37,7 +37,7 @@ def create_model(
     Model.OpenAI("gpt-4o", ...) for better IDE support.
 
     Args:
-        provider: openai, anthropic, ollama, google, or litellm.
+        provider: openai, anthropic, ollama, google, litellm, or openrouter.
         model_name: Model name (e.g., "gpt-4o", "claude-sonnet-4-5").
         api_key: API key. Required for most providers; pass explicitly.
         base_url: Optional base URL override.
@@ -77,6 +77,10 @@ def create_model(
         from syrin.model.providers import LiteLLM
 
         return LiteLLM(model_name, api_key=api_key, base_url=base_url, **kwargs)
+    elif provider == "openrouter":
+        from syrin.model.providers import OpenRouter
+
+        return OpenRouter(model_name, api_key=api_key, base_url=base_url, **kwargs)
     else:
         return Model(
             model_id=f"{provider}/{model_name}",
@@ -104,7 +108,7 @@ def make_model(
 
     Args:
         name: Human-readable name (e.g., "Kimi"). Becomes ``{name}Model``.
-        provider: "openai" for OpenAI-compatible APIs, or "litellm".
+        provider: "openai" for OpenAI-compatible APIs, "openrouter", or "litellm".
         default_model: Default model name when called with no args.
         base_url: API base URL (e.g., https://api.moonshot.ai/v1).
         context_window: Default context window size.

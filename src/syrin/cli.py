@@ -535,7 +535,7 @@ def doctor_command() -> int:
         except ImportError:
             checks.append((f"{dep} installed", False, "✗", f"pip install {dep}"))
 
-    # Check optional providers
+    # Check optional providers (openrouter uses the openai SDK)
     providers = ["openai", "anthropic", "groq"]
     for provider in providers:
         try:

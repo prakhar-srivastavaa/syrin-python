@@ -117,6 +117,7 @@ from syrin import Agent, Model, Budget, stop_on_exceeded
 
 class Researcher(Agent):
     # model = Model.OpenAI("gpt-4o-mini", api_key=os.getenv("OPENAI_API_KEY"))
+    # model = Model.OpenRouter("arcee-ai/trinity-large-preview:free", api_key=os.getenv("OPENROUTER_API_KEY"))
     model = Model.Almock()  # No API Key needed
     budget = Budget(run=0.50, on_exceeded=stop_on_exceeded)
 
@@ -130,6 +131,8 @@ print(f"Cost: ${result.cost:.4f}  |  Budget used: ${result.budget_used:.4f}")
 Pass your API key explicitly. The run is capped at $0.50; when the budget is exceeded, the agent stops.
 
 **No API key?** Examples and docs use `Model.Almock()` by default; swap to a real model when you have an API key.
+
+**Supported providers:** `Model.OpenAI()`, `Model.Anthropic()`, `Model.OpenRouter()`, `Model.Google()`, `Model.Ollama()`, `Model.LiteLLM()`, `Model.Custom()`, `Model.Almock()`.
 
 
 ---

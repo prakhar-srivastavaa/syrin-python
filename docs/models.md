@@ -7,7 +7,7 @@ Complete guide to using and creating models in Syrin — from built-in providers
 ## Overview
 
 Syrin models are the LLM backends your agents use. You can:
-- Use **built-in models** (OpenAI, Anthropic, Google, Ollama, LiteLLM)
+- Use **built-in models** (OpenAI, Anthropic, Google, Ollama, LiteLLM, OpenRouter)
 - **Call models directly** with `model.complete()` or `model.acomplete()` (no Agent needed)
 - Use **Model.Custom** for third-party OpenAI-compatible APIs (DeepSeek, KIMI, Grok)
 - Create **custom models** via inheritance or the `make_model()` factory
@@ -108,11 +108,38 @@ model = Model.LiteLLM("openai/gpt-4o", api_key=os.getenv("OPENAI_API_KEY"))
 model = Model.LiteLLM("anthropic/claude-3-5-sonnet", api_key=os.getenv("ANTHROPIC_API_KEY"))
 ```
 
+### OpenRouter (100+ Models)
+
+Access models from OpenAI, Anthropic, Google, Meta, Mistral, and many more through a single API key and OpenAI-compatible endpoint at [openrouter.ai](https://openrouter.ai).
+
+```python
+import os
+from syrin import Model
+
+# Any model available on OpenRouter
+model = Model.OpenRouter("openai/gpt-4o", api_key=os.getenv("OPENROUTER_API_KEY"))
+model = Model.OpenRouter("anthropic/claude-sonnet-4-5", api_key=os.getenv("OPENROUTER_API_KEY"))
+model = Model.OpenRouter("meta-llama/llama-3-70b-instruct", api_key=os.getenv("OPENROUTER_API_KEY"))
+
+# Free models (no cost)
+model = Model.OpenRouter("arcee-ai/trinity-large-preview:free", api_key=os.getenv("OPENROUTER_API_KEY"))
+
+# With settings
+model = Model.OpenRouter(
+    "openai/gpt-4o",
+    api_key=os.getenv("OPENROUTER_API_KEY"),
+    temperature=0.5,
+    max_tokens=512,
+)
+```
+
+Get your API key at [openrouter.ai/keys](https://openrouter.ai/keys). Set `OPENROUTER_API_KEY` in your `.env`.
+
 ---
 
 ## Tweakable Properties
 
-All model constructors accept these optional properties. Works with `Model.OpenAI`, `Model.Anthropic`, `Model.Google`, `Model.Custom`, etc.
+All model constructors accept these optional properties. Works with `Model.OpenAI`, `Model.Anthropic`, `Model.Google`, `Model.OpenRouter`, `Model.Custom`, etc.
 
 | Property | Type | Description |
 |----------|------|-------------|
@@ -124,13 +151,13 @@ All model constructors accept these optional properties. Works with `Model.OpenA
 | `stop` | `list[str]` | Stop sequences. |
 | `context_window` | `int` | Model context window size. |
 | `api_key` | `str` | API key (required for most providers). |
-| `api_base` | `str` | Custom API base URL. Providers also read `OPENAI_BASE_URL`, `ANTHROPIC_BASE_URL`, etc. if unset. |
+| `api_base` | `str` | Custom API base URL. Providers also read `OPENAI_BASE_URL`, `ANTHROPIC_BASE_URL`, `OPENROUTER_BASE_URL`, etc. if unset. |
 | `output` | `type` | Structured output Pydantic model. |
 | `input_price` | `float` | Cost per 1M input tokens (for budget). |
 | `output_price` | `float` | Cost per 1M output tokens (for budget). |
 | `fallback` | `list[Model]` | Fallback models on failure. |
 
-**Common model names:** `gpt-4o`, `gpt-4o-mini`, `gpt-4` (OpenAI); `claude-sonnet-4-5`, `claude-opus-4-5` (Anthropic); `gemini-2.0-flash`, `gemini-1.5-pro` (Google); `llama3`, `mistral` (Ollama).
+**Common model names:** `gpt-4o`, `gpt-4o-mini`, `gpt-4` (OpenAI); `claude-sonnet-4-5`, `claude-opus-4-5` (Anthropic); `gemini-2.0-flash`, `gemini-1.5-pro` (Google); `llama3`, `mistral` (Ollama); `openai/gpt-4o`, `anthropic/claude-sonnet-4-5`, `arcee-ai/trinity-large-preview:free` (OpenRouter).
 
 **Example:**
 
@@ -478,7 +505,7 @@ messages = [Message(role=MessageRole.USER, content="Hello")]
 response = model.complete(messages)
 ```
 
-**Args:** `provider` (openai, anthropic, ollama, google, litellm), `model_name`, optional `api_key`, `base_url`, and any Model kwargs.
+**Args:** `provider` (openai, anthropic, ollama, google, litellm, openrouter), `model_name`, optional `api_key`, `base_url`, and any Model kwargs.
 
 **Returns:** Configured `Model` instance.
 
@@ -593,9 +620,13 @@ deepseek = Model.Custom(
     api_base="https://api.deepseek.com/v1",
     api_key=os.getenv("DEEPSEEK_API_KEY"),
 )
+openrouter = Model.OpenRouter(
+    "openai/gpt-4o",
+    api_key=os.getenv("OPENROUTER_API_KEY"),
+)
 
 # Elsewhere
-from myproject.models import gpt4, claude
+from myproject.models import gpt4, claude, openrouter
 agent = Agent(model=gpt4, system_prompt="...")
 ```
 
@@ -612,7 +643,7 @@ For `model_id`, you can use `$VAR` or `${VAR}` to resolve from environment varia
 model = Model(provider="openai", model_id="$MY_MODEL")
 ```
 
-API keys are **not** auto-read from env; pass `api_key` explicitly. For `api_base`, providers read `OPENAI_BASE_URL`, `ANTHROPIC_BASE_URL`, `OLLAMA_BASE_URL`, `GOOGLE_BASE_URL`, `LITELLM_BASE_URL` when `api_base` is not passed.
+API keys are **not** auto-read from env; pass `api_key` explicitly. For `api_base`, providers read `OPENAI_BASE_URL`, `ANTHROPIC_BASE_URL`, `OLLAMA_BASE_URL`, `GOOGLE_BASE_URL`, `LITELLM_BASE_URL`, `OPENROUTER_BASE_URL` when `api_base` is not passed.
 
 ---
 
@@ -638,6 +669,7 @@ API keys are **not** auto-read from env; pass `api_key` explicitly. For `api_bas
 | Approach | Use when |
 |----------|----------|
 | `Model.OpenAI`, `Model.Anthropic`, etc. | Using built-in providers |
+| `Model.OpenRouter` | Access 100+ models via OpenRouter (single API key) |
 | `Model.Custom` | Third-party API with OpenAI-compatible format |
 | `create_model(provider, model_name)` | Provider/model from config (dynamic) |
 | `make_model()` | Reusable class for an OpenAI-compatible API |

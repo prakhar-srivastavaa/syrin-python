@@ -27,7 +27,7 @@ def basic(model: Model, *, system_prompt: str = "You are helpful.") -> Agent:
     Use when you want the simplest possible agent for quick tasks or experimentation.
 
     Args:
-        model: LLM to use (required). Use Model.OpenAI, Model.Anthropic, etc.
+        model: LLM to use (required). Use Model.OpenAI, Model.Anthropic, Model.OpenRouter, etc.
         system_prompt: Instructions for the agent. Default: "You are helpful."
 
     Returns:

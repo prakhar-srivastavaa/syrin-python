@@ -34,7 +34,7 @@ See [Constructor](constructor.md) for the full `model` parameter reference.
 
 The agent accepts any `Model` or `ModelConfig`:
 
-- `Model.OpenAI()`, `Model.Anthropic()`, `Model.Google()`, `Model.Ollama()`, `Model.LiteLLM()`
+- `Model.OpenAI()`, `Model.Anthropic()`, `Model.Google()`, `Model.Ollama()`, `Model.LiteLLM()`, `Model.OpenRouter()`
 - `Model.Custom()` for third-party OpenAI-compatible APIs
 - Custom models via inheritance
 
@@ -119,7 +119,7 @@ See [Creating Agents](creating-agents.md) for full inheritance rules.
 
 ## Provider resolution and errors
 
-When you pass a `ModelConfig` (e.g. from a config file) with a `provider=` that the registry doesn’t know, the agent raises **`ProviderNotFoundError`** with a message listing known providers (`openai`, `anthropic`, `ollama`, `litellm`). This avoids silent fallback to a different provider.
+When you pass a `ModelConfig` (e.g. from a config file) with a `provider=` that the registry doesn’t know, the agent raises **`ProviderNotFoundError`** with a message listing known providers (`openai`, `anthropic`, `openrouter`, `ollama`, `litellm`). This avoids silent fallback to a different provider.
 
 When you use a `Model` instance (e.g. `Model.OpenAI(...)`), the provider is resolved from the model, so invalid provider names only occur when constructing an agent from a raw `ModelConfig` with a typo or unsupported provider.
 

@@ -20,7 +20,7 @@ pip install syrin
 
 Set your API key (or use `Model.Almock()` to run without one — see [Models Guide](models.md#almock-an-llm-mock)):
 ```bash
-export OPENAI_API_KEY="sk-..."  # or ANTHROPIC_API_KEY for Claude
+export OPENAI_API_KEY="sk-..."  # or ANTHROPIC_API_KEY for Claude, OPENROUTER_API_KEY for OpenRouter
 ```
 
 ## Your First Completion (Easiest)
@@ -214,7 +214,7 @@ budget = Budget(run=1.00, on_exceeded=warn_on_exceeded)
 ## Common Questions
 
 **Q: What AI models can I use?**
-A: OpenAI, Anthropic, Google, and many more. See the model examples in each use case.
+A: OpenAI, Anthropic, Google, OpenRouter, and many more. See the model examples in each use case.
 
 **Q: Will this cost me money?**
 A: Yes, AI API calls cost money. But you control the budget! See Use Case 4.

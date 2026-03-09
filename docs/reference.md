@@ -35,7 +35,7 @@ class MyAgent(Agent):
 ## Models
 
 See **[Models Guide](models.md)** for the complete documentation:
-- Built-in models (OpenAI, Anthropic, Google, Ollama, LiteLLM)
+- Built-in models (OpenAI, Anthropic, Google, Ollama, LiteLLM, OpenRouter)
 - Model.Custom for third-party OpenAI-compatible APIs
 - Custom models via inheritance and `make_model()`
 - Tweakable properties (temperature, max_tokens, context_window, etc.)
